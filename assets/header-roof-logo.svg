@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" width="320" height="180">
+  <defs>
+    <!-- Gradients for realistic roofing sheets -->
+    <linearGradient id="blueSheet" x1="0%" y1="0%" x2="100%" y2="80%">
+      <stop offset="0%" stop-color="#1e40af" />
+      <stop offset="40%" stop-color="#2563eb" />
+      <stop offset="70%" stop-color="#60a5fa" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <linearGradient id="terracottaSheet" x1="0%" y1="0%" x2="100%" y2="80%">
+      <stop offset="0%" stop-color="#991b1b" />
+      <stop offset="40%" stop-color="#dc2626" />
+      <stop offset="70%" stop-color="#f87171" />
+      <stop offset="100%" stop-color="#b91c1c" />
+    </linearGradient>
+    <linearGradient id="whiteSheet" x1="0%" y1="0%" x2="100%" y2="80%">
+      <stop offset="0%" stop-color="#cbd5e1" />
+      <stop offset="40%" stop-color="#f8fafc" />
+      <stop offset="70%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#94a3b8" />
+    </linearGradient>
+    <linearGradient id="greenSheet" x1="0%" y1="0%" x2="100%" y2="80%">
+      <stop offset="0%" stop-color="#166534" />
+      <stop offset="40%" stop-color="#16a34a" />
+      <stop offset="70%" stop-color="#86efac" />
+      <stop offset="100%" stop-color="#15803d" />
+    </linearGradient>
+    <filter id="drop" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="3" dy="5" stdDeviation="4" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Stacked 3D Corrugated Roofing Sheets (Page 1 top-right header style) -->
+  <g transform="translate(10, 10)">
+    <!-- Bottom White / Silver Sheet -->
+    <g filter="url(#drop)" transform="translate(0, 50)">
+      <path d="M 30 50 L 140 10 L 290 40 L 180 80 Z" fill="url(#whiteSheet)" stroke="#94a3b8" stroke-width="1.5" />
+      <!-- Corrugation ribs -->
+      <path d="M 45 45 L 155 5 M 70 41 L 180 1 M 95 37 L 205 -3 M 120 33 L 230 -7 M 145 29 L 255 -11" stroke="#64748b" stroke-width="2" opacity="0.6" fill="none"/>
+    </g>
+
+    <!-- Green Sheet -->
+    <g filter="url(#drop)" transform="translate(10, 32)">
+      <path d="M 25 45 L 135 5 L 285 35 L 175 75 Z" fill="url(#greenSheet)" stroke="#14532d" stroke-width="1.5" />
+      <path d="M 40 40 L 150 0 M 65 36 L 175 -4 M 90 32 L 200 -8 M 115 28 L 225 -12 M 140 24 L 250 -16" stroke="#14532d" stroke-width="2" opacity="0.5" fill="none"/>
+    </g>
+
+    <!-- Terracotta / Red Sheet -->
+    <g filter="url(#drop)" transform="translate(20, 16)">
+      <path d="M 20 40 L 130 0 L 280 30 L 170 70 Z" fill="url(#terracottaSheet)" stroke="#7f1d1d" stroke-width="1.5" />
+      <path d="M 35 35 L 145 -5 M 60 31 L 170 -9 M 85 27 L 195 -13 M 110 23 L 220 -17 M 135 19 L 245 -21" stroke="#7f1d1d" stroke-width="2" opacity="0.5" fill="none"/>
+    </g>
+
+    <!-- Top Blue Sheet (Primary Indradhanus) -->
+    <g filter="url(#drop)" transform="translate(30, 0)">
+      <path d="M 15 35 L 125 -5 L 275 25 L 165 65 Z" fill="url(#blueSheet)" stroke="#1e3a8a" stroke-width="1.5" />
+      <!-- Pronounced Trapezoidal / Indradhanus Corrugations -->
+      <path d="M 30 30 L 140 -10 M 55 26 L 165 -14 M 80 22 L 190 -18 M 105 18 L 215 -22 M 130 14 L 240 -26" stroke="#1e3a8a" stroke-width="2.5" opacity="0.7" fill="none"/>
+      <!-- Sheen highlight -->
+      <path d="M 20 33 L 130 -7 L 135 -6 L 25 34 Z" fill="#93c5fd" opacity="0.8"/>
+    </g>
+  </g>
+</svg>

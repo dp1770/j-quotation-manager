@@ -1,0 +1,114 @@
+/* Jalaram Enterprise - Custom Styles & Print Stylesheet */
+
+@layer utilities {
+  .avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .page-break-always {
+    page-break-before: always;
+    break-before: page;
+  }
+}
+
+/* Print Rules */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-area, #printable-area * {
+    visibility: visible;
+  }
+
+  #printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .pdf-page-container {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-after: always;
+    break-after: page;
+    min-height: 275mm;
+  }
+
+  .pdf-page-container:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  /* Hide app navigation, header, sidebar, buttons in print */
+  nav, header, aside, .no-print, button, .modal, .toast-container {
+    display: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 6mm 8mm 6mm 8mm;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Interactive Animations */
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Active tab indicators */
+.nav-tab-active {
+  background-color: #1e3a8a;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.nav-tab-inactive {
+  color: #64748b;
+}
+
+.nav-tab-inactive:hover {
+  background-color: #f1f5f9;
+  color: #1e293b;
+}

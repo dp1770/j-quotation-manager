@@ -1,0 +1,289 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1300" width="1000" height="1300">
+  <defs>
+    <linearGradient id="galHdr" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="insulHdr" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0f766e" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <style>
+      .card-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 800; fill: #ffffff; text-anchor: middle; }
+      .card-sub { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; font-weight: 700; fill: #1e293b; text-anchor: middle; }
+      .brand-txt { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 900; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="1300" fill="#ffffff" />
+
+  <!-- Outer Frame -->
+  <rect x="25" y="25" width="950" height="1250" rx="8" fill="none" stroke="#cbd5e1" stroke-width="2"/>
+
+  <!-- ========================================================= -->
+  <!-- ROW 1 (3 Columns) -->
+  <!-- ========================================================= -->
+
+  <!-- Card 1: Rooftop Air Ventilator -->
+  <g transform="translate(45, 45)">
+    <rect width="285" height="175" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <rect width="285" height="28" rx="5" fill="url(#galHdr)"/>
+    <text x="142" y="19" class="card-title">Rooftop Air Ventilator</text>
+    <!-- Illustration: Wind-driven turbo ventilator spinning fins -->
+    <circle cx="142" cy="105" r="45" fill="#e2e8f0" stroke="#475569" stroke-width="2"/>
+    <path d="M 142 60 Q 155 85 142 150 M 142 60 Q 120 90 142 150 M 110 80 Q 140 105 174 130 M 174 80 Q 144 105 110 130" stroke="#334155" stroke-width="2.5" fill="none"/>
+    <circle cx="142" cy="105" r="14" fill="#0284c7"/>
+    <rect x="95" y="145" width="94" height="18" rx="3" fill="#cbd5e1" stroke="#64748b"/>
+    <text x="142" y="158" font-size="10" font-weight="700" fill="#1e293b" text-anchor="middle">STAINLESS STEEL</text>
+  </g>
+
+  <!-- Card 2: Polycarbonate Multiwall Sheet -->
+  <g transform="translate(357, 45)">
+    <rect width="285" height="175" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <rect width="285" height="28" rx="5" fill="url(#galHdr)"/>
+    <text x="142" y="19" class="card-title">Polycarbonate Multiwall Sheet</text>
+    <!-- Illustration: Multiwall layered hollow polycarbonate profiles (blue, green, clear) -->
+    <g transform="translate(25, 45)">
+      <rect x="0" y="0" width="235" height="25" rx="3" fill="#38bdf8" opacity="0.85" stroke="#0284c7"/>
+      <path d="M 0 12 L 235 12" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <rect x="0" y="35" width="235" height="25" rx="3" fill="#34d399" opacity="0.85" stroke="#059669"/>
+      <path d="M 0 47 L 235 47" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <rect x="0" y="70" width="235" height="25" rx="3" fill="#fde047" opacity="0.85" stroke="#d97706"/>
+      <path d="M 0 82 L 235 82" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4,4"/>
+    </g>
+    <text x="142" y="160" font-size="10" font-weight="700" fill="#0284c7" text-anchor="middle">UV PROTECTED • 100% VIRGIN RESIN</text>
+  </g>
+
+  <!-- Card 3: Deck Sheet -->
+  <g transform="translate(670, 45)">
+    <rect width="285" height="175" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <rect width="285" height="28" rx="5" fill="url(#galHdr)"/>
+    <text x="142" y="19" class="card-title">Deck Sheet</text>
+    <!-- Illustration: Trapezoidal heavy floor decking profile -->
+    <g transform="translate(20, 60)">
+      <path d="M 10 70 L 40 15 L 75 15 L 105 70 L 140 70 L 170 15 L 205 15 L 235 70 Z" 
+            fill="#cbd5e1" stroke="#334155" stroke-width="3"/>
+      <!-- Rib embossments -->
+      <line x1="45" y1="20" x2="70" y2="20" stroke="#475569" stroke-width="2"/>
+      <line x1="175" y1="20" x2="200" y2="20" stroke="#475569" stroke-width="2"/>
+      <line x1="110" y1="65" x2="135" y2="65" stroke="#475569" stroke-width="2"/>
+    </g>
+    <text x="142" y="160" font-size="11" font-weight="800" fill="#1e3a8a" text-anchor="middle">Composite Steel Deck Profile</text>
+  </g>
+
+  <!-- ========================================================= -->
+  <!-- ROW 2 (4 Columns) -->
+  <!-- ========================================================= -->
+
+  <!-- Card 4: Reverce Crimping Sheet -->
+  <g transform="translate(45, 235)">
+    <rect width="210" height="180" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+    <!-- Curved crimped sheet illustration -->
+    <path d="M 25 120 C 50 40 100 40 185 120" stroke="#0284c7" stroke-width="18" fill="none" stroke-linecap="round"/>
+    <path d="M 25 120 C 50 40 100 40 185 120" stroke="#93c5fd" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <text x="105" y="155" class="card-sub">Reverce Crimping</text>
+    <text x="105" y="170" class="card-sub">sheet</text>
+  </g>
+
+  <!-- Card 5: Puf Panel Sheet -->
+  <g transform="translate(270, 235)">
+    <rect width="210" height="180" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+    <!-- Insulated sandwich PUF panel -->
+    <g transform="translate(20, 35)">
+      <polygon points="10,25 70,10 160,35 100,50" fill="#16a34a"/>
+      <polygon points="10,25 100,50 100,75 10,50" fill="#fef08a" stroke="#ca8a04"/>
+      <polygon points="100,50 160,35 160,60 100,75" fill="#fde047" stroke="#ca8a04"/>
+      <polygon points="10,50 100,75 160,60 100,50" fill="#15803d"/>
+      <polygon points="10,55 70,40 160,65 100,80" fill="#15803d"/>
+    </g>
+    <text x="105" y="155" class="card-sub">Puf Panel Sheet</text>
+  </g>
+
+  <!-- Card 6: Polycarbonate Sheet -->
+  <g transform="translate(495, 235)">
+    <rect width="210" height="180" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+    <!-- Translucent embossed corrugated polycarbonate -->
+    <g transform="translate(20, 30)">
+      <path d="M 10 60 Q 25 30 40 60 T 70 60 T 100 60 T 130 60 T 160 60" fill="none" stroke="#f59e0b" stroke-width="14" opacity="0.85"/>
+      <path d="M 10 80 Q 25 50 40 80 T 70 80 T 100 80 T 130 80 T 160 80" fill="none" stroke="#eab308" stroke-width="10" opacity="0.6"/>
+    </g>
+    <text x="105" y="150" class="card-sub">Polycarbonate</text>
+    <text x="105" y="168" class="card-sub">Sheet</text>
+  </g>
+
+  <!-- Card 7: Tile Profile Roofing Sheet -->
+  <g transform="translate(720, 235)">
+    <rect width="210" height="180" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+    <!-- Stepped terracotta clay-tile look metal sheet -->
+    <g transform="translate(20, 25)">
+      <rect x="15" y="15" width="140" height="22" rx="4" fill="#b91c1c"/>
+      <rect x="15" y="42" width="140" height="22" rx="4" fill="#dc2626"/>
+      <rect x="15" y="69" width="140" height="22" rx="4" fill="#991b1b"/>
+      <path d="M 30 15 L 30 91 M 65 15 L 65 91 M 100 15 L 100 91 M 135 15 L 135 91" stroke="#450a0a" stroke-width="2"/>
+    </g>
+    <text x="105" y="150" class="card-sub">Tile Profile</text>
+    <text x="105" y="168" class="card-sub">Roofing Sheet</text>
+  </g>
+
+  <!-- ========================================================= -->
+  <!-- ROW 3: Insulated Metal Roofing Sheets (Wide Featured Showcase) -->
+  <!-- ========================================================= -->
+  <g transform="translate(45, 430)">
+    <rect width="660" height="270" rx="8" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <rect width="660" height="38" rx="6" fill="url(#insulHdr)"/>
+    <text x="330" y="26" font-family="-apple-system, sans-serif" font-size="20" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="1">
+      Insulated Metal Roofing Sheets
+    </text>
+    <!-- Interior industrial warehouse under-roof perspective -->
+    <g transform="translate(30, 55)">
+      <polygon points="30,180 300,30 570,180" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/>
+      <!-- Ceiling purlins & trusses -->
+      <line x1="300" y1="30" x2="300" y2="180" stroke="#0284c7" stroke-width="4"/>
+      <line x1="30" y1="180" x2="570" y2="180" stroke="#0284c7" stroke-width="5"/>
+      <line x1="120" y1="130" x2="120" y2="180" stroke="#64748b" stroke-width="3"/>
+      <line x1="210" y1="80" x2="210" y2="180" stroke="#64748b" stroke-width="3"/>
+      <line x1="390" y1="80" x2="390" y2="180" stroke="#64748b" stroke-width="3"/>
+      <line x1="480" y1="130" x2="480" y2="180" stroke="#64748b" stroke-width="3"/>
+      <!-- Radiant foil insulation underside reflection -->
+      <polygon points="40,175 300,35 295,35 35,175" fill="#fef08a" opacity="0.6"/>
+      <polygon points="560,175 300,35 305,35 565,175" fill="#fef08a" opacity="0.6"/>
+    </g>
+  </g>
+
+  <!-- Right Side Accessories Showcase Card -->
+  <g transform="translate(720, 430)">
+    <rect width="210" height="270" rx="8" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/>
+    <rect width="210" height="28" rx="6" fill="#1e3a8a"/>
+    <text x="105" y="19" font-family="-apple-system, sans-serif" font-size="11" font-weight="800" fill="#ffffff" text-anchor="middle">
+      Crimping &amp; All Accessories
+    </text>
+    <!-- Various accessories (crimped curve, corner flashings, ridge caps) -->
+    <g transform="translate(20, 45)">
+      <!-- Curved crimp piece -->
+      <path d="M 20 50 C 40 10 90 10 130 50" stroke="#dc2626" stroke-width="12" fill="none"/>
+      <!-- Ridge cap -->
+      <path d="M 15 90 L 75 60 L 135 90" stroke="#0284c7" stroke-width="8" fill="none"/>
+      <!-- Gutter profile -->
+      <path d="M 20 120 L 20 150 L 130 150 L 130 120" stroke="#16a34a" stroke-width="6" fill="none"/>
+      <!-- Flashings -->
+      <path d="M 20 170 L 60 170 L 120 200" stroke="#eab308" stroke-width="8" fill="none"/>
+    </g>
+  </g>
+
+  <!-- ========================================================= -->
+  <!-- ROW 4 (3 Columns) -->
+  <!-- ========================================================= -->
+
+  <!-- Card 8: Insulation Roofing sheet -->
+  <g transform="translate(45, 715)">
+    <rect width="285" height="180" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+    <!-- Red corrugated sheet with bonded silver foil insulation -->
+    <g transform="translate(30, 25)">
+      <path d="M 10 40 Q 30 10 50 40 T 90 40 T 130 40 T 170 40 T 210 40" fill="none" stroke="#dc2626" stroke-width="14"/>
+      <path d="M 10 65 Q 30 35 50 65 T 90 65 T 130 65 T 170 65 T 210 65" fill="none" stroke="#94a3b8" stroke-width="10"/>
+    </g>
+    <text x="142" y="145" class="card-sub">Insulation</text>
+    <text x="142" y="165" class="card-sub">Roofing sheet</text>
+  </g>
+
+  <!-- Card 9: Air Ventilator Base -->
+  <g transform="translate(357, 715)">
+    <rect width="285" height="180" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+    <g transform="translate(60, 20)">
+      <ellipse cx="80" cy="40" rx="55" ry="25" fill="#94a3b8" stroke="#334155" stroke-width="2"/>
+      <rect x="40" y="40" width="80" height="50" fill="#475569"/>
+      <polygon points="10,105 150,105 120,90 40,90" fill="#0284c7"/>
+    </g>
+    <text x="142" y="160" class="card-sub">Air Ventilator</text>
+  </g>
+
+  <!-- Card 10: Self Drilling Screw -->
+  <g transform="translate(670, 715)">
+    <rect width="285" height="180" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+    <!-- Hex head screws with EPDM washers -->
+    <g transform="translate(45, 25)">
+      <!-- Screw 1 -->
+      <polygon points="40,20 55,20 60,30 35,30" fill="#e2e8f0" stroke="#0f172a" stroke-width="1.5"/>
+      <rect x="33" y="30" width="29" height="7" rx="2" fill="#0f172a"/>
+      <polygon points="43,37 52,37 49,95 46,95" fill="#94a3b8" stroke="#334155" stroke-width="1.5"/>
+      <!-- Thread serrations -->
+      <line x1="43" y1="48" x2="52" y2="52" stroke="#1e293b" stroke-width="1.5"/>
+      <line x1="44" y1="60" x2="51" y2="64" stroke="#1e293b" stroke-width="1.5"/>
+      <line x1="45" y1="72" x2="50" y2="76" stroke="#1e293b" stroke-width="1.5"/>
+
+      <!-- Screw 2 (Angled) -->
+      <g transform="translate(100, 20) rotate(25)">
+        <polygon points="40,20 55,20 60,30 35,30" fill="#e2e8f0" stroke="#0f172a" stroke-width="1.5"/>
+        <rect x="33" y="30" width="29" height="7" rx="2" fill="#0f172a"/>
+        <polygon points="43,37 52,37 49,95 46,95" fill="#94a3b8" stroke="#334155" stroke-width="1.5"/>
+        <line x1="43" y1="48" x2="52" y2="52" stroke="#1e293b" stroke-width="1.5"/>
+        <line x1="44" y1="60" x2="51" y2="64" stroke="#1e293b" stroke-width="1.5"/>
+      </g>
+    </g>
+    <text x="142" y="160" class="card-sub">Self Drilling Screw</text>
+  </g>
+
+  <!-- ========================================================= -->
+  <!-- ROW 5: Official Brand Partner Badges -->
+  <!-- ========================================================= -->
+  <g transform="translate(45, 915)">
+    <rect width="910" height="110" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+    
+    <!-- TILARA Logo -->
+    <g transform="translate(25, 25)">
+      <circle cx="28" cy="28" r="24" fill="#ea580c"/>
+      <text x="28" y="38" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">T</text>
+      <text x="105" y="38" font-size="24" font-weight="900" fill="#ea580c" letter-spacing="1">TILARA</text>
+    </g>
+
+    <!-- JSW Colouron+ -->
+    <g transform="translate(210, 25)">
+      <text x="50" y="32" font-size="20" font-weight="900" fill="#0f172a">JSW</text>
+      <text x="135" y="32" font-size="18" font-weight="800" fill="#dc2626">Colouron+</text>
+      <text x="95" y="48" font-size="9" font-weight="600" fill="#64748b">Colour Coated Sheets</text>
+    </g>
+
+    <!-- JSW Silveron+ -->
+    <g transform="translate(415, 25)">
+      <text x="45" y="32" font-size="20" font-weight="900" fill="#0f172a">JSW</text>
+      <text x="125" y="32" font-size="18" font-weight="800" fill="#0284c7">Silveron+</text>
+      <text x="85" y="48" font-size="9" font-weight="600" fill="#64748b">Al-Zn Bare Galvalume</text>
+    </g>
+
+    <!-- JSW Pragati+ -->
+    <g transform="translate(615, 25)">
+      <text x="45" y="32" font-size="20" font-weight="900" fill="#0f172a">JSW</text>
+      <text x="120" y="32" font-size="18" font-weight="800" fill="#16a34a">Pragati+</text>
+      <text x="85" y="48" font-size="9" font-weight="600" fill="#64748b">Special Profile</text>
+    </g>
+
+    <!-- AM/NS INDIA -->
+    <g transform="translate(790, 25)">
+      <text x="55" y="30" font-size="19" font-weight="900" fill="#b91c1c">AM/NS</text>
+      <text x="55" y="48" font-size="16" font-weight="900" fill="#0f172a">INDIA</text>
+    </g>
+  </g>
+
+  <!-- Secondary Partner Row (PRIMUS & Landmark) -->
+  <g transform="translate(45, 1040)">
+    <rect width="910" height="90" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+    <g transform="translate(180, 22)">
+      <rect x="0" y="0" width="180" height="46" rx="6" fill="#fef08a" stroke="#ca8a04" stroke-width="2"/>
+      <text x="90" y="28" font-size="22" font-weight="900" fill="#ca8a04" text-anchor="middle" letter-spacing="2">PRIMUS</text>
+      <text x="90" y="40" font-size="8" font-weight="800" fill="#0f172a" text-anchor="middle">FASTENING TECHNOLOGY</text>
+    </g>
+    <g transform="translate(540, 22)">
+      <rect x="0" y="0" width="180" height="46" rx="6" fill="#1e293b"/>
+      <text x="90" y="29" font-size="20" font-weight="900" fill="#f87171" text-anchor="middle" letter-spacing="1">LANDMARK</text>
+      <text x="90" y="41" font-size="8" font-weight="700" fill="#93c5fd" text-anchor="middle">INDUSTRIAL FASTENERS</text>
+    </g>
+  </g>
+
+  <!-- Bottom Page Running Footer (Matching PDF Footer exactly) -->
+  <g transform="translate(45, 1220)">
+    <line x1="0" y1="0" x2="910" y2="0" stroke="#0f172a" stroke-width="4"/>
+    <text x="455" y="22" font-family="-apple-system, sans-serif" font-size="11" font-weight="800" fill="#334155" text-anchor="middle" letter-spacing="1">
+      JALARAM ENTERPRISE [ CONTACT NO. +91 99134 93999 / +91 98252 12345 ]
+    </text>
+  </g>
+</svg>

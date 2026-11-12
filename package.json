@@ -1,0 +1,114 @@
+{
+  "name": "jalaram-enterprise-quotation-manager",
+  "version": "3.5.0",
+  "description": "Standalone Cross-Platform Desktop Application for Industrial Roofing & Sheet Quotation Management",
+  "main": "main.js",
+  "author": {
+    "name": "Jalaram Enterprise",
+    "email": "info@jalaramenterprise.com",
+    "url": "https://jalaramenterprise.com"
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:all": "electron-builder -mw",
+    "serve": "python3 server.py",
+    "test": "node -e \"console.log('Valid syntax');\""
+  },
+  "build": {
+    "appId": "com.jalaramenterprise.quotationmanager",
+    "productName": "Jalaram Enterprise Quotation Manager",
+    "copyright": "Copyright © 2026 Jalaram Enterprise",
+    "asar": true,
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "manifest.json",
+      "css/**/*",
+      "js/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icons/icon-512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Jalaram Enterprise Quotation Manager",
+      "artifactName": "Jalaram-Enterprise-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Jalaram-Enterprise-Portable-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.business",
+      "icon": "assets/icons/icon-512.png",
+      "darkModeSupport": true,
+      "artifactName": "Jalaram-Enterprise-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "Jalaram Enterprise Quotation Manager ${version}",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  }
+}

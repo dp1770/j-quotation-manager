@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 40" width="160" height="40">
+  <!-- Reverse and Regular Curved Crimping Sheet Profile -->
+  <path d="M 10 32 C 30 10, 70 8, 90 25 L 150 25" 
+        fill="none" stroke="#d90429" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 12 36 C 32 14, 72 12, 92 29 L 152 29" 
+        fill="none" stroke="#f48c06" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

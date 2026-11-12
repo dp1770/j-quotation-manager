@@ -1,0 +1,6 @@
+# Cloudflare Worker Local Development Variables (.dev.vars)
+# Copy this file to `.dev.vars` for local `wrangler dev` testing.
+# NEVER commit your actual `.dev.vars` file to Git!
+
+JWT_SECRET="your_secure_random_jwt_secret_phrase_for_local_testing_min_32_chars"
+CORS_ALLOW_ORIGIN="*"

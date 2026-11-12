@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Quotation Manager - Professional Quotation System</title>
+  
+  <!-- PWA & Mobile Web Meta -->
+  <meta name="theme-color" content="#1e3a8a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Quotation Manager" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="assets/icons/icon.svg" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+              950: '#0f172a'
+            },
+            accent: {
+              500: '#f97316',
+              600: '#ea580c'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  
+  <!-- html2pdf.js for Client-Side High-Res PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- Custom Styles & Print Stylesheet -->
+  <link rel="stylesheet" href="css/custom.css" />
+</head>
+<body class="bg-slate-100 text-slate-900 font-sans min-h-screen flex flex-col antialiased selection:bg-blue-900 selection:text-white">
+
+  <!-- ========================================================= -->
+  <!-- MAIN APPLICATION SHELL (Hidden until strictly authenticated) -->
+  <!-- ========================================================= -->
+  <div id="app-shell" class="min-h-screen flex flex-col hidden">
+
+  <!-- ========================================================= -->
+  <!-- Top Application Bar -->
+  <!-- ========================================================= -->
+  <header class="bg-gradient-to-r from-blue-950 via-blue-900 to-slate-900 text-white shadow-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Logo & Title (Cloud SaaS Multi-Tenant Branding) -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-gradient-to-tr from-amber-500 to-amber-400 rounded-xl flex items-center justify-center font-black text-xl text-blue-950 shadow-md">
+          QM
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-black tracking-tight leading-tight uppercase">Quotation Manager</h1>
+          <p id="app-company-subtitle" class="text-[11px] font-semibold text-amber-400 tracking-wider">Professional Quotation &amp; Measurement Manager</p>
+        </div>
+      </div>
+
+      <!-- Right Header Actions (User Badge, Setup Pill, Sync Badge) -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        
+        <!-- Multi-Tenant Setup Pill (Interactive) -->
+        <button id="btn-db-setup-status" onclick="App.showSetupGate(true)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer border bg-blue-900/60 text-blue-200 border-blue-700/60 hover:bg-blue-800">
+          <i class="fa-solid fa-database text-amber-400 text-xs"></i> <span id="db-setup-label">Connecting...</span>
+        </button>
+
+        <!-- Logged-in User Profile Chip & Actions -->
+        <div id="header-user-wrapper" class="hidden sm:flex items-center gap-1.5 bg-blue-900/70 border border-blue-700/70 px-2.5 py-1 rounded-xl text-xs">
+          <i class="fa-solid fa-user-circle text-amber-400 text-sm"></i>
+          <span id="header-user-name" class="font-bold text-white max-w-[120px] truncate">jalaram</span>
+          <span id="header-user-role-badge" class="bg-amber-400 text-blue-950 font-black text-[9px] px-1.5 py-0.5 rounded uppercase">Super Admin</span>
+          <button type="button" onclick="App.openChangePasswordModal()" class="ml-1 text-blue-200 hover:text-white p-1 rounded cursor-pointer" title="Change Password">
+            <i class="fa-solid fa-key text-[11px]"></i>
+          </button>
+          <button type="button" onclick="AuthManager.logout()" class="text-rose-300 hover:text-rose-100 p-1 rounded cursor-pointer" title="Sign Out">
+            <i class="fa-solid fa-arrow-right-from-bracket text-[11px]"></i>
+          </button>
+        </div>
+
+        <!-- Mobile Sign Out Button -->
+        <button type="button" onclick="AuthManager.logout()" class="sm:hidden p-2 text-rose-300 hover:text-white text-xs" title="Sign Out">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        </button>
+
+        <!-- Cloud Sync Status Badge -->
+        <div id="cloud-sync-badge">
+          <!-- Populated dynamically by App.initSyncStatusListener() -->
+        </div>
+
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================= -->
+  <!-- Primary Navigation Bar (Tabs: Dashboard, Quotes, Clients, Items, Users & Roles, Settings) -->
+  <!-- ========================================================= -->
+  <nav class="bg-white border-b border-slate-200 sticky top-16 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex space-x-1 sm:space-x-2 py-2 overflow-x-auto no-scrollbar">
+        <button class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 bg-blue-900 text-white transition-all shadow-xs" data-tab="dashboard">
+          <i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span>
+        </button>
+        <button class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all" data-tab="quotations">
+          <i class="fa-solid fa-file-invoice-dollar"></i> <span>Quotations</span>
+        </button>
+        <button class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all" data-tab="clients">
+          <i class="fa-solid fa-users"></i> <span>Clients</span>
+        </button>
+        <button id="nav-btn-items" class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all" data-tab="items">
+          <i class="fa-solid fa-boxes-stacked text-amber-500"></i> <span>Items Master</span>
+        </button>
+        <button id="nav-btn-users" class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all hidden" data-tab="users">
+          <i class="fa-solid fa-user-shield text-purple-600"></i> <span>Users &amp; Roles</span>
+        </button>
+        <button class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all" data-tab="settings">
+          <i class="fa-solid fa-gear"></i> <span>Settings</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ========================================================= -->
+  <!-- Main Views Container -->
+  <!-- ========================================================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+    <!-- ------------------------------------------------------- -->
+    <!-- VIEW 1: DASHBOARD -->
+    <!-- ------------------------------------------------------- -->
+    <section id="view-dashboard" class="view-section animate-fade-in space-y-6">
+      
+      <!-- Welcome & Quick Action Banner -->
+      <div class="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-2xl p-6 text-white shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-black">Quotation Management Dashboard</h2>
+          <p id="dash-company-info" class="text-xs sm:text-sm text-blue-200 mt-1">Multi-Tenant Cloud Quotation Management • Cloudflare D1 Database</p>
+        </div>
+        <button id="btn-create-quote-dash" onclick="App.createNewQuotation()" class="bg-amber-500 hover:bg-amber-600 text-blue-950 font-black px-5 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2 text-sm cursor-pointer">
+          <i class="fa-solid fa-plus text-base"></i> Create New Quotation
+        </button>
+      </div>
+
+      <!-- Metrics Cards Grid -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Quotations</div>
+          <div id="dash-total-quotes" class="text-2xl sm:text-3xl font-black text-blue-950 mt-1">0</div>
+          <div class="text-[11px] text-blue-700 font-semibold mt-1"><i class="fa-solid fa-file-invoice mr-1"></i> Recorded quotes</div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Value</div>
+          <div id="dash-total-value" class="text-2xl sm:text-3xl font-black text-slate-900 mt-1">₹ 0</div>
+          <div class="text-[11px] text-emerald-600 font-semibold mt-1"><i class="fa-solid fa-indian-rupee-sign mr-1"></i> Cumulative pipeline</div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Clients</div>
+          <div id="dash-total-clients" class="text-2xl sm:text-3xl font-black text-blue-900 mt-1">0</div>
+          <div class="text-[11px] text-blue-600 font-semibold mt-1"><i class="fa-solid fa-building mr-1"></i> Industrial clients</div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">This Month</div>
+          <div id="dash-month-value" class="text-2xl sm:text-3xl font-black text-amber-600 mt-1">₹ 0</div>
+          <div class="text-[11px] text-slate-500 font-semibold mt-1"><i class="fa-solid fa-calendar mr-1"></i> Current period</div>
+        </div>
+      </div>
+
+      <!-- Recent Quotations Card -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+          <div>
+            <h3 class="font-bold text-sm sm:text-base text-slate-900">Recent Quotations</h3>
+            <p class="text-xs text-slate-500">Quickly preview, edit, or print recent quotations</p>
+          </div>
+          <button onclick="App.switchTab('quotations')" class="text-xs font-bold text-blue-900 hover:underline">
+            View All Quotes &rarr;
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-100 text-slate-600 font-bold uppercase text-[11px] border-b border-slate-200">
+                <th class="py-2.5 px-3">Quote #</th>
+                <th class="py-2.5 px-3">Client / Business</th>
+                <th class="py-2.5 px-3">Date</th>
+                <th class="py-2.5 px-3">Grand Total</th>
+                <th class="py-2.5 px-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="dash-recent-quotes-table">
+              <!-- Populated by App.renderDashboard() -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ------------------------------------------------------- -->
+    <!-- VIEW 2: QUOTATIONS LIST -->
+    <!-- ------------------------------------------------------- -->
+    <section id="view-quotations" class="view-section animate-fade-in hidden space-y-4">
+      
+      <!-- Top Action Bar -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div>
+          <h2 class="text-lg font-black text-slate-900">All Quotations</h2>
+          <p class="text-xs text-slate-500">Manage, duplicate, search, and export quotations</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="App.exportQuotationsCsv()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Export all quotations to CSV">
+            <i class="fa-solid fa-file-csv text-sm"></i> <span>Export to CSV</span>
+          </button>
+          <button onclick="App.createNewQuotation()" class="bg-blue-900 hover:bg-blue-800 text-white font-bold px-4 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> New Quotation
+          </button>
+        </div>
+      </div>
+
+      <!-- Advanced Filtering & Data Listing Toolbar -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        
+        <!-- Row 1: Search & Status -->
+        <div class="flex flex-col md:flex-row gap-3 items-center">
+          <div class="relative flex-1 w-full">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+            <input type="text" id="quote-search-input" oninput="App.handleQuotationFilterChange()" placeholder="Search by Quote #, Client Name, Company, or Phone..." 
+                   class="w-full pl-8 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600 bg-slate-50 focus:bg-white" />
+          </div>
+          <div class="flex items-center gap-2 w-full md:w-auto">
+            <label class="text-xs font-bold text-slate-600 whitespace-nowrap"><i class="fa-solid fa-tag text-slate-400 mr-1"></i> Status:</label>
+            <select id="quote-filter-status" onchange="App.handleQuotationFilterChange()" class="text-xs border border-slate-300 rounded-lg px-2.5 py-2 bg-white font-semibold">
+              <option value="ALL">All Statuses</option>
+              <option value="Draft">Draft</option>
+              <option value="Sent">Sent</option>
+              <option value="Accepted">Accepted</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: Date Range, Month-wise & Year-wise Dropdowns -->
+        <div class="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-xs">
+          
+          <!-- Month Dropdown -->
+          <div class="flex items-center gap-1.5">
+            <label class="font-bold text-slate-600 whitespace-nowrap"><i class="fa-regular fa-calendar mr-1 text-blue-900"></i> Month:</label>
+            <select id="quote-filter-month" onchange="App.handleQuotationFilterChange()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-semibold text-xs">
+              <option value="ALL">All Months</option>
+              <option value="1">01 - January</option>
+              <option value="2">02 - February</option>
+              <option value="3">03 - March</option>
+              <option value="4">04 - April</option>
+              <option value="5">05 - May</option>
+              <option value="6">06 - June</option>
+              <option value="7">07 - July</option>
+              <option value="8">08 - August</option>
+              <option value="9">09 - September</option>
+              <option value="10">10 - October</option>
+              <option value="11">11 - November</option>
+              <option value="12">12 - December</option>
+            </select>
+          </div>
+
+          <!-- Year Dropdown -->
+          <div class="flex items-center gap-1.5">
+            <label class="font-bold text-slate-600 whitespace-nowrap">Year:</label>
+            <select id="quote-filter-year" onchange="App.handleQuotationFilterChange()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-semibold text-xs">
+              <option value="ALL">All Years</option>
+              <option value="2027">2027</option>
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+            </select>
+          </div>
+
+          <!-- Date Range: From -->
+          <div class="flex items-center gap-1.5">
+            <label class="font-bold text-slate-600 whitespace-nowrap">From:</label>
+            <input type="date" id="quote-filter-from-date" onchange="App.handleQuotationFilterChange()" class="border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white" />
+          </div>
+
+          <!-- Date Range: To -->
+          <div class="flex items-center gap-1.5">
+            <label class="font-bold text-slate-600 whitespace-nowrap">To:</label>
+            <input type="date" id="quote-filter-to-date" onchange="App.handleQuotationFilterChange()" class="border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white" />
+          </div>
+
+          <!-- Reset Filter Button -->
+          <button type="button" onclick="App.resetQuotationFilters()" class="ml-auto px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-colors flex items-center gap-1 cursor-pointer">
+            <i class="fa-solid fa-filter-circle-xmark"></i> Reset Filters
+          </button>
+        </div>
+
+        <!-- Filter Count Pill -->
+        <div id="quote-filter-result-info" class="text-[11px] text-slate-500 font-medium italic pt-1"></div>
+
+      </div>
+
+      <!-- Quotations Table -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
+                <th class="py-3 px-3">Quote #</th>
+                <th class="py-3 px-3">Client / Company</th>
+                <th class="py-3 px-3">Quote Date</th>
+                <th class="py-3 px-3">Valid Until</th>
+                <th class="py-3 px-3">Grand Total</th>
+                <th class="py-3 px-3">Status</th>
+                <th class="py-3 px-3">Created By</th>
+                <th class="py-3 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="quotes-list-tbody">
+              <!-- Populated by App.renderQuotationsList() -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Quotations Pagination Bar -->
+        <div id="quotes-pagination-bar" class="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
+          <!-- Populated by App.renderQuotationsList() -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ------------------------------------------------------- -->
+    <!-- VIEW 3: CLIENTS DIRECTORY -->
+    <!-- ------------------------------------------------------- -->
+    <section id="view-clients" class="view-section animate-fade-in hidden space-y-4">
+      
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div>
+          <h2 class="text-lg font-black text-slate-900">Clients &amp; Accounts Directory</h2>
+          <p class="text-xs text-slate-500">Maintain buyer information, GST numbers, and delivery addresses</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="App.openClientCsvImportModal()" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold px-3 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Import clients from CSV file">
+            <i class="fa-solid fa-file-import"></i> <span>Import CSV</span>
+          </button>
+          <button onclick="App.exportClientsCsv()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Export clients to CSV file">
+            <i class="fa-solid fa-file-csv"></i> <span>Export to CSV</span>
+          </button>
+          <button onclick="App.openClientModal()" class="bg-blue-900 hover:bg-blue-800 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-user-plus"></i> <span>Add Client</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Advanced Filtering Toolbar for Clients -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex flex-col md:flex-row gap-3 items-center">
+          <div class="relative flex-1 w-full">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+            <input type="text" id="client-search-input" oninput="App.handleClientFilterChange()" placeholder="Search clients by Name, Company, Phone, Email, or GSTIN..." 
+                   class="w-full pl-8 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600 bg-slate-50 focus:bg-white" />
+          </div>
+          <div class="flex flex-wrap items-center gap-2 w-full md:w-auto text-xs">
+            <!-- Month Dropdown -->
+            <select id="client-filter-month" onchange="App.handleClientFilterChange()" class="border border-slate-300 rounded-lg px-2.5 py-2 bg-white font-semibold">
+              <option value="ALL">All Months</option>
+              <option value="1">01 - Jan</option>
+              <option value="2">02 - Feb</option>
+              <option value="3">03 - Mar</option>
+              <option value="4">04 - Apr</option>
+              <option value="5">05 - May</option>
+              <option value="6">06 - Jun</option>
+              <option value="7">07 - Jul</option>
+              <option value="8">08 - Aug</option>
+              <option value="9">09 - Sep</option>
+              <option value="10">10 - Oct</option>
+              <option value="11">11 - Nov</option>
+              <option value="12">12 - Dec</option>
+            </select>
+            <!-- Year Dropdown -->
+            <select id="client-filter-year" onchange="App.handleClientFilterChange()" class="border border-slate-300 rounded-lg px-2.5 py-2 bg-white font-semibold">
+              <option value="ALL">All Years</option>
+              <option value="2027">2027</option>
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+            </select>
+            <button type="button" onclick="App.resetClientFilters()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-filter-circle-xmark"></i> Clear
+            </button>
+          </div>
+        </div>
+        <div id="client-filter-result-info" class="text-[11px] text-slate-500 font-medium italic"></div>
+      </div>
+
+      <!-- Clients Table -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
+                <th class="py-3 px-3">Company / Client Name</th>
+                <th class="py-3 px-3">Phone Number</th>
+                <th class="py-3 px-3">Email Address</th>
+                <th class="py-3 px-3">GSTIN</th>
+                <th class="py-3 px-3">Address</th>
+                <th class="py-3 px-3">Created By</th>
+                <th class="py-3 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="clients-list-tbody">
+              <!-- Populated by App.renderClientsList() -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Clients Pagination Bar -->
+        <div id="clients-pagination-bar" class="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
+          <!-- Populated by App.renderClientsList() -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ------------------------------------------------------- -->
+    <!-- VIEW: ITEMS DASHBOARD & PRODUCT MASTER -->
+    <!-- ------------------------------------------------------- -->
+    <section id="view-items" class="view-section animate-fade-in hidden space-y-4">
+      
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div>
+          <h2 class="text-lg font-black text-slate-900">Items Dashboard &amp; Product Master</h2>
+          <p class="text-xs text-slate-500">Dedicated standalone dashboard to manage products, default prices, sheet widths, and cross-section diagrams</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="App.openItemCsvImportModal()" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold px-3 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Import products from CSV file">
+            <i class="fa-solid fa-file-import"></i> <span>Import CSV</span>
+          </button>
+          <button onclick="App.exportItemsCsv()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Export products to CSV file">
+            <i class="fa-solid fa-file-csv"></i> <span>Export to CSV</span>
+          </button>
+          <button onclick="App.openItemModal()" class="bg-blue-900 hover:bg-blue-800 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> <span>Add Product</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Items Master Metric Stats Strip -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Catalog Items</span>
+          <span id="items-stat-total" class="text-xl font-black text-blue-950 mt-0.5 block">0</span>
+          <span class="text-[10px] text-blue-700 font-semibold"><i class="fa-solid fa-boxes-stacked mr-1"></i> Predefined items</span>
+        </div>
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Profiles with Diagrams</span>
+          <span id="items-stat-images" class="text-xl font-black text-emerald-700 mt-0.5 block">0</span>
+          <span class="text-[10px] text-emerald-600 font-semibold"><i class="fa-solid fa-image mr-1"></i> Visual diagrams</span>
+        </div>
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Standard Sheet Width</span>
+          <span class="text-xl font-black text-slate-900 mt-0.5 block">3.50 Ft</span>
+          <span class="text-[10px] text-slate-500 font-semibold"><i class="fa-solid fa-ruler-horizontal mr-1"></i> Default roofing width</span>
+        </div>
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Cloudflare D1 Sync</span>
+          <span class="text-xl font-black text-cyan-700 mt-0.5 block">Active</span>
+          <span class="text-[10px] text-cyan-600 font-semibold"><i class="fa-solid fa-cloud mr-1"></i> Edge Database</span>
+        </div>
+      </div>
+
+      <!-- Search & Filter -->
+      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+        <div class="relative w-full">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+          <input type="text" id="item-search-input" oninput="App.renderItemsList()" placeholder="Search products by name, profile type, or unit..." 
+                 class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600" />
+        </div>
+      </div>
+
+      <!-- Items Table -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
+                <th class="py-3 px-3 text-center w-20">Profile Diagram</th>
+                <th class="py-3 px-3">Product Name &amp; Description</th>
+                <th class="py-3 px-3">Default Unit</th>
+                <th class="py-3 px-3">Default Price</th>
+                <th class="py-3 px-3">Default Size / Width</th>
+                <th class="py-3 px-3">Created By</th>
+                <th class="py-3 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="items-list-tbody">
+              <!-- Populated by App.renderItemsList() -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Items Pagination Bar -->
+        <div id="items-pagination-bar" class="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
+          <!-- Populated by App.renderItemsList() -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ------------------------------------------------------- -->
+    <!-- VIEW 4: SETTINGS & CUSTOMIZATION -->
+    <!-- ------------------------------------------------------- -->
+    <section id="view-settings" class="view-section animate-fade-in hidden space-y-6">
+      
+      <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div>
+          <h2 class="text-lg font-black text-slate-900">Company Profile &amp; Settings</h2>
+          <p class="text-xs text-slate-500">Configure business identity, bank details, terms, and cloud database</p>
+        </div>
+        <button onclick="App.saveAllSettings()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-2">
+          <i class="fa-solid fa-floppy-disk"></i> Save Settings
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Company Information -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <h3 class="text-sm font-bold text-blue-950 uppercase tracking-wide border-b border-slate-200 pb-2 flex items-center gap-2">
+            <i class="fa-solid fa-building text-blue-800"></i> Business Information
+          </h3>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Company Name</label>
+            <input type="text" id="set-company-name" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 font-bold" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Tagline / Subtitle</label>
+            <input type="text" id="set-company-tagline" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Address</label>
+            <textarea id="set-company-address" rows="2" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">Primary Phone</label>
+              <input type="text" id="set-company-phone" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">Secondary Phone</label>
+              <input type="text" id="set-company-phone2" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">Email</label>
+              <input type="email" id="set-company-email" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">Company GSTIN</label>
+              <input type="text" id="set-company-gstin" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 font-mono" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Bank Details -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <h3 class="text-sm font-bold text-blue-950 uppercase tracking-wide border-b border-slate-200 pb-2 flex items-center gap-2">
+            <i class="fa-solid fa-building-columns text-blue-800"></i> Bank Payment Details
+          </h3>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Bank Name</label>
+            <input type="text" id="set-bank-name" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 font-bold" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Account Name</label>
+            <input type="text" id="set-bank-acname" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Account Number</label>
+            <input type="text" id="set-bank-acno" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 font-mono font-bold" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">IFSC Code</label>
+              <input type="text" id="set-bank-ifsc" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 font-mono text-blue-900 font-bold" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">Branch Name</label>
+              <input type="text" id="set-bank-branch" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Cloudflare D1 & Cloud Backend Integration -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <h3 class="text-sm font-bold text-blue-950 uppercase tracking-wide border-b border-slate-200 pb-2 flex items-center gap-2">
+            <i class="fa-solid fa-cloud text-blue-600"></i> Cloudflare Workers &amp; D1 Database
+          </h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Configure your Cloudflare Worker REST API endpoint. If left empty, the application routes automatically to <code class="bg-slate-100 text-blue-900 px-1 py-0.5 rounded font-mono">/api</code> on your domain.
+          </p>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Cloudflare Worker API Endpoint</label>
+            <input type="url" id="set-worker-url" placeholder="https://quotation-manager-api.your-subdomain.workers.dev" 
+                   class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 font-mono focus:border-blue-600" />
+            <p class="text-[10px] text-slate-400 mt-1">Leave blank to use relative <code class="text-slate-600">/api</code></p>
+          </div>
+          <div class="flex items-center gap-2 pt-1">
+            <button type="button" id="btn-test-backend" onclick="App.testBackendConnection()" class="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white rounded text-xs font-bold shadow-sm cursor-pointer flex items-center gap-1.5 transition-colors">
+              <i class="fa-solid fa-bolt"></i> <span>Test Connection</span>
+            </button>
+            <button type="button" id="btn-sync-now" onclick="App.syncNow()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow-sm cursor-pointer flex items-center gap-1.5 transition-colors">
+              <i class="fa-solid fa-arrows-rotate"></i> <span>Sync All Data Now</span>
+            </button>
+          </div>
+          <!-- Live Diagnostic Feedback Panel -->
+          <div id="backend-test-result" class="hidden mt-2.5 p-3 rounded-lg text-xs leading-relaxed transition-all"></div>
+        </div>
+
+        <!-- Promotional Banner Management -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <h3 class="text-sm font-bold text-blue-950 uppercase tracking-wide border-b border-slate-200 pb-2 flex items-center gap-2">
+            <i class="fa-solid fa-image text-blue-800"></i> Promotional Banner (PDF Footer)
+          </h3>
+          <p class="text-xs text-slate-600">Upload or choose a product catalog banner to display at the footer of quotation PDFs.</p>
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="set-banner-toggle" class="rounded text-blue-900 w-4 h-4" />
+            <label for="set-banner-toggle" class="text-xs font-semibold text-slate-800">Include promotional banner at bottom of Quotation PDF</label>
+          </div>
+          <div>
+            <img id="set-banner-preview" src="assets/sample-banner.svg" alt="Banner Preview" class="w-full max-h-24 object-contain rounded border border-slate-200 bg-slate-50 p-1" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Upload New Banner Image</label>
+            <input type="file" accept="image/*" onchange="App.handleBannerUpload(event)" class="text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-900 hover:file:bg-blue-100" />
+          </div>
+        </div>
+
+        <!-- Authorized Signatory & Signature Upload -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <h3 class="text-sm font-bold text-blue-950 uppercase tracking-wide border-b border-slate-200 pb-2 flex items-center gap-2">
+            <i class="fa-solid fa-signature text-blue-800"></i> Authorized Signatory &amp; Signature
+          </h3>
+          <p class="text-xs text-slate-600">Upload authorized signatory signature image to appear on bottom-right of quotation PDFs.</p>
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="set-signature-toggle" class="rounded text-blue-900 w-4 h-4" />
+            <label for="set-signature-toggle" class="text-xs font-semibold text-slate-800">Display signature image on Quotation PDF</label>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Signatory Title</label>
+            <input type="text" id="set-signature-title" placeholder="Authorized Signatory" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Signature Image Preview</label>
+            <div class="h-20 bg-slate-50 border border-slate-200 rounded p-2 flex items-center justify-center">
+              <img id="set-signature-preview" src="assets/sample-signature.svg" alt="Signature Preview" class="max-h-16 object-contain" />
+            </div>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Upload New Signature Image</label>
+            <input type="file" accept="image/*" onchange="App.handleSignatureUpload(event)" class="text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-900 hover:file:bg-blue-100" />
+          </div>
+        </div>
+
+        <!-- Terms & Conditions Management (Full Width) -->
+        <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+            <h3 class="text-sm font-bold text-blue-950 uppercase tracking-wide flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-blue-800"></i> Quotation Terms &amp; Conditions
+            </h3>
+            <button type="button" onclick="App.addTermToSettings()" class="text-xs font-bold text-blue-900 hover:underline">
+              <i class="fa-solid fa-plus mr-1"></i> Add Condition
+            </button>
+          </div>
+          <div id="settings-terms-list">
+            <!-- Populated by App.renderSettingsTerms() -->
+          </div>
+        </div>
+
+        <!-- Full Local Data Backup & Restore System (For App Updates & PC Migration) -->
+        <div class="lg:col-span-2 bg-gradient-to-r from-slate-900 to-blue-950 p-6 rounded-2xl border border-slate-800 shadow-md text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full bg-amber-400 text-blue-950 font-black text-[10px] uppercase tracking-wider">OFFLINE DATABASE</span>
+              <h4 class="text-sm sm:text-base font-black text-white uppercase tracking-wide">Local Database Backup &amp; Restore</h4>
+            </div>
+            <p class="text-xs text-blue-200">
+              Export all Quotations, Clients, Item Master catalog, and business settings into a single <code class="bg-blue-900/80 px-2 py-0.5 rounded font-mono text-amber-300 font-bold">jalaram_backup.json</code> file.
+            </p>
+            <p class="text-[11px] text-slate-400">
+              Desktop persistent storage: <code class="text-amber-300 font-mono">userData/local_database.json</code> (Separate from app binaries, 100% preserved during updates).
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button type="button" onclick="App.handleDatabaseBackupExport()" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-blue-950 rounded-xl text-xs font-black shadow-md transition-all flex items-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-download text-sm"></i> <span>Export Database (JSON)</span>
+            </button>
+            <label class="px-4 py-2.5 bg-blue-800/80 hover:bg-blue-700 text-white rounded-xl text-xs font-bold border border-blue-600/50 shadow-md transition-all flex items-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-upload text-sm text-sky-300"></i> <span>Import Database (JSON)</span>
+              <input type="file" id="db-restore-file-input" accept=".json" class="hidden" onchange="App.handleDatabaseBackupImport(event)" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Account Security & Change Password -->
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-900 flex items-center justify-center text-lg font-bold">
+                <i class="fa-solid fa-user-shield"></i>
+              </div>
+              <div>
+                <h3 class="text-sm sm:text-base font-black text-blue-950 uppercase tracking-wide">Account Security &amp; Credentials</h3>
+                <p class="text-xs text-slate-500">Update password for currently signed-in account</p>
+              </div>
+            </div>
+            <button type="button" onclick="App.openChangePasswordModal()" class="px-3.5 py-1.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-key text-amber-400"></i> Change Password
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <div>
+              <span class="text-slate-500 font-semibold block text-[11px]">Logged in as:</span>
+              <strong id="settings-profile-username" class="text-blue-950 font-bold font-mono">jalaram</strong>
+            </div>
+            <div>
+              <span class="text-slate-500 font-semibold block text-[11px]">Assigned Role:</span>
+              <span id="settings-profile-role" class="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px] uppercase">Super Admin</span>
+            </div>
+            <div>
+              <span class="text-slate-500 font-semibold block text-[11px]">Hosting &amp; CI/CD:</span>
+              <span class="text-emerald-700 font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Cloudflare Pages &amp; Workers</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ------------------------------------------------------- -->
+    <!-- VIEW: USERS & ROLES DASHBOARD (SUPER ADMIN ONLY)         -->
+    <!-- ------------------------------------------------------- -->
+    <section id="view-users" class="view-section animate-fade-in hidden space-y-4">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+            <h2 class="text-lg font-black text-blue-950 uppercase tracking-tight">Users &amp; Roles Management</h2>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">Configure sub-admins and assign granular permissions for Clients, Quotations, and Items</p>
+        </div>
+        <button type="button" onclick="App.openUserEditorModal()" class="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer">
+          <i class="fa-solid fa-user-plus"></i> <span>Add New Sub-Admin</span>
+        </button>
+      </div>
+
+      <!-- Users Table -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
+                <th class="py-3 px-3">Full Name / Display Name</th>
+                <th class="py-3 px-3">Username</th>
+                <th class="py-3 px-3">Role</th>
+                <th class="py-3 px-3">Granted Permissions</th>
+                <th class="py-3 px-3">Created Date</th>
+                <th class="py-3 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-list-tbody">
+              <!-- Populated by App.renderUsersList() -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+  </div><!-- End #app-shell -->
+
+  <!-- ========================================================= -->
+  <!-- STRICT ENFORCED SAAS LOGIN GATE MODAL                      -->
+  <!-- ========================================================= -->
+  <div id="login-gate-modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-[90] flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 border border-slate-200 animate-fade-in relative overflow-hidden">
+      
+      <!-- Top Accent Bar -->
+      <div class="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-900 via-indigo-600 to-amber-500"></div>
+
+      <!-- Logo & Header -->
+      <div class="text-center space-y-2 mb-6">
+        <div class="w-16 h-16 bg-gradient-to-tr from-blue-950 to-blue-900 text-amber-400 rounded-2xl mx-auto flex items-center justify-center font-black text-2xl shadow-xl border border-blue-700/50">
+          QM
+        </div>
+        <h2 class="text-xl sm:text-2xl font-black text-blue-950 uppercase tracking-tight">Quotation Manager</h2>
+        <p class="text-xs text-slate-500">Sign in to your account to access quotations and industrial catalog</p>
+      </div>
+
+      <!-- Alert Message Box -->
+      <div id="login-gate-alert" class="hidden text-xs p-3 rounded-xl mb-4 font-semibold"></div>
+
+      <!-- Login Form -->
+      <form onsubmit="App.handleLoginSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-800 mb-1">
+            Username <span class="text-rose-500">*</span>
+          </label>
+          <div class="relative">
+            <i class="fa-solid fa-user absolute left-3 top-3 text-slate-400 text-xs"></i>
+            <input type="text" id="login-username-input" required autocomplete="username"
+                   placeholder="Enter username (e.g. jalaram)"
+                   class="w-full pl-8 pr-3 py-2.5 text-xs font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none bg-slate-50 focus:bg-white text-slate-900" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-800 mb-1">
+            Password <span class="text-rose-500">*</span>
+          </label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400 text-xs"></i>
+            <input type="password" id="login-password-input" required autocomplete="current-password"
+                   placeholder="Enter password"
+                   class="w-full pl-8 pr-10 py-2.5 text-xs font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none bg-slate-50 focus:bg-white text-slate-900" />
+            <button type="button" onclick="App.togglePasswordVisibility('login-password-input', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 p-0.5">
+              <i class="fa-solid fa-eye text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-login-submit" class="w-full py-3 bg-blue-900 hover:bg-blue-800 text-white font-black rounded-xl text-xs sm:text-sm shadow-lg hover:shadow-xl transition-all uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-2">
+          <i class="fa-solid fa-right-to-bracket text-amber-400"></i>
+          <span>Sign In to Dashboard</span>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: SUB-ADMIN & RBAC USER EDITOR                        -->
+  <!-- ========================================================= -->
+  <div id="user-editor-modal" class="fixed inset-0 bg-slate-900/70 z-50 overflow-y-auto hidden">
+    <div class="min-h-screen p-4 flex items-center justify-center">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-300 overflow-hidden animate-fade-in">
+        <div class="bg-gradient-to-r from-purple-900 to-indigo-900 text-white px-5 py-4 flex justify-between items-center">
+          <h3 id="user-modal-title" class="text-sm sm:text-base font-black tracking-tight uppercase flex items-center gap-2">
+            <i class="fa-solid fa-user-plus"></i> <span>Add New Sub-Admin</span>
+          </h3>
+          <button type="button" onclick="App.closeUserEditorModal()" class="text-slate-300 hover:text-white p-1.5 cursor-pointer">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+        <form onsubmit="App.handleSaveUserSubmit(event)" class="p-6 space-y-4">
+          <input type="hidden" id="edit-user-id" />
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Full Name / Display Name <span class="text-rose-500">*</span></label>
+            <input type="text" id="edit-user-fullname" required placeholder="e.g. Ramesh Patel" class="w-full text-xs font-bold border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Username <span class="text-rose-500">*</span></label>
+              <input type="text" id="edit-user-username" required placeholder="ramesh" class="w-full text-xs font-bold border border-slate-300 rounded-lg px-3 py-2 font-mono" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Role</label>
+              <select id="edit-user-role" class="w-full text-xs font-bold border border-slate-300 rounded-lg px-3 py-2 bg-white">
+                <option value="Sub-Admin">Sub-Admin</option>
+                <option value="Sales Executive">Sales Executive</option>
+                <option value="Billing Operator">Billing Operator</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Password <span class="text-rose-500">*</span></label>
+            <input type="password" id="edit-user-password" placeholder="Leave blank to keep existing password" class="w-full text-xs font-bold border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+
+          <!-- Granular Permissions Checklist -->
+          <div class="border border-purple-200 bg-purple-50/50 rounded-xl p-4 space-y-2.5">
+            <span class="block text-xs font-black uppercase text-purple-950 tracking-wider mb-2">Granular Permissions:</span>
+            
+            <label class="flex items-center gap-2.5 text-xs text-slate-800 font-semibold cursor-pointer">
+              <input type="checkbox" id="perm-manage-clients" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" />
+              <span>Can Manage Clients (Add, Edit, Import CSV)</span>
+            </label>
+
+            <label class="flex items-center gap-2.5 text-xs text-slate-800 font-semibold cursor-pointer">
+              <input type="checkbox" id="perm-create-quotes" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" />
+              <span>Can Create &amp; Edit Quotations</span>
+            </label>
+
+            <label class="flex items-center gap-2.5 text-xs text-slate-800 font-semibold cursor-pointer">
+              <input type="checkbox" id="perm-manage-items" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" />
+              <span>Can Manage Items Master (Add, Edit Products)</span>
+            </label>
+
+            <label class="flex items-center gap-2.5 text-xs text-slate-800 font-semibold cursor-pointer">
+              <input type="checkbox" id="perm-delete-records" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" />
+              <span>Can Delete Records (Quotations, Clients, Items)</span>
+            </label>
+
+            <label class="flex items-center gap-2.5 text-xs text-slate-800 font-semibold cursor-pointer">
+              <input type="checkbox" id="perm-manage-settings" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" />
+              <span>Can Access Settings &amp; Company Info</span>
+            </label>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="App.closeUserEditorModal()" class="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-50 cursor-pointer">Cancel</button>
+            <button type="submit" class="px-5 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-black rounded-lg shadow-md transition-all cursor-pointer">Save User</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: CHANGE PASSWORD                                     -->
+  <!-- ========================================================= -->
+  <div id="change-password-modal" class="fixed inset-0 bg-slate-900/70 z-50 overflow-y-auto hidden">
+    <div class="min-h-screen p-4 flex items-center justify-center">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full border border-slate-300 overflow-hidden animate-fade-in">
+        <div class="bg-gradient-to-r from-blue-950 to-blue-900 text-white px-5 py-4 flex justify-between items-center">
+          <h3 class="text-sm font-black tracking-tight uppercase flex items-center gap-2">
+            <i class="fa-solid fa-key text-amber-400"></i> <span>Change Password</span>
+          </h3>
+          <button type="button" onclick="App.closeChangePasswordModal()" class="text-slate-300 hover:text-white p-1.5 cursor-pointer">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+        <form onsubmit="App.handleChangePasswordSubmit(event)" class="p-6 space-y-4">
+          <div id="change-pass-alert" class="hidden text-xs p-2.5 rounded-lg font-semibold"></div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Current Password <span class="text-rose-500">*</span></label>
+            <input type="password" id="change-pass-old" required placeholder="Enter current password" class="w-full text-xs font-bold border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">New Password <span class="text-rose-500">*</span></label>
+            <input type="password" id="change-pass-new" required minlength="6" placeholder="At least 6 characters" class="w-full text-xs font-bold border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Confirm New Password <span class="text-rose-500">*</span></label>
+            <input type="password" id="change-pass-confirm" required minlength="6" placeholder="Re-enter new password" class="w-full text-xs font-bold border border-slate-300 rounded-lg px-3 py-2" />
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="App.closeChangePasswordModal()" class="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-50 cursor-pointer">Cancel</button>
+            <button type="submit" class="px-5 py-2 bg-blue-900 hover:bg-blue-800 text-white text-xs font-black rounded-lg shadow-md cursor-pointer">Update Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: QUOTATION EDITOR (Full Screen / Spacious) -->
+  <!-- ========================================================= -->
+  <div id="quote-editor-modal" class="fixed inset-0 bg-slate-900/70 z-50 overflow-y-auto hidden">
+    <div class="min-h-screen p-2 sm:p-4 lg:p-6 flex items-center justify-center">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full border border-slate-300 overflow-hidden animate-fade-in">
+        
+        <!-- Editor Top Header -->
+        <div class="bg-gradient-to-r from-blue-950 via-blue-900 to-slate-900 text-white px-5 py-4 flex justify-between items-center">
+          <div>
+            <h3 class="text-base sm:text-lg font-black tracking-tight uppercase">Quotation Editor</h3>
+            <p class="text-xs text-cyan-200">Exact 4-Part Structure • Jalaram Enterprise Roofing Quotation &amp; Measurements</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" id="btn-save-quotation-top" onclick="App.saveCurrentQuotation()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-floppy-disk"></i> Save Quotation
+            </button>
+            <button type="button" onclick="App.closeQuotationEditorModal()" class="text-slate-300 hover:text-white p-2 rounded-lg text-base cursor-pointer">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="p-5 sm:p-6 space-y-6 max-h-[85vh] overflow-y-auto">
+          
+          <!-- PART 1 BADGE -->
+          <div class="flex items-center gap-2 border-b-2 border-cyan-500 pb-1.5">
+            <span class="bg-cyan-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded uppercase">PART 1</span>
+            <span class="text-xs font-black uppercase tracking-wider text-slate-900">Quotation Header, Client Info &amp; Main Summary Pricing Table</span>
+          </div>
+
+          <!-- Meta & Client Selection Header -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+            <div>
+              <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Quote Number</label>
+              <input type="text" id="edit-quote-number" class="w-full text-xs font-mono font-bold border border-slate-300 rounded px-2.5 py-1.5 bg-white text-blue-950" />
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Date</label>
+              <input type="date" id="edit-quote-date" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white" />
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Valid Until</label>
+              <input type="date" id="edit-quote-valid" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white" />
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Status</label>
+              <select id="edit-quote-status" class="w-full text-xs font-semibold border border-slate-300 rounded px-2.5 py-1.5 bg-white">
+                <option value="Draft">Draft</option>
+                <option value="Sent">Sent</option>
+                <option value="Accepted">Accepted</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Client Information Fields -->
+          <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm space-y-3">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-200 pb-2">
+              <h4 class="text-xs font-black uppercase text-blue-950 tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-user-tag text-blue-800"></i> Client / Buyer Details (To, ...)
+              </h4>
+              <div class="w-full sm:w-72">
+                <select id="edit-client-select" onchange="App.onClientDropdownChange(this.value)" class="w-full text-xs border border-blue-300 rounded px-2 py-1 bg-blue-50 text-blue-950 font-semibold">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="text-[11px] font-semibold text-slate-600 block mb-1">Business / Company Name (e.g. RUDRA CAST)</label>
+                <input type="text" id="edit-client-company" placeholder="e.g. RUDRA CAST" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 font-bold" />
+              </div>
+              <div>
+                <label class="text-[11px] font-semibold text-slate-600 block mb-1">Contact Person Name</label>
+                <input type="text" id="edit-client-name" placeholder="e.g. Ketanbhai" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+              </div>
+              <div>
+                <label class="text-[11px] font-semibold text-slate-600 block mb-1">Mobile / Phone No.</label>
+                <input type="text" id="edit-client-phone" placeholder="+91 ..." class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 font-semibold" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="text-[11px] font-semibold text-slate-600 block mb-1">GST Number</label>
+                <input type="text" id="edit-client-gst" placeholder="24AAMCC0264B1Z6" class="w-full text-xs font-mono border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 uppercase" />
+              </div>
+              <div>
+                <label class="text-[11px] font-semibold text-slate-600 block mb-1">Email</label>
+                <input type="email" id="edit-client-email" placeholder="client@example.com" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+              </div>
+              <div>
+                <label class="text-[11px] font-semibold text-slate-600 block mb-1">Site / Delivery Address</label>
+                <input type="text" id="edit-client-address" placeholder="Address, City, Gujarat" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Items Pricing Table (Cyan Header) -->
+          <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+              <h4 class="text-xs font-black uppercase text-slate-900 tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-list-ol text-cyan-600"></i> Main Items Pricing Table (No. | Item Name | Qty | Price | Total)
+              </h4>
+              <button type="button" onclick="App.addLineItem()" class="text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 rounded shadow">
+                <i class="fa-solid fa-plus mr-1"></i> Add Item Row
+              </button>
+            </div>
+
+            <div class="overflow-x-auto border border-slate-300 rounded-sm">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="text-white text-xs font-bold uppercase" style="background-color: #00a2e8;">
+                    <th class="py-2.5 px-2 text-center border-r border-cyan-400 w-12">No.</th>
+                    <th class="py-2.5 px-3 border-r border-cyan-400">ITEM NAME / DESCRIPTION &amp; REMARKS</th>
+                    <th class="py-2.5 px-2 text-center border-r border-cyan-400 w-28">QUANTITY</th>
+                    <th class="py-2.5 px-2 text-center border-r border-cyan-400 w-28">UNIT</th>
+                    <th class="py-2.5 px-2 text-center border-r border-cyan-400 w-24">PRICE</th>
+                    <th class="py-2.5 px-3 text-right w-32">TOTAL AMOUNT</th>
+                    <th class="py-2.5 px-2 text-center w-10"></th>
+                  </tr>
+                </thead>
+                <tbody id="editor-items-tbody">
+                  <!-- Populated by App.renderEditorItemsTable() -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Financial Breakdown & Loading Charges -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+            
+            <!-- Left: Loading Charges & Tax Option -->
+            <div class="space-y-3">
+              <div>
+                <label class="text-xs font-black text-slate-800 uppercase block mb-1">Loading Charge (₹)</label>
+                <input type="number" step="0.01" id="edit-quote-loading" value="1969.82" oninput="App.recalculateEditorFinancials()" class="w-full text-xs font-bold border border-slate-300 rounded px-2.5 py-1.5 bg-white text-right font-mono" placeholder="e.g. 1969.82" />
+                <p class="text-[11px] text-slate-500 mt-0.5">Editable loading / crane handling charges added before tax calculation.</p>
+              </div>
+
+              <div>
+                <label class="text-xs font-bold text-slate-700 block mb-1">GST Tax Type</label>
+                <select id="edit-quote-gst-type" onchange="App.recalculateEditorFinancials()" class="w-full text-xs font-semibold border border-slate-300 rounded px-2.5 py-1.5 bg-white">
+                  <option value="CGST_SGST">GST 18% (SGST 9% CGST 9%) - Intra-State Gujarat</option>
+                  <option value="IGST">GST 18% (IGST 18%) - Inter-State Supply</option>
+                  <option value="NONE">No GST (Exempt / Nil Rated)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="text-xs font-bold text-slate-700 block mb-1">Notes / Quotation Remarks</label>
+                <textarea id="edit-quote-notes" rows="2" placeholder="e.g. Delivery in 2 days. Material cut to customer lengths." class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white"></textarea>
+              </div>
+            </div>
+
+            <!-- Right: Real-time Page 1 Summary Box (TOTAL, Loading, GST, GRAND TOTAL) -->
+            <div class="bg-white p-4 rounded-xl border border-slate-300 shadow-sm space-y-2">
+              <h5 class="text-xs font-black uppercase tracking-wider text-slate-900 border-b border-slate-200 pb-1 flex justify-between">
+                <span>Summary Breakdown (Page 1)</span>
+                <span class="text-sky-600 font-bold">Exact PDF Sequence</span>
+              </h5>
+              
+              <div class="flex justify-between text-xs text-slate-700 py-1 border-b border-slate-200 font-bold">
+                <span>TOTAL (Subtotal):</span>
+                <span id="calc-summary-subtotal" class="font-mono text-slate-900">0.00/-</span>
+              </div>
+              <div class="flex justify-between text-xs text-slate-700 py-1 border-b border-slate-200 font-bold">
+                <span>Loading Charge:</span>
+                <span id="calc-summary-loading" class="font-mono text-slate-900">0.00/-</span>
+              </div>
+              <div class="flex justify-between text-xs text-slate-700 py-1 border-b border-slate-200 font-bold">
+                <span>GST 18% (SGST 9% CGST 9%):</span>
+                <span id="calc-summary-tax" class="font-mono text-slate-900">0.00/-</span>
+              </div>
+
+              <div class="pt-2 border-t-2 border-slate-900 flex justify-between items-center text-slate-950">
+                <span class="text-sm font-black uppercase tracking-wider">GRAND TOTAL:</span>
+                <span id="calc-summary-grand" class="text-2xl font-black text-slate-950 font-mono">0/-</span>
+              </div>
+
+              <div class="text-[11px] text-slate-500 italic pt-1 border-t border-slate-100">
+                <span id="calc-summary-words">Rupees Zero Only</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- PART 2 BADGE -->
+          <div class="flex items-center gap-2 border-b-2 border-cyan-500 pb-1.5 pt-4">
+            <span class="bg-cyan-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded uppercase">PART 2</span>
+            <span class="text-xs font-black uppercase tracking-wider text-slate-900">Dynamic Multi-Block Sheet Calculation Tables (Pages 2 - 5)</span>
+          </div>
+
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <p class="text-xs text-slate-600">Replicating the exact pastel columns: Feet (Pink) | Inch (Blue) | Nos (Yellow) | Sq. Meter (Green) | Sq.Feet (Lilac)</p>
+            </div>
+
+            <div id="editor-calculations-container">
+              <!-- Populated by App.renderEditorCalculations() -->
+            </div>
+          </div>
+
+          <!-- PART 3 BADGE -->
+          <div class="flex items-center gap-2 border-b-2 border-cyan-500 pb-1.5 pt-4">
+            <span class="bg-cyan-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded uppercase">PART 3</span>
+            <span class="text-xs font-black uppercase tracking-wider text-slate-900">Bank Details &amp; Terms and Conditions (Page 6)</span>
+          </div>
+
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2">
+            <div class="text-slate-800">
+              <strong class="text-sky-700">Bank:</strong> CENTRAL BANK OF INDIA • <strong>A/C:</strong> 5786682221 • <strong>IFSC:</strong> CBIN0280569 • <strong>Branch:</strong> BHUPENDRA ROAD, RAJKOT
+            </div>
+            <div class="text-slate-700 text-[11px] leading-relaxed">
+              Standard 5 terms configured in Settings with <em>"SUBJECT TO GONDAL JURISDICTION."</em> Manage these from the <strong>Settings</strong> panel.
+            </div>
+          </div>
+
+          <!-- PART 4 BADGE -->
+          <div class="flex items-center gap-2 border-b-2 border-cyan-500 pb-1.5 pt-4">
+            <span class="bg-cyan-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded uppercase">PART 4</span>
+            <span class="text-xs font-black uppercase tracking-wider text-slate-900">Bottom Promotional &amp; Product Banner Gallery (Page 7)</span>
+          </div>
+
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs flex justify-between items-center">
+            <div>
+              <p class="font-bold text-slate-900">Promotional Product Catalog &amp; Brand Partner Showcase</p>
+              <p class="text-[11px] text-slate-500">Includes Air Ventilators, Polycarbonate Sheets, Deck Sheets, Tile Profile, and Brand Badges (TILARA, JSW, AM/NS, PRIMUS, Landmark).</p>
+            </div>
+            <span class="text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+              <i class="fa-solid fa-circle-check mr-1"></i> Active on Final Page
+            </span>
+          </div>
+
+        </div>
+
+        <!-- Editor Bottom Action Bar -->
+        <div class="p-4 bg-slate-100 border-t border-slate-200 flex justify-between items-center">
+          <button type="button" onclick="App.closeQuotationEditorModal()" class="px-4 py-2 border border-slate-300 bg-white text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50">
+            Cancel
+          </button>
+          <div class="flex items-center gap-2">
+            <button type="button" id="btn-save-quotation-bottom" onclick="App.saveCurrentQuotation()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black shadow-md flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-check"></i> Save Quotation
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: ITEM FORM (Add / Edit Product & Master Item) -->
+  <!-- ========================================================= -->
+  <div id="item-modal" class="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto hidden">
+    <div class="min-h-screen p-4 flex items-center justify-center">
+      <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full border border-slate-200 overflow-hidden animate-fade-in">
+        <div class="bg-blue-950 text-white px-5 py-3.5 flex justify-between items-center">
+          <h3 class="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-boxes-stacked text-amber-400"></i> Product Record
+          </h3>
+          <button onclick="App.closeItemModal()" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="item-form" onsubmit="App.saveItemFromModal(event)" class="p-5 space-y-3">
+          <input type="hidden" id="item-form-id" />
+          <input type="hidden" id="item-form-image-data" />
+
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Product / Item Name</label>
+            <input type="text" id="item-form-name" placeholder="e.g. PPGL INDRADHANUS 0.50MM 70 GSM WHITE WIDTH 3.50 FEET" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 font-bold" required />
+          </div>
+
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Description / Sub-Remarks</label>
+            <input type="text" id="item-form-desc" placeholder="e.g. (ROOFING SHEET) or MULTIWALL CLEAR" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">Default Unit</label>
+              <select id="item-form-unit" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white font-semibold">
+                <option value="kg(approx.)">kg(approx.)</option>
+                <option value="SQ.FEET">SQ.FEET</option>
+                <option value="R.FEET">R.FEET</option>
+                <option value="PCS">PCS</option>
+                <option value="SET">SET</option>
+                <option value="NOS">NOS</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">Default Price (₹)</label>
+              <input type="number" step="0.01" id="item-form-rate" placeholder="0.00" class="w-full text-xs font-mono font-bold border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 text-right" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">Default Size / Width (Ft)</label>
+              <input type="number" step="0.01" id="item-form-width" placeholder="3.50" value="3.50" class="w-full text-xs font-mono font-bold border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 text-right" />
+            </div>
+          </div>
+
+          <!-- Product Profile Diagram / Image -->
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+            <label class="text-xs font-bold text-slate-800 uppercase block">Product Profile Diagram / Diagram Image</label>
+            <p class="text-[11px] text-slate-500">This profile cross-section diagram appears under the item in quotation PDFs.</p>
+            
+            <div id="item-form-image-preview" class="h-16 bg-white border border-slate-200 rounded p-1 flex items-center justify-center">
+              <span class="text-xs text-slate-400">No profile image uploaded yet</span>
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <input type="file" id="item-form-image-file" accept="image/*" onchange="App.handleItemImageUpload(event)" class="text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-900 hover:file:bg-blue-100" />
+              <button type="button" onclick="document.getElementById('item-form-image-data').value = ''; App.renderItemModalPreview('');" class="text-xs text-rose-600 hover:underline">
+                Clear Image
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-200 flex justify-end gap-2">
+            <button type="button" onclick="App.closeItemModal()" class="px-3 py-1.5 border border-slate-300 rounded text-xs font-bold hover:bg-slate-50">Cancel</button>
+            <button type="submit" class="px-4 py-1.5 bg-blue-900 text-white rounded text-xs font-bold hover:bg-blue-800">Save Product</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: CLIENT FORM (Add / Edit Client) -->
+  <!-- ========================================================= -->
+  <div id="client-modal" class="fixed inset-0 bg-slate-900/60 z-50 overflow-y-auto hidden">
+    <div class="min-h-screen p-4 flex items-center justify-center">
+      <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full border border-slate-200 overflow-hidden animate-fade-in">
+        <div class="bg-blue-950 text-white px-5 py-3.5 flex justify-between items-center">
+          <h3 class="text-sm font-bold uppercase tracking-wider">Client Record</h3>
+          <button onclick="App.closeClientModal()" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="client-form" onsubmit="App.saveClientFromModal(event)" class="p-5 space-y-3">
+          <input type="hidden" id="client-form-id" />
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Company / Business Name</label>
+            <input type="text" id="client-form-company" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 font-bold" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Contact Person Name</label>
+            <input type="text" id="client-form-name" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">Phone Number</label>
+              <input type="text" id="client-form-phone" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 font-semibold" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">GST Number</label>
+              <input type="text" id="client-form-gst" class="w-full text-xs font-mono border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600 uppercase" />
+            </div>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Email</label>
+            <input type="email" id="client-form-email" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Address</label>
+            <textarea id="client-form-address" rows="2" class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-600"></textarea>
+          </div>
+          <div class="pt-3 border-t border-slate-200 flex justify-end gap-2">
+            <button type="button" onclick="App.closeClientModal()" class="px-3 py-1.5 border border-slate-300 rounded text-xs font-bold hover:bg-slate-50">Cancel</button>
+            <button type="submit" class="px-4 py-1.5 bg-blue-900 text-white rounded text-xs font-bold hover:bg-blue-800">Save Client</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================= -->
+  <!-- MODAL: PDF & PRINT PREVIEW -->
+  <!-- ========================================================= -->
+  <div id="pdf-preview-modal" class="fixed inset-0 bg-slate-900/80 z-50 overflow-y-auto hidden">
+    <div class="min-h-screen p-2 sm:p-6 flex flex-col items-center justify-start">
+      
+      <!-- Top Action Toolbar -->
+      <div class="bg-white rounded-xl shadow-lg p-3 max-w-4xl w-full flex justify-between items-center mb-4 sticky top-2 z-50 border border-slate-200">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-blue-900"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-800">Quotation Print Preview</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-modal-print" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded shadow flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-print"></i> Print Document
+          </button>
+          <button id="btn-modal-download" class="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white text-xs font-black rounded shadow flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-file-pdf"></i> Download PDF
+          </button>
+          <button onclick="App.closePrintPreview()" class="text-slate-500 hover:text-slate-800 p-1.5 text-base ml-2 cursor-pointer">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview Document Canvas -->
+      <div id="pdf-preview-container" class="w-full max-w-4xl">
+        <!-- Injected dynamically by App.openPrintPreview() -->
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: CLIENTS CSV IMPORT                                 -->
+  <!-- ========================================================= -->
+  <div id="client-csv-import-modal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 animate-fade-in">
+      <div class="flex justify-between items-center border-b border-slate-200 pb-3 mb-4">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-file-import text-indigo-700 text-lg"></i>
+          <h3 class="text-sm font-black uppercase text-blue-950">Bulk Import Clients from CSV</h3>
+        </div>
+        <button onclick="App.closeClientCsvImportModal()" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-base"></i></button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <p class="text-slate-600">Select a CSV file containing client records. The system will automatically map Company Name, Contact Name, Phone, Email, GSTIN, and Address.</p>
+        
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+          <div>
+            <div class="font-bold text-slate-800">Need the standard format?</div>
+            <div class="text-[11px] text-slate-500">Download our pre-formatted template with sample entries.</div>
+          </div>
+          <button type="button" onclick="CsvHelper.downloadClientTemplate()" class="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg font-bold text-xs shadow-xs flex items-center gap-1.5">
+            <i class="fa-solid fa-download text-indigo-600"></i> Template
+          </button>
+        </div>
+
+        <div class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-5 text-center transition-colors">
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
+          <div class="font-bold text-slate-800 mb-1">Choose CSV File to Upload</div>
+          <input type="file" id="client-csv-file-input" accept=".csv" onchange="App.handleClientCsvFileSelected(event)" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-900 hover:file:bg-blue-100 cursor-pointer" />
+        </div>
+
+        <div id="client-csv-preview-container" class="hidden space-y-2">
+          <div class="flex justify-between items-center text-xs font-bold text-slate-800">
+            <span>Preview (<span id="client-csv-row-count">0</span> records found):</span>
+          </div>
+          <div class="max-h-36 overflow-y-auto border border-slate-200 rounded-lg p-2 bg-slate-50 font-mono text-[11px]">
+            <div id="client-csv-preview-content" class="space-y-1"></div>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-200 flex justify-between items-center">
+          <button type="button" onclick="App.closeClientCsvImportModal()" class="px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg font-bold text-xs hover:bg-slate-50">Cancel</button>
+          <button type="button" id="btn-submit-client-csv" onclick="App.processClientCsvImport()" disabled class="px-4 py-2 bg-indigo-700 hover:bg-indigo-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg font-black text-xs shadow transition-all flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-check"></i> Import Clients Now
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: ITEMS MASTER CSV IMPORT                            -->
+  <!-- ========================================================= -->
+  <div id="item-csv-import-modal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 animate-fade-in">
+      <div class="flex justify-between items-center border-b border-slate-200 pb-3 mb-4">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-file-import text-indigo-700 text-lg"></i>
+          <h3 class="text-sm font-black uppercase text-blue-950">Bulk Import Products to Item Master</h3>
+        </div>
+        <button onclick="App.closeItemCsvImportModal()" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-base"></i></button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <p class="text-slate-600">Select a CSV file containing catalog items. Maps Item Name, Description, Default Unit, Default Price, and Standard Width.</p>
+        
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+          <div>
+            <div class="font-bold text-slate-800">Download Template</div>
+            <div class="text-[11px] text-slate-500">Standard CSV format with roofing profiles and rates.</div>
+          </div>
+          <button type="button" onclick="CsvHelper.downloadItemTemplate()" class="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg font-bold text-xs shadow-xs flex items-center gap-1.5">
+            <i class="fa-solid fa-download text-indigo-600"></i> Template
+          </button>
+        </div>
+
+        <div class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-5 text-center transition-colors">
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
+          <div class="font-bold text-slate-800 mb-1">Choose CSV File to Upload</div>
+          <input type="file" id="item-csv-file-input" accept=".csv" onchange="App.handleItemCsvFileSelected(event)" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-900 hover:file:bg-blue-100 cursor-pointer" />
+        </div>
+
+        <div id="item-csv-preview-container" class="hidden space-y-2">
+          <div class="flex justify-between items-center text-xs font-bold text-slate-800">
+            <span>Preview (<span id="item-csv-row-count">0</span> items found):</span>
+          </div>
+          <div class="max-h-36 overflow-y-auto border border-slate-200 rounded-lg p-2 bg-slate-50 font-mono text-[11px]">
+            <div id="item-csv-preview-content" class="space-y-1"></div>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-200 flex justify-between items-center">
+          <button type="button" onclick="App.closeItemCsvImportModal()" class="px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg font-bold text-xs hover:bg-slate-50">Cancel</button>
+          <button type="button" id="btn-submit-item-csv" onclick="App.processItemCsvImport()" disabled class="px-4 py-2 bg-indigo-700 hover:bg-indigo-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg font-black text-xs shadow transition-all flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-check"></i> Import Products Now
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: WINDOWS DESKTOP INSTALLATION INSTRUCTIONS          -->
+  <!-- ========================================================= -->
+  <div id="windows-install-modal" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 animate-fade-in text-center">
+      <div class="w-14 h-14 bg-gradient-to-tr from-blue-700 to-indigo-800 text-sky-200 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg mb-3">
+        <i class="fa-brands fa-windows"></i>
+      </div>
+      <h3 class="text-base font-black uppercase text-blue-950">Install as Windows Desktop Application</h3>
+      <p class="text-xs text-slate-500 mb-4">Run Jalaram Enterprise natively on Windows 10/11 with zero browser clutter &amp; instant desktop shortcut</p>
+
+      <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 text-left space-y-3 text-xs mb-4">
+        <div class="flex items-start gap-2.5">
+          <span class="w-5 h-5 rounded-full bg-blue-900 text-white flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5">1</span>
+          <div>
+            <strong class="text-slate-900">Chrome or Microsoft Edge:</strong> Look at the right side of the address bar for the <strong class="text-blue-900"><i class="fa-solid fa-desktop mr-1"></i>App Available / Install</strong> icon.
+          </div>
+        </div>
+        <div class="flex items-start gap-2.5">
+          <span class="w-5 h-5 rounded-full bg-blue-900 text-white flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5">2</span>
+          <div>
+            <strong class="text-slate-900">Or use Browser Menu:</strong> Click the <strong>3 dots (Menu)</strong> &rarr; <strong>"Save and share"</strong> or <strong>"Apps"</strong> &rarr; Click <strong>"Install Jalaram Enterprise"</strong>.
+          </div>
+        </div>
+        <div class="flex items-start gap-2.5">
+          <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5"><i class="fa-solid fa-check text-[9px]"></i></span>
+          <div>
+            <strong class="text-slate-900">Native Windows Launch:</strong> Pin to your Windows Taskbar and Start Menu. Operates completely offline with IndexedDB.
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="document.getElementById('windows-install-modal').classList.add('hidden')" class="px-4 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-lg text-xs font-bold">
+          Understood
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Container for Native Browser Print Layout -->
+  <div id="printable-area" class="hidden"></div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- Application Core Scripts -->
+  <script src="js/default-data.js?v=3.5.1"></script>
+  <script src="js/calculations.js?v=3.5.1"></script>
+  <script src="js/storage.js?v=3.5.1"></script>
+  <script src="js/auth.js?v=3.5.1"></script>
+  <script src="js/csv-helper.js?v=3.5.1"></script>
+  <script src="js/pdf-generator.js?v=3.5.1"></script>
+  <script src="js/app.js?v=3.5.1"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.update());
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('[PWA] Service Worker controller updated to v3.5.0');
+      });
+    }
+  </script>
+</body>
+</html>

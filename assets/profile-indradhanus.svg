@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 30" width="160" height="30">
+  <!-- PPGL Indradhanus 0.50mm Trapezoidal Roofing Profile with Crests & Anti-capillary groove -->
+  <path d="M 5 24 L 20 24 L 28 6 L 48 6 L 56 24 L 76 24 L 84 6 L 104 6 L 112 24 L 132 24 L 140 6 L 155 6" 
+        fill="none" stroke="#0077b6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Anti-capillary groove on rib -->
+  <circle cx="28" cy="15" r="1.5" fill="#0077b6"/>
+  <circle cx="84" cy="15" r="1.5" fill="#0077b6"/>
+</svg>

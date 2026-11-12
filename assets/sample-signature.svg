@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 100" width="300" height="100">
+  <defs>
+    <filter id="ink" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="0.4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- Realistic flowing cursive signature in dark blue ink -->
+  <g fill="none" stroke="#002d72" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#ink)">
+    <!-- Initial J & Flourish -->
+    <path d="M 35 25 C 25 15, 45 10, 65 14 C 75 16, 85 24, 75 42 C 60 70, 40 92, 50 94 C 58 95, 68 85, 78 70" />
+    <path d="M 68 35 C 80 32, 95 38, 110 32 C 120 28, 125 35, 135 30" />
+    <!-- Loop and middle name flow (P-a-t-e-l) -->
+    <path d="M 130 18 L 138 55 C 138 55, 148 28, 160 32 C 172 36, 175 48, 185 32 C 190 26, 195 24, 200 48" />
+    <path d="M 198 16 L 198 48 C 205 48, 215 35, 222 45 C 228 50, 235 35, 245 42" />
+    <!-- Crossbars -->
+    <path d="M 122 28 L 145 27" stroke-width="2" />
+    <path d="M 190 28 L 208 27" stroke-width="2" />
+    <!-- Underline flourish -->
+    <path d="M 45 78 C 85 70, 150 72, 220 62 C 245 58, 275 60, 260 72 C 245 82, 190 85, 160 88" stroke-width="2" />
+    <circle cx="265" cy="65" r="1.5" fill="#002d72" />
+  </g>
+</svg>
