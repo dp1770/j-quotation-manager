@@ -23,7 +23,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"                                      # Accessed in Worker as env.DB
 database_name = "quotation-manager-db"              # D1 database name
-database_id = "9cf57a6e-f1c1-4bb5-befd-029fd047de59"   # <-- Set your D1 database ID here
+database_id = "4b39a659-5317-452d-8fbd-afc639faccc8"   # <-- Set your D1 database ID here
 
 # ---------------------------------------------------------------------
 # Public Non-Sensitive Variables (NO SECRETS HERE)
