@@ -48,7 +48,7 @@
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
   <!-- Custom Styles & Print Stylesheet -->
-  <link rel="stylesheet" href="css/custom.css?v=3.5.2" />
+  <link rel="stylesheet" href="css/custom.css?v=3.5.3" />
 </head>
 <body class="bg-slate-100 text-slate-900 font-sans min-h-screen flex flex-col antialiased selection:bg-blue-900 selection:text-white">
 
@@ -65,10 +65,10 @@
       
       <!-- Logo & Title (Cloud SaaS Multi-Tenant Branding) -->
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-gradient-to-tr from-amber-500 to-amber-400 rounded-xl flex items-center justify-center font-black text-xl text-blue-950 shadow-md">
+        <div class="w-10 h-10 bg-gradient-to-tr from-amber-500 to-amber-400 rounded-xl flex items-center justify-center font-black text-xl text-blue-950 shadow-md shrink-0">
           QM
         </div>
-        <div>
+        <div class="header-brand-info">
           <h1 class="text-lg sm:text-xl font-black tracking-tight leading-tight uppercase">Quotation Manager</h1>
           <p id="app-company-subtitle" class="text-[11px] font-semibold text-amber-400 tracking-wider">Professional Quotation &amp; Measurement Manager</p>
         </div>
@@ -83,22 +83,17 @@
         </button>
 
         <!-- Logged-in User Profile Chip & Actions -->
-        <div id="header-user-wrapper" class="hidden sm:flex items-center gap-1.5 bg-blue-900/70 border border-blue-700/70 px-2.5 py-1 rounded-xl text-xs">
+        <div id="header-user-wrapper" class="flex items-center gap-1.5 bg-blue-900/70 border border-blue-700/70 px-2.5 py-1 rounded-xl text-xs">
           <i class="fa-solid fa-user-circle text-amber-400 text-sm"></i>
           <span id="header-user-name" class="font-bold text-white max-w-[120px] truncate">admin</span>
           <span id="header-user-role-badge" class="bg-amber-400 text-blue-950 font-black text-[9px] px-1.5 py-0.5 rounded uppercase">Super Admin</span>
-          <button type="button" onclick="App.openChangePasswordModal()" class="ml-1 text-blue-200 hover:text-white p-1 rounded cursor-pointer" title="Change Password">
+          <button type="button" onclick="App.openChangePasswordModal()" class="header-action-pwd ml-1 text-blue-200 hover:text-white p-1 rounded cursor-pointer" title="Change Password">
             <i class="fa-solid fa-key text-[11px]"></i>
           </button>
-          <button type="button" onclick="AuthManager.logout()" class="text-rose-300 hover:text-rose-100 p-1 rounded cursor-pointer" title="Sign Out">
+          <button type="button" onclick="AuthManager.logout()" class="header-action-logout text-rose-300 hover:text-rose-100 p-1 rounded cursor-pointer" title="Sign Out">
             <i class="fa-solid fa-arrow-right-from-bracket text-[11px]"></i>
           </button>
         </div>
-
-        <!-- Mobile Sign Out Button -->
-        <button type="button" onclick="AuthManager.logout()" class="sm:hidden p-2 text-rose-300 hover:text-white text-xs" title="Sign Out">
-          <i class="fa-solid fa-arrow-right-from-bracket"></i>
-        </button>
 
         <!-- Cloud Sync Status Badge -->
         <div id="cloud-sync-badge">
@@ -1537,20 +1532,20 @@
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
 
   <!-- Application Core Scripts -->
-  <script src="js/default-data.js?v=3.5.2"></script>
-  <script src="js/calculations.js?v=3.5.2"></script>
-  <script src="js/storage.js?v=3.5.2"></script>
-  <script src="js/auth.js?v=3.5.2"></script>
-  <script src="js/csv-helper.js?v=3.5.2"></script>
-  <script src="js/pdf-generator.js?v=3.5.2"></script>
-  <script src="js/app.js?v=3.5.2"></script>
+  <script src="js/default-data.js?v=3.5.3"></script>
+  <script src="js/calculations.js?v=3.5.3"></script>
+  <script src="js/storage.js?v=3.5.3"></script>
+  <script src="js/auth.js?v=3.5.3"></script>
+  <script src="js/csv-helper.js?v=3.5.3"></script>
+  <script src="js/pdf-generator.js?v=3.5.3"></script>
+  <script src="js/app.js?v=3.5.3"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {
         regs.forEach(reg => reg.update());
       });
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('[PWA] Service Worker controller updated to v3.5.2');
+        console.log('[PWA] Service Worker controller updated to v3.5.3');
       });
     }
   </script>

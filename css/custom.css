@@ -155,3 +155,121 @@
   background-color: #f1f5f9;
   color: #1e293b;
 }
+
+/* =====================================================================
+   Mobile Responsive Layout Optimization (max-width: 768px)
+   ===================================================================== */
+@media (max-width: 768px) {
+  /* 1. Header Logo Area: Hide application name & subtitle, show ONLY square QM icon */
+  .header-brand-info,
+  header h1,
+  #app-company-subtitle {
+    display: none !important;
+  }
+
+  /* 2. Connection Status Pill: Hide text, show ONLY database/status icon */
+  #db-setup-label {
+    display: none !important;
+  }
+
+  #btn-db-setup-status {
+    padding: 6px 10px !important;
+  }
+
+  /* 3. User Profile & Logout Area: Hide username & role badge, show ONLY avatar & logout icons */
+  #header-user-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 6px 10px !important;
+    border-radius: 12px !important;
+    margin-left: auto !important;
+  }
+
+  #header-user-name,
+  #header-user-role-badge,
+  .header-action-pwd,
+  #mobile-signout-btn {
+    display: none !important;
+  }
+
+  #header-user-wrapper i.fa-user-circle {
+    font-size: 16px !important;
+  }
+
+  .header-action-logout {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 2px !important;
+  }
+
+  .header-action-logout i {
+    font-size: 14px !important;
+  }
+
+  /* 4. Bottom Sticky Navigation: Fixed Footer Menu */
+  nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    top: auto !important;
+    left: 0 !important;
+    width: 100% !important;
+    z-index: 1000 !important;
+    background: #ffffff !important;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1) !important;
+    border-top: 1px solid #e2e8f0 !important;
+    border-bottom: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  nav > div {
+    max-width: 100% !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  nav > div > div {
+    display: flex !important;
+    justify-content: space-around !important;
+    align-items: center !important;
+    padding: 8px 4px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Icons Only: Hide tab text labels */
+  .nav-tab-btn span {
+    display: none !important;
+  }
+
+  /* Touch Target Scaling: Scale icons to 24px and enlarge touch target area */
+  .nav-tab-btn {
+    padding: 10px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    flex: 1 1 0 !important;
+    margin: 0 2px !important;
+  }
+
+  .nav-tab-btn i {
+    font-size: 24px !important;
+    margin: 0 !important;
+  }
+
+  /* Content Spacing: Prevent sticky bottom navigation from hiding body content */
+  body, main, #app {
+    padding-bottom: 80px !important;
+  }
+
+  /* Ensure active full-screen modals overlay above bottom nav */
+  .fixed.inset-0:not(.hidden) {
+    z-index: 2000 !important;
+  }
+}
