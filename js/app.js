@@ -32,31 +32,44 @@ const App = {
     // Check authentication and setup gates
     const isReady = this.checkGatekeepers();
     if (isReady) {
-      if (this.currentTab === 'dashboard') {
-        this.renderDashboard();
-      }
       this.refreshCloudDataInBackground();
     }
   },
 
   async refreshCloudDataInBackground() {
-    if (!navigator.onLine) return;
+    if (!AuthManager.isAuthenticated()) return;
     try {
-      console.log('[App] Refreshing data from Cloud Database in background...');
-      await StorageManager.pullAllFromCloud();
-      if (this.currentTab === 'dashboard') {
-        this.renderDashboard();
-      } else if (this.currentTab === 'quotations') {
-        this.renderQuotationsList();
-      } else if (this.currentTab === 'clients') {
-        this.renderClientsList();
-      } else if (this.currentTab === 'items') {
-        this.renderItemsList();
-      } else if (this.currentTab === 'users') {
-        this.renderUsersList();
+      console.log('[App] Refreshing live data from Cloudflare D1...');
+      const res = await StorageManager.pullAllFromCloud();
+      this.renderActiveTab();
+      if (!res.success && res.offline) {
+        this.showToast('No Internet Connection - Please check your network', 'error');
       }
     } catch (err) {
       console.warn('[App] Background cloud refresh note:', err);
+      this.renderActiveTab();
+    }
+  },
+
+  async refreshDataLive() {
+    this.showToast('Connecting to Cloudflare D1...', 'info');
+    const res = await StorageManager.pullAllFromCloud();
+    this.renderActiveTab();
+    if (res.success) {
+      this.showToast('Connected to Cloudflare D1!', 'success');
+    } else {
+      this.showToast('No Internet Connection - Please check your network', 'error');
+    }
+  },
+
+  renderActiveTab() {
+    switch (this.currentTab) {
+      case 'dashboard': this.renderDashboard(); break;
+      case 'quotations': this.renderQuotationsList(); break;
+      case 'clients': this.renderClientsList(); break;
+      case 'items': this.renderItemsList(); break;
+      case 'users': this.renderUsersList(); break;
+      case 'settings': this.renderSettings(); break;
     }
   },
 
@@ -561,73 +574,9 @@ const App = {
           if (rollbackBtn) rollbackBtn.classList.add('hidden');
         }
       }
-
-      // Listen to menu shortcuts from main process
-      window.electronAPI.onExportBackup(() => this.handleDatabaseBackupExport());
-      window.electronAPI.onImportBackup(() => this.handleDatabaseBackupImport());
     } catch (err) {
       console.warn('[App] Error initializing desktop features:', err);
     }
-  },
-
-  // -------------------------------------------------------------
-  // Full Database Backup & Restore Handlers
-  // -------------------------------------------------------------
-  async handleDatabaseBackupExport() {
-    try {
-      this.showToast('Preparing database backup...', 'info');
-      const res = await StorageManager.exportBackup();
-      if (res && res.success) {
-        this.showToast(res.message || 'Database exported successfully!', 'success');
-      }
-    } catch (e) {
-      this.showToast('Export failed: ' + e.message, 'error');
-    }
-  },
-
-  async handleDatabaseBackupImport(event) {
-    if (StorageManager.isElectron() && (!event || !event.target || !event.target.files)) {
-      try {
-        const res = await window.electronAPI.importDatabase();
-        if (res && res.success && res.data) {
-          await StorageManager.importBackup(JSON.stringify(res.data));
-          alert('Database restored successfully from: ' + res.filePath);
-          window.location.reload();
-          return;
-        } else if (res && res.canceled) {
-          return;
-        }
-      } catch (err) {
-        alert('Failed importing database: ' + err.message);
-        return;
-      }
-    }
-
-    const file = event?.target?.files && event.target.files[0];
-    if (!file) return;
-
-    if (!confirm('Warning: Restoring this backup will replace current local database records with the backup file data. Continue?')) {
-      if (event.target) event.target.value = '';
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const content = e.target.result;
-        const res = await StorageManager.importBackup(content);
-        if (res.success) {
-          alert('Data restored successfully! Please refresh');
-          window.location.reload();
-        } else {
-          alert(res.message);
-        }
-      } catch (err) {
-        alert('Failed parsing backup file: ' + err.message);
-      }
-    };
-    reader.readAsText(file);
-    if (event.target) event.target.value = '';
   },
 
   // -------------------------------------------------------------
@@ -715,6 +664,32 @@ const App = {
   // Dashboard View
   // -------------------------------------------------------------
   renderDashboard() {
+    if (StorageManager.isOffline()) {
+      const qEl = document.getElementById('dash-total-quotes');
+      const vEl = document.getElementById('dash-total-value');
+      const cEl = document.getElementById('dash-total-clients');
+      const mEl = document.getElementById('dash-month-value');
+      if (qEl) qEl.innerText = '—';
+      if (vEl) vEl.innerText = '₹ 0.00';
+      if (cEl) cEl.innerText = '—';
+      if (mEl) mEl.innerText = '₹ 0.00';
+
+      const recentTable = document.getElementById('dash-recent-quotes-table');
+      if (recentTable) {
+        recentTable.innerHTML = `<tr><td colspan="5" class="py-10 text-center">
+          <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
+            <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
+            <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
+            <p class="text-xs text-rose-600 mt-1 mb-3">Live connection to Cloudflare D1 is required.</p>
+            <button onclick="App.refreshDataLive()" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition">
+              <i class="fa-solid fa-rotate-right mr-1"></i> Retry Connection
+            </button>
+          </div>
+        </td></tr>`;
+      }
+      return;
+    }
+
     const quotes = StorageManager.getQuotations();
     const clients = StorageManager.getClients();
     const items = StorageManager.getItems();
@@ -813,6 +788,21 @@ const App = {
     const tbody = document.getElementById('quotes-list-tbody');
     const paginationBar = document.getElementById('quotes-pagination-bar');
     if (!tbody) return;
+
+    if (StorageManager.isOffline()) {
+      tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center">
+        <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
+          <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
+          <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
+          <p class="text-xs text-rose-600 mt-1 mb-3">Cannot load quotations without an active Cloudflare D1 connection.</p>
+          <button onclick="App.refreshDataLive()" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition">
+            <i class="fa-solid fa-rotate-right mr-1"></i> Retry Connection
+          </button>
+        </div>
+      </td></tr>`;
+      if (paginationBar) paginationBar.innerHTML = '';
+      return;
+    }
 
     const totalRecords = filtered.length;
     const totalPages = Math.max(1, Math.ceil(totalRecords / this.quotesPageSize));
@@ -945,6 +935,21 @@ const App = {
     const paginationBar = document.getElementById('items-pagination-bar');
     if (!tbody) return;
 
+    if (StorageManager.isOffline()) {
+      tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center">
+        <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
+          <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
+          <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
+          <p class="text-xs text-rose-600 mt-1 mb-3">Cannot load Item Master without an active Cloudflare D1 connection.</p>
+          <button onclick="App.refreshDataLive()" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition">
+            <i class="fa-solid fa-rotate-right mr-1"></i> Retry Connection
+          </button>
+        </div>
+      </td></tr>`;
+      if (paginationBar) paginationBar.innerHTML = '';
+      return;
+    }
+
     const totalRecords = filtered.length;
     const totalPages = Math.max(1, Math.ceil(totalRecords / this.itemsPageSize));
     if (this.itemsPage > totalPages) this.itemsPage = totalPages;
@@ -1070,7 +1075,7 @@ const App = {
     reader.readAsDataURL(file);
   },
 
-  saveItemFromModal(e) {
+  async saveItemFromModal(e) {
     if (e) e.preventDefault();
     const id = document.getElementById('item-form-id').value;
     const itemData = {
@@ -1088,21 +1093,29 @@ const App = {
       return;
     }
 
-    StorageManager.saveItem(itemData);
-    this.showToast(`Product "${itemData.name}" saved to Item Master!`, 'success');
-    this.closeItemModal();
-    this.renderItemsList();
+    try {
+      await StorageManager.saveItem(itemData);
+      this.showToast(`Product "${itemData.name}" saved to Item Master!`, 'success');
+      this.closeItemModal();
+      this.renderItemsList();
+    } catch (err) {
+      this.showToast(err.message || 'No Internet Connection - Unable to save item', 'error');
+    }
   },
 
-  deleteItem(itemId) {
+  async deleteItem(itemId) {
     if (!AuthManager.hasPermission('canManageItems') && !AuthManager.isSuperAdmin()) {
       this.showToast('Permission denied: You cannot delete items.', 'error');
       return;
     }
     if (confirm('Are you sure you want to delete this product from Item Master?')) {
-      StorageManager.deleteItem(itemId);
-      this.showToast('Item deleted from master catalog.', 'info');
-      this.renderItemsList();
+      try {
+        await StorageManager.deleteItem(itemId);
+        this.showToast('Item deleted from master catalog.', 'info');
+        this.renderItemsList();
+      } catch (err) {
+        this.showToast(err.message || 'No Internet Connection - Unable to delete item', 'error');
+      }
     }
   },
 
@@ -1192,16 +1205,20 @@ const App = {
     }
   },
 
-  deleteQuote(id) {
+  async deleteQuote(id) {
     if (!AuthManager.canDeleteQuotes()) {
       this.showToast('Permission denied: You cannot delete quotations.', 'error');
       return;
     }
     if (confirm('Are you sure you want to delete this quotation permanently?')) {
-      StorageManager.deleteQuotation(id);
-      this.showToast('Quotation deleted.', 'info');
-      this.renderQuotationsList();
-      this.renderDashboard();
+      try {
+        await StorageManager.deleteQuotation(id);
+        this.showToast('Quotation deleted.', 'info');
+        this.renderQuotationsList();
+        this.renderDashboard();
+      } catch (err) {
+        this.showToast(err.message || 'No Internet Connection - Unable to delete quotation', 'error');
+      }
     }
   },
 
@@ -1862,7 +1879,7 @@ const App = {
     this.currentQuotation.grandTotalWords = totals.grandTotalWords;
   },
 
-  saveCurrentQuotation() {
+  async saveCurrentQuotation() {
     try {
       console.log('[App] saveCurrentQuotation triggered...');
       if (!this.currentQuotation) {
@@ -1913,7 +1930,7 @@ const App = {
       // Ensure client is saved to Client Master if not already linked
       if (!this.currentQuotation.clientId && (this.currentQuotation.clientCompany || this.currentQuotation.clientName)) {
         try {
-          const newCli = StorageManager.saveClient({
+          const newCli = await StorageManager.saveClient({
             name: this.currentQuotation.clientName,
             companyName: this.currentQuotation.clientCompany,
             phone: this.currentQuotation.clientPhone,
@@ -1921,7 +1938,9 @@ const App = {
             address: this.currentQuotation.clientAddress,
             gstNumber: this.currentQuotation.clientGst
           });
-          this.currentQuotation.clientId = newCli.id;
+          if (newCli && newCli.id) {
+            this.currentQuotation.clientId = newCli.id;
+          }
         } catch (cliErr) {
           console.warn('[App] Client master save notice:', cliErr);
         }
@@ -1963,7 +1982,7 @@ const App = {
       }
 
       console.log('[App] Saving quotation object to storage:', this.currentQuotation);
-      const saved = StorageManager.saveQuotation(this.currentQuotation);
+      const saved = await StorageManager.saveQuotation(this.currentQuotation);
       console.log('[App] Successfully saved quotation:', saved.quoteNumber);
 
       this.showToast(`Quotation ${saved.quoteNumber} saved successfully!`, 'success');
@@ -1972,10 +1991,7 @@ const App = {
       this.renderDashboard();
     } catch (err) {
       console.error('[App] Fatal error in saveCurrentQuotation:', err);
-      if (typeof alert === 'function') {
-        alert('Error saving quotation: ' + (err.message || err));
-      }
-      this.showToast('Failed to save quotation: ' + (err.message || err), 'error');
+      this.showToast(err.message || 'No Internet Connection - Unable to save quotation', 'error');
     }
   },
 
@@ -2047,6 +2063,21 @@ const App = {
     const tbody = document.getElementById('clients-list-tbody');
     const paginationBar = document.getElementById('clients-pagination-bar');
     if (!tbody) return;
+
+    if (StorageManager.isOffline()) {
+      tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center">
+        <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
+          <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
+          <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
+          <p class="text-xs text-rose-600 mt-1 mb-3">Cannot load clients without an active Cloudflare D1 connection.</p>
+          <button onclick="App.refreshDataLive()" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition">
+            <i class="fa-solid fa-rotate-right mr-1"></i> Retry Connection
+          </button>
+        </div>
+      </td></tr>`;
+      if (paginationBar) paginationBar.innerHTML = '';
+      return;
+    }
 
     const totalRecords = filtered.length;
     const totalPages = Math.max(1, Math.ceil(totalRecords / this.clientsPageSize));
@@ -2384,7 +2415,7 @@ const App = {
     if (modal) modal.classList.add('hidden');
   },
 
-  saveClientFromModal(e) {
+  async saveClientFromModal(e) {
     if (e) e.preventDefault();
     const id = document.getElementById('client-form-id').value;
     const clientData = {
@@ -2402,23 +2433,31 @@ const App = {
       return;
     }
 
-    StorageManager.saveClient(clientData);
-    this.showToast('Client record saved successfully!', 'success');
-    this.closeClientModal();
-    this.renderClientsList();
-    this.renderDashboard();
+    try {
+      await StorageManager.saveClient(clientData);
+      this.showToast('Client record saved successfully!', 'success');
+      this.closeClientModal();
+      this.renderClientsList();
+      this.renderDashboard();
+    } catch (err) {
+      this.showToast(err.message || 'No Internet Connection - Unable to save client', 'error');
+    }
   },
 
-  deleteClient(clientId) {
+  async deleteClient(clientId) {
     if (!AuthManager.canManageClients()) {
       this.showToast('Permission denied: You cannot delete clients.', 'error');
       return;
     }
     if (confirm('Are you sure you want to delete this client?')) {
-      StorageManager.deleteClient(clientId);
-      this.showToast('Client deleted.', 'info');
-      this.renderClientsList();
-      this.renderDashboard();
+      try {
+        await StorageManager.deleteClient(clientId);
+        this.showToast('Client deleted.', 'info');
+        this.renderClientsList();
+        this.renderDashboard();
+      } catch (err) {
+        this.showToast(err.message || 'No Internet Connection - Unable to delete client', 'error');
+      }
     }
   },
 
@@ -2547,7 +2586,7 @@ const App = {
     reader.readAsDataURL(file);
   },
 
-  saveAllSettings() {
+  async saveAllSettings() {
     if (!AuthManager.canManageSettings()) {
       this.showToast('Permission denied: You cannot edit settings.', 'error');
       return;
@@ -2596,8 +2635,12 @@ const App = {
       signatureTitle: sigTitleInput ? sigTitleInput.value.trim() : 'Authorized Signatory'
     };
 
-    StorageManager.saveSettings(settings);
-    this.showToast('Settings saved successfully!', 'success');
+    try {
+      await StorageManager.saveSettings(settings);
+      this.showToast('Settings saved successfully to Cloudflare D1!', 'success');
+    } catch (err) {
+      this.showToast(err.message || 'No Internet Connection - Unable to save settings', 'error');
+    }
   },
 
   async testBackendConnection() {

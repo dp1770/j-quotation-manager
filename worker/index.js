@@ -251,7 +251,7 @@ export default {
         if (turnstileSecret) {
           const turnstileToken = body.turnstileToken || body['cf-turnstile-response'] || request.headers.get('CF-Turnstile-Token');
           if (!turnstileToken) {
-            return errorResponse('Security verification required. Please complete the captcha.', 403, env);
+            return errorResponse('Captcha verification required. Please complete the security check.', 401, env);
           }
 
           try {
@@ -267,10 +267,10 @@ export default {
             });
             const verifyData = await verifyRes.json();
             if (!verifyData.success) {
-              return errorResponse('Captcha verification failed. Please try again.', 403, env);
+              return errorResponse('Captcha verification failed. Please try again.', 401, env);
             }
           } catch (err) {
-            return errorResponse('Security challenge verification error: ' + err.message, 500, env);
+            return errorResponse('Security challenge verification error: ' + err.message, 401, env);
           }
         }
 
