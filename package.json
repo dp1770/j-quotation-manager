@@ -1,13 +1,14 @@
 {
   "name": "quotation-manager",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "description": "Quotation Manager SaaS - 100% Cloudflare Pages, Workers & D1",
   "license": "MIT",
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "test": "node -c js/*.js worker/index.js sw.js"
+    "test": "node --test test/permissions.test.js && node -c js/*.js worker/index.js sw.js"
   },
   "devDependencies": {
     "wrangler": "^4.161.0"

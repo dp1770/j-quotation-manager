@@ -129,23 +129,17 @@ const App = {
     // Strict Login gate (if session token is missing)
     if (!AuthManager.isAuthenticated()) {
       if (appShell) appShell.classList.add('hidden');
-      this.showSetupGate(false);
       this.showLoginGate(true);
       return false;
     }
 
     // User is authenticated: reveal app shell
     this.showLoginGate(false);
-    this.showSetupGate(false);
     if (appShell) appShell.classList.remove('hidden');
 
     this.updateUserInterfaceForAuth();
     this.renderCurrentTab();
     return true;
-  },
-
-  showSetupGate(show) {
-    // Deprecated: Login Gate is strictly enforced on initial load
   },
 
   showLoginGate(show) {
@@ -1214,7 +1208,7 @@ const App = {
   },
 
   async deleteItem(itemId) {
-    if (!AuthManager.canDeleteQuotes() && !AuthManager.canManageItems()) {
+    if (!AuthManager.canDeleteQuotes()) {
       this.showToast('Permission denied: You cannot delete items.', 'error');
       return;
     }
@@ -2601,7 +2595,7 @@ const App = {
   },
 
   async deleteClient(clientId) {
-    if (!AuthManager.canDeleteQuotes() && !AuthManager.canManageClients()) {
+    if (!AuthManager.canDeleteQuotes()) {
       this.showToast('Permission denied: You cannot delete clients.', 'error');
       return;
     }

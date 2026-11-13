@@ -530,8 +530,7 @@ export default {
         return errorResponse('Access denied: Only Super Admin can delete users', 403, env);
       }
       const targetId = path.split('/').pop();
-      const target = await env.DB.prepare('SELECT username, is_super_admin FROM users WHERE id = ?').bind(targetId).first();
-      if (target && target.is_super_admin === 1 && target.id === currentUser.userId) {
+      if (targetId === currentUser.userId) {
         return errorResponse('You cannot delete your own Super Admin account', 400, env);
       }
       await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetId).run();
@@ -831,7 +830,7 @@ export default {
     }
 
     if (path.startsWith('/api/clients/') && method === 'DELETE') {
-      if (!isSuperAdmin && !currentUser.permissions?.canDeleteQuotes && !currentUser.permissions?.canManageClients) {
+      if (!isSuperAdmin && !currentUser.permissions?.canDeleteQuotes) {
         return errorResponse('Access denied: You do not have permission to delete clients', 403, env);
       }
       const id = path.split('/').pop();
@@ -897,7 +896,7 @@ export default {
     }
 
     if (path.startsWith('/api/items/') && method === 'DELETE') {
-      if (!isSuperAdmin && !currentUser.permissions?.canDeleteQuotes && !currentUser.permissions?.canManageItems) {
+      if (!isSuperAdmin && !currentUser.permissions?.canDeleteQuotes) {
         return errorResponse('Access denied: You do not have permission to delete items from Items Master', 403, env);
       }
       const id = path.split('/').pop();
