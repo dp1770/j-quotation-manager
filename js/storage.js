@@ -188,7 +188,8 @@ const StorageManager = {
     if (custom && custom.startsWith('http')) {
       return custom.replace(/\/+$/, '');
     }
-    return '';
+    // Default to the deployed Cloudflare Worker API
+    return 'https://j-quotation-manager.pansuriyadhaval7.workers.dev';
   },
 
   setApiUrl(url) {
