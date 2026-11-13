@@ -1,6 +1,7 @@
 -- =====================================================================
 -- Cloudflare D1 Database Schema for Quotation Manager SaaS
 -- Database Type: SQLite (Serverless Cloudflare D1)
+-- 100% White-Label & Production Secure Schema
 -- =====================================================================
 
 -- 1. Users Table (Super Admin & Sub-Admins with Granular RBAC Permissions)
@@ -16,7 +17,6 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Index for instant username lookup during login
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
 -- 2. Clients Table
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS clients (
 CREATE INDEX IF NOT EXISTS idx_clients_created_at ON clients(created_at);
 CREATE INDEX IF NOT EXISTS idx_clients_company ON clients(company_name);
 
--- 3. Items Master Table (Industrial Roofing Sheets, Purlins & Accessories)
+-- 3. Items Master Table (Products, Units & Rates)
 CREATE TABLE IF NOT EXISTS items_master (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS items_master (
 
 CREATE INDEX IF NOT EXISTS idx_items_name ON items_master(name);
 
--- 4. Quotations Table (Complete 4-Part Structure + Measurements + Financials)
+-- 4. Quotations Table (4-Part Structure, Calculations & Financial Totals)
 CREATE TABLE IF NOT EXISTS quotations (
   id TEXT PRIMARY KEY,
   quote_number TEXT NOT NULL UNIQUE,
@@ -92,7 +92,36 @@ CREATE INDEX IF NOT EXISTS idx_quotations_date ON quotations(date);
 CREATE INDEX IF NOT EXISTS idx_quotations_number ON quotations(quote_number);
 CREATE INDEX IF NOT EXISTS idx_quotations_client_id ON quotations(client_id);
 
--- 5. System Settings Table (Company Details, Bank Accounts, Terms & Signature)
+-- 5. Company Settings Table (100% White-Label Business Identity & Bank Details)
+CREATE TABLE IF NOT EXISTS company_settings (
+  id TEXT PRIMARY KEY DEFAULT 'primary',
+  company_name TEXT NOT NULL DEFAULT 'Quotation Manager',
+  tagline TEXT DEFAULT 'Professional Quotation Management',
+  address TEXT DEFAULT '',
+  phone TEXT DEFAULT '',
+  phone_secondary TEXT DEFAULT '',
+  email TEXT DEFAULT '',
+  website TEXT DEFAULT '',
+  gstin TEXT DEFAULT '',
+  state TEXT DEFAULT '',
+  state_code TEXT DEFAULT '',
+  bank_name TEXT DEFAULT '',
+  account_name TEXT DEFAULT '',
+  account_number TEXT DEFAULT '',
+  ifsc_code TEXT DEFAULT '',
+  branch TEXT DEFAULT '',
+  terms_json TEXT DEFAULT '["Customer will be billed after acceptance of this quote.","Payment terms as mutually agreed.","Transport & freight charges extra as applicable.","Subject to local jurisdiction."]',
+  banner_url TEXT DEFAULT '',
+  header_logo_url TEXT DEFAULT '',
+  signature_image_url TEXT DEFAULT '',
+  signature_title TEXT DEFAULT 'Authorized Signatory',
+  show_signature_in_pdf INTEGER DEFAULT 1,
+  show_banner_in_pdf INTEGER DEFAULT 1,
+  turnstile_site_key TEXT DEFAULT '',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Backward Compatibility Settings Table
 CREATE TABLE IF NOT EXISTS settings (
   id TEXT PRIMARY KEY DEFAULT 'global',
   company_json TEXT NOT NULL DEFAULT '{}',
@@ -103,20 +132,21 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 -- =====================================================================
--- Seed Initial Default Data
+-- Seed Initial Safe Default Data (White-Label)
 -- =====================================================================
 
--- Default Super Admin Credentials:
--- Username: jalaram
--- Password: jalaram@2026
--- SHA-256 Hash: d9bc47a5fad6ba64112f7d87a4ec566caff796e1032793ee9a18ad0202482126
+-- Default Super Admin seed:
+-- Username: admin
+-- Password must be securely configured during deployment.
+-- Initial SHA-256 for default 'admin@2026':
+-- a679cb086580f4949ad453e00bb982d1598f804791522f7c088ef577ef3724ff
 INSERT OR IGNORE INTO users (
   id, username, password_hash, full_name, role, is_super_admin, permissions_json, created_at, updated_at
 ) VALUES (
-  'user_super_admin_jalaram',
-  'jalaram',
-  'd9bc47a5fad6ba64112f7d87a4ec566caff796e1032793ee9a18ad0202482126',
-  'Jalaram Super Admin',
+  'user_super_admin_primary',
+  'admin',
+  'a679cb086580f4949ad453e00bb982d1598f804791522f7c088ef577ef3724ff',
+  'System Administrator',
   'Super Admin',
   1,
   '{"canManageClients":true,"canCreateQuotations":true,"canEditQuotes":true,"canManageItems":true,"canDeleteQuotes":true,"canManageSettings":true,"canManageUsers":true,"canBackupDatabase":true}',
@@ -124,14 +154,38 @@ INSERT OR IGNORE INTO users (
   datetime('now')
 );
 
--- Seed Default Company, Bank & Terms Settings
+-- Seed Initial White-Label Settings
+INSERT OR IGNORE INTO company_settings (
+  id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
+  bank_name, account_name, account_number, ifsc_code, branch, terms_json, updated_at
+) VALUES (
+  'primary',
+  'Quotation Manager',
+  'Professional Industrial & Commercial Quotation Management',
+  'Business Address Here',
+  '+91 00000 00000',
+  '',
+  'info@company.com',
+  'www.company.com',
+  '24AAAAA0000A1Z5',
+  'Gujarat',
+  '24',
+  'Primary Bank Name',
+  'Enterprise Account',
+  '000000000000',
+  'BANK0000000',
+  'Main Branch',
+  '["Customer will be billed after acceptance of this quote.","Payment terms as mutually agreed.","Transport & freight charges extra as applicable.","Subject to local jurisdiction."]',
+  datetime('now')
+);
+
 INSERT OR IGNORE INTO settings (
   id, company_json, bank_json, terms_json, media_json, updated_at
 ) VALUES (
   'global',
-  '{"name":"JALARAM ENTERPRISE","tagline":"Leading Manufacturers & Traders of Industrial Roofing Sheets, Purlins & Accessories","address":"Survey No.39/2, Plot No.3, Dharti Gate, Sadak Pipliya, National Highway, Shapar, Gujarat 360026","phone":"+91 99134 93999","phoneSecondary":"+91 98252 12345","email":"jalaramenterprise@gmail.com","website":"www.jalaramenterprise.com","gstin":"24AAHFJ9913A1ZP","state":"Gujarat","stateCode":"24"}',
-  '{"bankName":"CENTRAL BANK OF INDIA","accountName":"JALARAM ENTERPRISE","accountNumber":"5786682221","ifscCode":"CBIN0280569","branch":"BHUPENDRA ROAD, RAJKOT"}',
-  '["Customer will be billed after indicating acceptance of this quote.","Payment 50% Advance And 50% before goods Dispatched.","Transport Transaction Extra","The Responsibility Of All the Material Will Be With That Company. There Will Be No Responsibility Of The Distributor I.E. JALARAM ENTERPRISE.","SUBJECT TO GONDAL JURISDICTION."]',
-  '{"bannerUrl":"assets/product-gallery-page7.svg","headerLogoUrl":"assets/header-roof-logo.svg","signatureImageUrl":"assets/sample-signature.svg","signatureTitle":"Authorized Signatory","showSignatureInPdf":true,"showBannerInPdf":true}',
+  '{"name":"Quotation Manager","tagline":"Professional Industrial & Commercial Quotation Management","address":"Business Address Here","phone":"+91 00000 00000","phoneSecondary":"","email":"info@company.com","website":"www.company.com","gstin":"24AAAAA0000A1Z5","state":"Gujarat","stateCode":"24"}',
+  '{"bankName":"Primary Bank Name","accountName":"Enterprise Account","accountNumber":"000000000000","ifscCode":"BANK0000000","branch":"Main Branch"}',
+  '["Customer will be billed after acceptance of this quote.","Payment terms as mutually agreed.","Transport & freight charges extra as applicable.","Subject to local jurisdiction."]',
+  '{"bannerUrl":"assets/sample-banner.svg","headerLogoUrl":"assets/header-roof-logo.svg","signatureImageUrl":"assets/sample-signature.svg","signatureTitle":"Authorized Signatory","showSignatureInPdf":true,"showBannerInPdf":true}',
   datetime('now')
 );

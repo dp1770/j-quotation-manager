@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple HTTP Server for Jalaram Enterprise Quotation Manager PWA
+Simple HTTP Server for Quotation Manager PWA
 Runs locally with proper MIME types for PWA manifests and Service Workers.
 """
 import http.server
@@ -38,7 +38,7 @@ def run():
             with socketserver.TCPServer(("", port), PWAHandler) as httpd:
                 url = f"http://localhost:{port}"
                 print("\n" + "=" * 60)
-                print(f"  Jalaram Enterprise - Quotation Manager PWA")
+                print(f"  Quotation Manager PWA")
                 print("=" * 60)
                 print(f"  Local URL: {url}")
                 print(f"  Network/Mobile: http://<your-local-ip>:{port}")

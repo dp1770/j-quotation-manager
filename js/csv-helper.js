@@ -1,5 +1,5 @@
 /**
- * Jalaram Enterprise - CSV Import & Export Engine
+ * Quotation Manager - CSV Import & Export Engine
  * Enterprise CSV parser and generator for Quotations, Clients, and Item Master.
  * Handles quoted cells, commas, carriage returns, and character encoding.
  */
@@ -62,7 +62,7 @@ const CsvHelper = {
 
     const csv = [headers.join(','), ...rows].join('\r\n');
     const dateStr = new Date().toISOString().slice(0, 10);
-    this.download(`jalaram_quotations_${dateStr}.csv`, csv);
+    this.download(`quotations_${dateStr}.csv`, csv);
   },
 
   /**
@@ -81,7 +81,7 @@ const CsvHelper = {
 
     const csv = [headers.join(','), ...rows].join('\r\n');
     const dateStr = new Date().toISOString().slice(0, 10);
-    this.download(`jalaram_clients_${dateStr}.csv`, csv);
+    this.download(`clients_${dateStr}.csv`, csv);
   },
 
   /**
@@ -100,7 +100,7 @@ const CsvHelper = {
 
     const csv = [headers.join(','), ...rows].join('\r\n');
     const dateStr = new Date().toISOString().slice(0, 10);
-    this.download(`jalaram_items_master_${dateStr}.csv`, csv);
+    this.download(`items_master_${dateStr}.csv`, csv);
   },
 
   /**

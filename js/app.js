@@ -1,5 +1,5 @@
 /**
- * Jalaram Enterprise - Main Application Controller
+ * Quotation Manager - Main Application Controller
  * Handles UI routing, reactivity, modals, quotation lifecycle, Item Master CRUD,
  * email dispatch, and PWA installation.
  */
@@ -344,7 +344,7 @@ const App = {
     }
 
     tbody.innerHTML = users.map(u => {
-      const isSuper = (u.isSuperAdmin || u.username === 'jalaram');
+      const isSuper = !!(u.isSuperAdmin || u.role === 'Super Admin');
       const perms = u.permissions || {};
       const permBadges = isSuper ? 
         `<span class="bg-amber-100 text-amber-900 px-2 py-0.5 rounded text-[10px] font-bold">FULL ACCESS (SUPER ADMIN)</span>` :

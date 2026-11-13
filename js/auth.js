@@ -9,9 +9,9 @@ const AuthManager = {
 
   // Fallback default admin profile
   DEFAULT_SUPER_ADMIN: {
-    id: 'user_super_admin_jalaram',
-    username: 'jalaram',
-    fullName: 'Jalaram Super Admin',
+    id: 'user_super_admin_primary',
+    username: 'admin',
+    fullName: 'System Administrator',
     role: 'Super Admin',
     isSuperAdmin: true,
     permissions: {
@@ -56,7 +56,7 @@ const AuthManager = {
   isSuperAdmin() {
     const user = this.getCurrentUser();
     if (!user) return false;
-    return !!(user.isSuperAdmin === true || user.role === 'Super Admin' || user.username === 'jalaram');
+    return !!(user.isSuperAdmin === true || user.role === 'Super Admin');
   },
 
   hasPermission(permKey) {
@@ -102,13 +102,15 @@ const AuthManager = {
    * Authenticate with Cloudflare Worker API.
    * On success: stores JWT in sessionStorage and sets up the active session.
    */
-  async login(username, password) {
+  async login(username, password, turnstileToken) {
     const cleanUser = String(username || '').trim().toLowerCase();
     const cleanPass = String(password || '');
 
     if (!cleanUser || !cleanPass) {
       return { success: false, message: 'Please enter both username and password.' };
     }
+
+    const token = turnstileToken || window.turnstileResponse || document.querySelector('[name="cf-turnstile-response"]')?.value || '';
 
     const apiUrl = (window.StorageManager && StorageManager.getApiUrl()) || '';
     const loginEndpoint = apiUrl ? `${apiUrl}/api/auth/login` : '/api/auth/login';
@@ -119,23 +121,25 @@ const AuthManager = {
         const response = await fetch(loginEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: cleanUser, password: cleanPass })
+          body: JSON.stringify({
+            username: cleanUser,
+            password: cleanPass,
+            turnstileToken: token
+          })
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.success && data.token) {
-            sessionStorage.setItem(this.TOKEN_KEY, data.token);
-            sessionStorage.setItem(this.USER_KEY, JSON.stringify(data.user));
-            return {
-              success: true,
-              message: data.message || `Welcome, ${data.user.fullName}!`,
-              user: data.user,
-              token: data.token
-            };
-          } else if (data && data.error) {
-            return { success: false, message: data.error };
-          }
+        const data = await response.json();
+        if (response.ok && data && data.success && data.token) {
+          sessionStorage.setItem(this.TOKEN_KEY, data.token);
+          sessionStorage.setItem(this.USER_KEY, JSON.stringify(data.user));
+          return {
+            success: true,
+            message: data.message || `Welcome, ${data.user.fullName}!`,
+            user: data.user,
+            token: data.token
+          };
+        } else if (data && data.error) {
+          return { success: false, message: data.error };
         }
       } catch (networkErr) {
         console.warn('[AuthManager] Remote Worker API login error, checking local fallback:', networkErr);
@@ -143,13 +147,13 @@ const AuthManager = {
     }
 
     // 2. Local Fallback Authentication (Offline or initial setup without Worker)
-    if (cleanUser === 'jalaram' && cleanPass === 'jalaram@2026') {
+    if (cleanUser === 'admin' && cleanPass === 'admin@2026') {
       const fallbackToken = 'cf_local_jwt_' + Date.now() + '_' + Math.random().toString(36).substring(2);
       sessionStorage.setItem(this.TOKEN_KEY, fallbackToken);
       sessionStorage.setItem(this.USER_KEY, JSON.stringify(this.DEFAULT_SUPER_ADMIN));
       return {
         success: true,
-        message: 'Welcome, Jalaram Super Admin!',
+        message: 'Welcome, System Administrator!',
         user: this.DEFAULT_SUPER_ADMIN,
         token: fallbackToken
       };
@@ -261,7 +265,7 @@ const AuthManager = {
   getUsers() {
     if (!window.StorageManager) return [this.DEFAULT_SUPER_ADMIN];
     const users = StorageManager.getUsers();
-    if (!users.some(u => u.username === 'jalaram')) {
+    if (!users.some(u => u.isSuperAdmin || u.role === 'Super Admin')) {
       users.unshift(this.DEFAULT_SUPER_ADMIN);
     }
     return users;

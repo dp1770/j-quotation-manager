@@ -1,48 +1,49 @@
 /**
- * Jalaram Enterprise - Quotation Manager
- * Default Configuration & Exact Sample Quotation Data Matching the Provided PDF
+ * Quotation Manager SaaS
+ * 100% White-Label Default Configuration & Sample Data
  */
 
 const DEFAULT_SETTINGS = {
   company: {
-    name: 'JALARAM ENTERPRISE',
-    tagline: 'Leading Manufacturers & Traders of Industrial Roofing Sheets, Purlins & Accessories',
-    address: 'Survey No.39/2, Plot No.3, Dharti Gate, Sadak Pipliya, National Highway, Shapar, Gujarat 360026',
-    phone: '+91 99134 93999',
-    phoneSecondary: '+91 98252 12345',
-    email: 'jalaramenterprise@gmail.com',
-    website: 'www.jalaramenterprise.com',
-    gstin: '24AAHFJ9913A1ZP',
+    name: 'Quotation Manager',
+    tagline: 'Professional Quotation Management',
+    address: 'Business Address Here',
+    phone: '+91 00000 00000',
+    phoneSecondary: '',
+    email: 'info@company.com',
+    website: 'www.company.com',
+    gstin: '24AAAAA0000A1Z5',
     state: 'Gujarat',
     stateCode: '24'
   },
   bank: {
-    bankName: 'CENTRAL BANK OF INDIA',
-    accountName: 'JALARAM ENTERPRISE',
-    accountNumber: '5786682221',
-    ifscCode: 'CBIN0280569',
-    branch: 'BHUPENDRA ROAD, RAJKOT'
+    bankName: 'Primary Bank Name',
+    accountName: 'Enterprise Account',
+    accountNumber: '000000000000',
+    ifscCode: 'BANK0000000',
+    branch: 'Main Branch'
   },
   terms: [
     'Customer will be billed after indicating acceptance of this quote.',
-    'Payment 50% Advance And 50% before goods Dispatched.',
-    'Transport Transaction Extra',
-    'The Responsibility Of All the Material Will Be With That Company. There Will Be No Responsibility Of The Distributor I.E. JALARAM ENTERPRISE.',
-    'SUBJECT TO GONDAL JURISDICTION.'
+    'Payment terms as mutually agreed.',
+    'Transport and freight charges extra as applicable.',
+    'The responsibility of all material will be as per manufacturer warranties.',
+    'Subject to local jurisdiction.'
   ],
   media: {
-    bannerUrl: 'assets/product-gallery-page7.svg',
+    bannerUrl: 'assets/sample-banner.svg',
     headerLogoUrl: 'assets/header-roof-logo.svg',
     signatureImageUrl: 'assets/sample-signature.svg',
     signatureTitle: 'Authorized Signatory',
     showSignatureInPdf: true,
     showBannerInPdf: true,
+    turnstileSiteKey: '1x00000000000000000000AA',
     galleryImages: [
-      { id: 'img_1', title: 'Product Gallery & Partner Brands (Page 7)', url: 'assets/product-gallery-page7.svg', active: true }
+      { id: 'img_1', title: 'Product Gallery & Partner Brands', url: 'assets/sample-banner.svg', active: true }
     ]
   },
   integration: {
-    workerUrl: '',
+    workerUrl: 'https://j-quotation-manager.pansuriyadhaval7.workers.dev',
     autoSync: true,
     lastSyncTime: null
   }
@@ -50,10 +51,10 @@ const DEFAULT_SETTINGS = {
 
 const DEFAULT_USERS = [
   {
-    id: 'user_super_admin_jalaram',
-    username: 'jalaram',
-    passwordHash: 'd9bc47a5fad6ba64112f7d87a4ec566caff796e1032793ee9a18ad0202482126',
-    fullName: 'Jalaram Super Admin',
+    id: 'user_super_admin_primary',
+    username: 'admin',
+    passwordHash: 'a679cb086580f4949ad453e00bb982d1598f804791522f7c088ef577ef3724ff',
+    fullName: 'System Administrator',
     role: 'Super Admin',
     isSuperAdmin: true,
     permissions: {
@@ -72,25 +73,25 @@ const DEFAULT_USERS = [
 
 const DEFAULT_CLIENTS = [
   {
-    id: 'cli_rudra_cast',
-    name: 'Rudra Cast',
-    companyName: 'RUDRA CAST',
-    phone: '+91 98791 09091',
-    email: 'rudracast@gmail.com',
-    address: 'GIDC Industrial Estate, Metoda, Rajkot, Gujarat',
-    gstNumber: '24AAMCC0264B1Z6',
-    createdBy: 'Jalaram Super Admin',
+    id: 'cli_sample_01',
+    name: 'Sample Client',
+    companyName: 'Sample Enterprise Pvt Ltd',
+    phone: '+91 98000 00000',
+    email: 'client@example.com',
+    address: 'Industrial Estate, Phase 2, City, State',
+    gstNumber: '24AAAAA0000A1Z5',
+    createdBy: 'System Administrator',
     createdAt: '2026-03-20T10:00:00.000Z'
   },
   {
-    id: 'cli_patel_infra',
-    name: 'Rajeshbhai Patel',
-    companyName: 'Patel Pre-Engineered Buildings & Infra',
-    phone: '+91 98980 11223',
-    email: 'patel.infra.rajkot@gmail.com',
-    address: 'Survey No. 45, Gondal Road, Near Toll Plaza, Rajkot, Gujarat',
-    gstNumber: '24AABCP1234F1Z8',
-    createdBy: 'Jalaram Super Admin',
+    id: 'cli_sample_02',
+    name: 'Valued Customer',
+    companyName: 'Pre-Engineered Buildings & Infra',
+    phone: '+91 99000 00000',
+    email: 'contact@infra.example.com',
+    address: 'Highway Road, Industrial Zone',
+    gstNumber: '24AABBB0000B1Z6',
+    createdBy: 'System Administrator',
     createdAt: '2026-02-10T10:30:00.000Z'
   }
 ];

@@ -1,6 +1,10 @@
-# Cloudflare Worker Local Development Variables (.dev.vars)
-# Copy this file to `.dev.vars` for local `wrangler dev` testing.
-# NEVER commit your actual `.dev.vars` file to Git!
+# =====================================================================
+# Local Development Environment Variables (.dev.vars)
+# Copy this file to .dev.vars for local testing with `wrangler dev`
+# NEVER COMMIT .dev.vars TO GIT (Already in .gitignore)
+# =====================================================================
 
-JWT_SECRET="your_secure_random_jwt_secret_phrase_for_local_testing_min_32_chars"
-CORS_ALLOW_ORIGIN="*"
+JWT_SECRET="local-development-secret-key-min-32-chars-long"
+
+# Cloudflare Turnstile Secret Key (Use 1x0000000000000000000000000000000AA for always-pass local testing)
+TURNSTILE_SECRET="1x0000000000000000000000000000000AA"

@@ -12,3 +12,4 @@ package-lock.json
 *.bat
 server.py
 .dev.vars*
+_redirects

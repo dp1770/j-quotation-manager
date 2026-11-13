@@ -2,11 +2,13 @@
 # Cloudflare Worker & D1 Database Configuration (100% Cloudflare Stack)
 # =====================================================================
 # NO SECRETS IN REPOSITORY:
-# Production secrets (e.g. JWT_SECRET) must be set via Cloudflare CLI or Dashboard:
+# Production secrets must be set via Cloudflare CLI or Dashboard:
 #   npx wrangler secret put JWT_SECRET
+#   npx wrangler secret put TURNSTILE_SECRET
 #
-# For local development with `wrangler dev`, copy `.dev.vars.example` to `.dev.vars`:
-#   cp .dev.vars.example .dev.vars
+# For local testing, create a `.dev.vars` file (never commit to git):
+#   JWT_SECRET="your-local-jwt-secret-key-32-chars-min"
+#   TURNSTILE_SECRET="1x0000000000000000000000000000000AA"
 # =====================================================================
 
 name = "j-quotation-manager"
@@ -25,13 +27,10 @@ not_found_handling = "single-page-application"
 # ---------------------------------------------------------------------
 # Cloudflare D1 Database Binding
 # ---------------------------------------------------------------------
-# Replace `database_id` with your Cloudflare D1 database ID generated from:
-#   npx wrangler d1 create quotation-manager-db
-# ---------------------------------------------------------------------
 [[d1_databases]]
-binding = "Quotation_Manager"                                      # Accessed in Worker as env.DB
-database_name = "quotation-manager-db"              # D1 database name
-database_id = "4b39a659-5317-452d-8fbd-afc639faccc8"   # <-- Set your D1 database ID here
+binding = "Quotation_Manager"
+database_name = "quotation-manager-db"
+database_id = "4b39a659-5317-452d-8fbd-afc639faccc8"
 
 # ---------------------------------------------------------------------
 # Public Non-Sensitive Variables (NO SECRETS HERE)

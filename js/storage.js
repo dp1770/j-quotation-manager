@@ -7,7 +7,7 @@
  */
 
 const IdbStore = {
-  DB_NAME: 'JalaramEnterpriseDB',
+  DB_NAME: 'QuotationManagerDB',
   DB_VERSION: 1,
   dbInstance: null,
 
@@ -252,7 +252,7 @@ const StorageManager = {
     if (!this.isElectron()) return;
     try {
       const fullData = {
-        app: 'Jalaram Enterprise Quotation Manager',
+        app: 'Quotation Manager SaaS',
         version: '3.5.0',
         updatedAt: new Date().toISOString(),
         settings: this.getSettings(),
@@ -401,7 +401,7 @@ const StorageManager = {
     }
     const idx = users.findIndex(u => u.id === user.id);
     if (idx >= 0) {
-      if (users[idx].username === 'jalaram' || users[idx].username === 'admin') {
+      if (users[idx].isSuperAdmin || users[idx].role === 'Super Admin' || users[idx].username === 'admin') {
         user.isSuperAdmin = true;
         user.role = 'Super Admin';
       }
@@ -427,7 +427,7 @@ const StorageManager = {
   deleteUser(userId) {
     const users = this.getUsers();
     const target = users.find(u => u.id === userId);
-    if (target && (target.isSuperAdmin || target.username === 'jalaram' || target.username === 'admin')) {
+    if (target && (target.isSuperAdmin || target.role === 'Super Admin' || target.username === 'admin')) {
       throw new Error('Super Admin user cannot be deleted!');
     }
     const filtered = users.filter(u => u.id !== userId);
@@ -1065,8 +1065,8 @@ const StorageManager = {
     const settings = this.getSettings();
 
     const bundle = {
-      app: 'Jalaram Enterprise Quotation Manager',
-      company: settings.company?.name || 'Jalaram Enterprise',
+      app: 'Quotation Manager SaaS',
+      company: settings.company?.name || 'Quotation Manager',
       version: '3.5.0',
       exportedAt: new Date().toISOString(),
       settings: settings,
@@ -1093,7 +1093,7 @@ const StorageManager = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `jalaram_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `quotation_backup_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1105,7 +1105,7 @@ const StorageManager = {
     try {
       const data = JSON.parse(jsonString);
       if (!data || (!data.quotations && !data.clients && !data.items && !data.settings)) {
-        throw new Error('Invalid backup file format. Must be a valid jalaram_backup.json file.');
+        throw new Error('Invalid backup file format. Must be a valid quotation_backup.json file.');
       }
 
       // 1. Clear IndexedDB stores

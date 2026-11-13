@@ -1,5 +1,5 @@
 /**
- * Jalaram Enterprise - PDF Generation & Print Layout Engine
+ * Quotation Manager - PDF Generation & Print Layout Engine
  * Optimized for whitespace management, docking totals directly beneath tables,
  * rendering item master product profile images, uploaded signatures, and system-generated footers.
  */
@@ -249,7 +249,7 @@ const PdfGenerator = {
 
             <!-- Top Right 3D Roofing Sheets Illustration -->
             <div class="w-48 sm:w-56 flex-shrink-0 text-right">
-              <img src="${headerLogo}" alt="Jalaram Enterprise Roofing Sheets" class="w-full max-h-24 object-contain ml-auto" />
+              <img src="${headerLogo}" alt="${this.escapeHtml(comp.name)} Logo" class="w-full max-h-24 object-contain ml-auto" />
             </div>
           </div>
 
@@ -404,7 +404,7 @@ const PdfGenerator = {
         ${media.showBannerInPdf && bannerImg ? `
           <div class="mt-8 pt-4 avoid-break" style="page-break-before: always;">
             <div class="text-center">
-              <img src="${bannerImg}" alt="Jalaram Enterprise Industrial Products & Partner Brands" class="w-full max-h-[960px] object-contain mx-auto rounded shadow-sm border border-slate-200" />
+              <img src="${bannerImg}" alt="${this.escapeHtml(comp.name)} Promotional Banner" class="w-full max-h-[960px] object-contain mx-auto rounded shadow-sm border border-slate-200" />
             </div>
             ${footerLine}
           </div>

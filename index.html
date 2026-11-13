@@ -44,6 +44,9 @@
   <!-- html2pdf.js for Client-Side High-Res PDF Export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+  <!-- Cloudflare Turnstile Captcha (Free Bot Protection) -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
   <!-- Custom Styles & Print Stylesheet -->
   <link rel="stylesheet" href="css/custom.css" />
 </head>
@@ -82,7 +85,7 @@
         <!-- Logged-in User Profile Chip & Actions -->
         <div id="header-user-wrapper" class="hidden sm:flex items-center gap-1.5 bg-blue-900/70 border border-blue-700/70 px-2.5 py-1 rounded-xl text-xs">
           <i class="fa-solid fa-user-circle text-amber-400 text-sm"></i>
-          <span id="header-user-name" class="font-bold text-white max-w-[120px] truncate">jalaram</span>
+          <span id="header-user-name" class="font-bold text-white max-w-[120px] truncate">admin</span>
           <span id="header-user-role-badge" class="bg-amber-400 text-blue-950 font-black text-[9px] px-1.5 py-0.5 rounded uppercase">Super Admin</span>
           <button type="button" onclick="App.openChangePasswordModal()" class="ml-1 text-blue-200 hover:text-white p-1 rounded cursor-pointer" title="Change Password">
             <i class="fa-solid fa-key text-[11px]"></i>
@@ -702,7 +705,7 @@
               <h4 class="text-sm sm:text-base font-black text-white uppercase tracking-wide">Local Database Backup &amp; Restore</h4>
             </div>
             <p class="text-xs text-blue-200">
-              Export all Quotations, Clients, Item Master catalog, and business settings into a single <code class="bg-blue-900/80 px-2 py-0.5 rounded font-mono text-amber-300 font-bold">jalaram_backup.json</code> file.
+              Export all Quotations, Clients, Item Master catalog, and business settings into a single <code class="bg-blue-900/80 px-2 py-0.5 rounded font-mono text-amber-300 font-bold">quotation_backup.json</code> file.
             </p>
             <p class="text-[11px] text-slate-400">
               Desktop persistent storage: <code class="text-amber-300 font-mono">userData/local_database.json</code> (Separate from app binaries, 100% preserved during updates).
@@ -738,7 +741,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div>
               <span class="text-slate-500 font-semibold block text-[11px]">Logged in as:</span>
-              <strong id="settings-profile-username" class="text-blue-950 font-bold font-mono">jalaram</strong>
+              <strong id="settings-profile-username" class="text-blue-950 font-bold font-mono">admin</strong>
             </div>
             <div>
               <span class="text-slate-500 font-semibold block text-[11px]">Assigned Role:</span>
@@ -827,7 +830,7 @@
           <div class="relative">
             <i class="fa-solid fa-user absolute left-3 top-3 text-slate-400 text-xs"></i>
             <input type="text" id="login-username-input" required autocomplete="username"
-                   placeholder="Enter username (e.g. jalaram)"
+                   placeholder="Enter username (e.g. admin)"
                    class="w-full pl-8 pr-3 py-2.5 text-xs font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none bg-slate-50 focus:bg-white text-slate-900" />
           </div>
         </div>
@@ -845,6 +848,11 @@
               <i class="fa-solid fa-eye text-xs"></i>
             </button>
           </div>
+        </div>
+
+        <!-- Cloudflare Turnstile Captcha Widget Container -->
+        <div id="login-turnstile-wrapper" class="my-2 flex flex-col items-center justify-center min-h-[65px]">
+          <div class="cf-turnstile" data-sitekey="1x00000000000000000000AA" data-callback="onTurnstileSuccess" data-theme="light"></div>
         </div>
 
         <button type="submit" id="btn-login-submit" class="w-full py-3 bg-blue-900 hover:bg-blue-800 text-white font-black rounded-xl text-xs sm:text-sm shadow-lg hover:shadow-xl transition-all uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-2">
@@ -982,7 +990,7 @@
         <div class="bg-gradient-to-r from-blue-950 via-blue-900 to-slate-900 text-white px-5 py-4 flex justify-between items-center">
           <div>
             <h3 class="text-base sm:text-lg font-black tracking-tight uppercase">Quotation Editor</h3>
-            <p class="text-xs text-cyan-200">Exact 4-Part Structure • Jalaram Enterprise Roofing Quotation &amp; Measurements</p>
+            <p class="text-xs text-cyan-200">Exact 4-Part Structure • Quotation &amp; Measurement Details</p>
           </div>
           <div class="flex items-center gap-2">
             <button type="button" id="btn-save-quotation-top" onclick="App.saveCurrentQuotation()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5 cursor-pointer">
@@ -1183,11 +1191,11 @@
           </div>
 
           <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2">
-            <div class="text-slate-800">
-              <strong class="text-sky-700">Bank:</strong> CENTRAL BANK OF INDIA • <strong>A/C:</strong> 5786682221 • <strong>IFSC:</strong> CBIN0280569 • <strong>Branch:</strong> BHUPENDRA ROAD, RAJKOT
+            <div class="text-slate-800" id="preview-bank-details-line">
+              <strong class="text-sky-700">Bank Details:</strong> Dynamically injected from your Company Settings.
             </div>
             <div class="text-slate-700 text-[11px] leading-relaxed">
-              Standard 5 terms configured in Settings with <em>"SUBJECT TO GONDAL JURISDICTION."</em> Manage these from the <strong>Settings</strong> panel.
+              Standard commercial terms and legal jurisdiction configured in Settings. Manage these from the <strong>Settings</strong> panel.
             </div>
           </div>
 
@@ -1491,7 +1499,7 @@
         <i class="fa-brands fa-windows"></i>
       </div>
       <h3 class="text-base font-black uppercase text-blue-950">Install as Windows Desktop Application</h3>
-      <p class="text-xs text-slate-500 mb-4">Run Jalaram Enterprise natively on Windows 10/11 with zero browser clutter &amp; instant desktop shortcut</p>
+      <p class="text-xs text-slate-500 mb-4">Run Quotation Manager natively on Windows 10/11 with zero browser clutter &amp; instant desktop shortcut</p>
 
       <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 text-left space-y-3 text-xs mb-4">
         <div class="flex items-start gap-2.5">
@@ -1503,7 +1511,7 @@
         <div class="flex items-start gap-2.5">
           <span class="w-5 h-5 rounded-full bg-blue-900 text-white flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5">2</span>
           <div>
-            <strong class="text-slate-900">Or use Browser Menu:</strong> Click the <strong>3 dots (Menu)</strong> &rarr; <strong>"Save and share"</strong> or <strong>"Apps"</strong> &rarr; Click <strong>"Install Jalaram Enterprise"</strong>.
+            <strong class="text-slate-900">Or use Browser Menu:</strong> Click the <strong>3 dots (Menu)</strong> &rarr; <strong>"Save and share"</strong> or <strong>"Apps"</strong> &rarr; Click <strong>"Install Quotation Manager"</strong>.
           </div>
         </div>
         <div class="flex items-start gap-2.5">

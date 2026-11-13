@@ -1,9 +1,9 @@
 @echo off
-title Jalaram Enterprise - Quotation Manager
+title Quotation Manager
 color 1F
 
 echo =====================================================================
-echo           JALARAM ENTERPRISE - QUOTATION MANAGER PWA
+echo           QUOTATION MANAGER PWA
 echo                 Portable Local Server Launcher
 echo =====================================================================
 echo.
@@ -63,7 +63,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "$listener = New-Object System.Net.HttpListener;" ^
     "$listener.Prefixes.Add(\"http://localhost:$port/\");" ^
     "try { $listener.Start(); } catch { Write-Host \"Port $port is busy or access denied. Trying port 8080...\"; $port=8080; $listener = New-Object System.Net.HttpListener; $listener.Prefixes.Add(\"http://localhost:$port/\"); $listener.Start(); Start-Process \"http://localhost:$port\"; }" ^
-    "Write-Host \"Jalaram Enterprise server active on http://localhost:$port/\";" ^
+    "Write-Host \"Quotation Manager server active on http://localhost:$port/\";" ^
     "$baseDir = Get-Location;" ^
     "$mimeTypes = @{ '.html'='text/html; charset=utf-8'; '.js'='application/javascript; charset=utf-8'; '.css'='text/css; charset=utf-8'; '.json'='application/json; charset=utf-8'; '.png'='image/png'; '.jpg'='image/jpeg'; '.svg'='image/svg+xml'; '.pdf'='application/pdf'; '.ico'='image/x-icon'; '.csv'='text/csv; charset=utf-8' };" ^
     "while ($listener.IsListening) {" ^

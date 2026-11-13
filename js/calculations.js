@@ -1,5 +1,5 @@
 /**
- * Jalaram Enterprise - Calculations Engine
+ * Quotation Manager - Calculations Engine
  * Core mathematical functions for Roofing Sheet measurements and Quotation financials.
  */
 

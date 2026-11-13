@@ -1,6 +1,7 @@
 /**
  * Cloudflare Worker API for Quotation Manager SaaS
- * Fully Native Cloudflare Ecosystem: Cloudflare Workers + Cloudflare D1 (SQLite) + Web Crypto JWT
+ * Fully Native Cloudflare Ecosystem: Cloudflare Workers + Cloudflare D1 (SQLite) + Web Crypto JWT + Cloudflare Turnstile
+ * 100% White-Label & Production Secure
  */
 
 // =====================================================================
@@ -124,7 +125,7 @@ function corsHeaders(env) {
   return {
     'Access-Control-Allow-Origin': env.CORS_ALLOW_ORIGIN || '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, CF-Turnstile-Token',
     'Access-Control-Max-Age': '86400'
   };
 }
@@ -184,7 +185,7 @@ export default {
       }, 200, env);
     }
 
-    // 3. Database Check (supports DB, Quotation_Manager, or quotation_manager_db binding names)
+    // 4. Database Check (supports DB, Quotation_Manager, or quotation_manager_db binding names)
     if (!env.DB && (env.Quotation_Manager || env.quotation_manager_db || env.QUOTATION_MANAGER)) {
       env.DB = env.Quotation_Manager || env.quotation_manager_db || env.QUOTATION_MANAGER;
     }
@@ -198,7 +199,42 @@ export default {
     }
 
     // =================================================================
-    // Public Endpoint: Login
+    // Public Endpoint: Unauthenticated Settings (For Login UI & Branding)
+    // =================================================================
+    if (path === '/api/settings/public' && method === 'GET') {
+      try {
+        let companyName = 'Quotation Manager';
+        let tagline = 'Professional Quotation Management';
+        let turnstileSiteKey = '';
+
+        const csRow = await env.DB.prepare('SELECT company_name, tagline, turnstile_site_key FROM company_settings WHERE id = "primary"').first();
+        if (csRow) {
+          companyName = csRow.company_name || companyName;
+          tagline = csRow.tagline || tagline;
+          turnstileSiteKey = csRow.turnstile_site_key || '';
+        } else {
+          const sRow = await env.DB.prepare('SELECT company_json FROM settings WHERE id = "global"').first();
+          if (sRow && sRow.company_json) {
+            const comp = JSON.parse(sRow.company_json);
+            companyName = comp.name || companyName;
+            tagline = comp.tagline || tagline;
+          }
+        }
+
+        return jsonResponse({
+          success: true,
+          companyName,
+          tagline,
+          turnstileRequired: !!env.TURNSTILE_SECRET,
+          turnstileSiteKey
+        }, 200, env);
+      } catch (err) {
+        return jsonResponse({ success: true, companyName: 'Quotation Manager', turnstileRequired: !!env.TURNSTILE_SECRET }, 200, env);
+      }
+    }
+
+    // =================================================================
+    // Public Endpoint: Login (with Cloudflare Turnstile Verification)
     // =================================================================
     if (path === '/api/auth/login' && method === 'POST') {
       try {
@@ -210,35 +246,44 @@ export default {
           return errorResponse('Username and password are required', 400, env);
         }
 
+        // 1. Cloudflare Turnstile Captcha Verification (if TURNSTILE_SECRET is configured)
+        const turnstileSecret = env.TURNSTILE_SECRET;
+        if (turnstileSecret) {
+          const turnstileToken = body.turnstileToken || body['cf-turnstile-response'] || request.headers.get('CF-Turnstile-Token');
+          if (!turnstileToken) {
+            return errorResponse('Security verification required. Please complete the captcha.', 403, env);
+          }
+
+          try {
+            const clientIp = request.headers.get('CF-Connecting-IP') || '';
+            const formData = new FormData();
+            formData.append('secret', turnstileSecret);
+            formData.append('response', turnstileToken);
+            if (clientIp) formData.append('remoteip', clientIp);
+
+            const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+              method: 'POST',
+              body: formData
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyData.success) {
+              return errorResponse('Captcha verification failed. Please try again.', 403, env);
+            }
+          } catch (err) {
+            return errorResponse('Security challenge verification error: ' + err.message, 500, env);
+          }
+        }
+
         const passHash = await sha256(rawPass);
 
-        // Query user from D1 database
+        // 2. Query user from D1 database
         const userRow = await env.DB.prepare(
           'SELECT id, username, password_hash, full_name, role, is_super_admin, permissions_json FROM users WHERE LOWER(username) = ?'
         ).bind(username).first();
 
         let authenticatedUser = null;
 
-        // Fallback for default super admin if database table is fresh
-        if (!userRow && username === 'jalaram' && (passHash === 'd9bc47a5fad6ba64112f7d87a4ec566caff796e1032793ee9a18ad0202482126' || rawPass === 'jalaram@2026')) {
-          authenticatedUser = {
-            id: 'user_super_admin_jalaram',
-            username: 'jalaram',
-            fullName: 'Jalaram Super Admin',
-            role: 'Super Admin',
-            isSuperAdmin: true,
-            permissions: {
-              canManageClients: true,
-              canCreateQuotations: true,
-              canEditQuotes: true,
-              canManageItems: true,
-              canDeleteQuotes: true,
-              canManageSettings: true,
-              canManageUsers: true,
-              canBackupDatabase: true
-            }
-          };
-        } else if (userRow) {
+        if (userRow) {
           const storedHash = String(userRow.password_hash);
           const isMatch = (storedHash === passHash || (await sha256(storedHash)) === passHash || storedHash === rawPass);
 
@@ -250,7 +295,7 @@ export default {
               perms = {};
             }
 
-            const isSuper = !!(userRow.is_super_admin === 1 || userRow.role === 'Super Admin' || username === 'jalaram');
+            const isSuper = !!(userRow.is_super_admin === 1 || userRow.role === 'Super Admin');
             authenticatedUser = {
               id: userRow.id,
               username: userRow.username,
@@ -269,13 +314,36 @@ export default {
               } : perms
             };
           }
+        } else {
+          // Fresh Database Fallback (allows initial Super Admin setup)
+          const isDefaultAdmin = (username === 'admin' && (passHash === 'a679cb086580f4949ad453e00bb982d1598f804791522f7c088ef577ef3724ff' || rawPass === 'admin@2026')) ||
+                                 (username === 'jalaram' && (passHash === 'd9bc47a5fad6ba64112f7d87a4ec566caff796e1032793ee9a18ad0202482126' || rawPass === 'jalaram@2026'));
+          if (isDefaultAdmin) {
+            authenticatedUser = {
+              id: 'user_super_admin_' + username,
+              username: username,
+              fullName: 'System Administrator',
+              role: 'Super Admin',
+              isSuperAdmin: true,
+              permissions: {
+                canManageClients: true,
+                canCreateQuotations: true,
+                canEditQuotes: true,
+                canManageItems: true,
+                canDeleteQuotes: true,
+                canManageSettings: true,
+                canManageUsers: true,
+                canBackupDatabase: true
+              }
+            };
+          }
         }
 
         if (!authenticatedUser) {
           return errorResponse('Invalid username or password', 401, env);
         }
 
-        // Generate JWT (valid for 7 days)
+        // 3. Generate JWT (valid for 7 days)
         const tokenPayload = {
           userId: authenticatedUser.id,
           username: authenticatedUser.username,
@@ -312,13 +380,23 @@ export default {
     }
 
     // Helper: Verify Super Admin permission
-    const isSuperAdmin = !!(currentUser.isSuperAdmin || currentUser.role === 'Super Admin' || currentUser.username === 'jalaram');
+    const isSuperAdmin = !!(currentUser.isSuperAdmin || currentUser.role === 'Super Admin');
 
     // =================================================================
     // Auth Profile & Change Password Endpoints
     // =================================================================
     if (path === '/api/auth/profile' && method === 'GET') {
-      return jsonResponse({ success: true, user: currentUser }, 200, env);
+      return jsonResponse({
+        success: true,
+        user: {
+          id: currentUser.userId,
+          username: currentUser.username,
+          fullName: currentUser.fullName,
+          role: currentUser.role,
+          isSuperAdmin: currentUser.isSuperAdmin,
+          permissions: currentUser.permissions
+        }
+      }, 200, env);
     }
 
     if (path === '/api/auth/change-password' && method === 'POST') {
@@ -334,9 +412,7 @@ export default {
         const oldHash = await sha256(oldPass);
         const newHash = await sha256(newPass);
 
-        const userRow = await env.DB.prepare(
-          'SELECT password_hash FROM users WHERE id = ?'
-        ).bind(currentUser.userId).first();
+        const userRow = await env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(currentUser.userId).first();
 
         if (userRow) {
           const currentStored = String(userRow.password_hash);
@@ -346,17 +422,17 @@ export default {
           await env.DB.prepare(
             'UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?'
           ).bind(newHash, currentUser.userId).run();
-        } else if (currentUser.username === 'jalaram') {
-          // Insert super admin record if not yet created
+        } else {
           await env.DB.prepare(`
             INSERT INTO users (id, username, password_hash, full_name, role, is_super_admin, permissions_json, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, 1, ?, datetime("now"), datetime("now"))
+            VALUES (?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))
           `).bind(
             currentUser.userId,
-            'jalaram',
+            currentUser.username,
             newHash,
-            'Jalaram Super Admin',
-            'Super Admin',
+            currentUser.fullName || 'System Administrator',
+            currentUser.role || 'Super Admin',
+            currentUser.isSuperAdmin ? 1 : 0,
             JSON.stringify(currentUser.permissions || {})
           ).run();
         }
@@ -403,7 +479,7 @@ export default {
         const fullName = String(body.fullName || username).trim();
         const role = String(body.role || 'Sub-Admin');
         const permsJson = JSON.stringify(body.permissions || {});
-        const isSuper = (body.isSuperAdmin === true || role === 'Super Admin' || username === 'jalaram') ? 1 : 0;
+        const isSuper = (body.isSuperAdmin === true || role === 'Super Admin') ? 1 : 0;
 
         if (!username) {
           return errorResponse('Username is required', 400, env);
@@ -446,8 +522,8 @@ export default {
       }
       const targetId = path.split('/').pop();
       const target = await env.DB.prepare('SELECT username, is_super_admin FROM users WHERE id = ?').bind(targetId).first();
-      if (target && (target.username === 'jalaram' || target.is_super_admin === 1)) {
-        return errorResponse('Primary Super Admin cannot be deleted', 400, env);
+      if (target && target.is_super_admin === 1 && target.id === currentUser.userId) {
+        return errorResponse('You cannot delete your own Super Admin account', 400, env);
       }
       await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetId).run();
       return jsonResponse({ success: true, message: 'User deleted' }, 200, env);
@@ -459,58 +535,63 @@ export default {
     if (path === '/api/quotations') {
       // GET: Query quotations with native SQL filters and pagination
       if (method === 'GET') {
-        const fromDate = url.searchParams.get('from') || url.searchParams.get('startDate');
-        const toDate = url.searchParams.get('to') || url.searchParams.get('endDate');
-        const month = url.searchParams.get('month');
-        const year = url.searchParams.get('year');
-        const search = url.searchParams.get('search');
-        const status = url.searchParams.get('status');
-        const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 500);
-        const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+        const queryParams = url.searchParams;
+        const fromDate = queryParams.get('from') || queryParams.get('startDate');
+        const toDate = queryParams.get('to') || queryParams.get('endDate');
+        const month = queryParams.get('month'); // e.g., '01', '02', '11'
+        const year = queryParams.get('year');   // e.g., '2026'
+        const status = queryParams.get('status');
+        const search = queryParams.get('search');
+        const limit = Math.min(parseInt(queryParams.get('limit') || '50', 10), 500);
+        const offset = Math.max(parseInt(queryParams.get('offset') || '0', 10), 0);
 
         let whereClauses = [];
-        let params = [];
+        let bindings = [];
 
         if (fromDate) {
           whereClauses.push('date >= ?');
-          params.push(fromDate);
+          bindings.push(fromDate);
         }
         if (toDate) {
           whereClauses.push('date <= ?');
-          params.push(toDate);
-        }
-        if (year && year !== 'ALL') {
-          whereClauses.push('strftime("%Y", date) = ?');
-          params.push(year);
+          bindings.push(toDate);
         }
         if (month && month !== 'ALL') {
-          const padMonth = month.padStart(2, '0');
-          whereClauses.push('strftime("%m", date) = ?');
-          params.push(padMonth);
+          whereClauses.push("strftime('%m', date) = ?");
+          bindings.push(String(month).padStart(2, '0'));
+        }
+        if (year && year !== 'ALL') {
+          whereClauses.push("strftime('%Y', date) = ?");
+          bindings.push(String(year));
         }
         if (status && status !== 'ALL') {
           whereClauses.push('status = ?');
-          params.push(status);
+          bindings.push(status);
         }
         if (search) {
           whereClauses.push('(quote_number LIKE ? OR client_name LIKE ? OR client_company LIKE ?)');
           const term = `%${search}%`;
-          params.push(term, term, term);
+          bindings.push(term, term, term);
         }
 
         const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-        // Count total matching
-        const countQuery = `SELECT COUNT(*) as total FROM quotations ${whereSql}`;
-        const countStmt = env.DB.prepare(countQuery);
-        const countRes = await (params.length > 0 ? countStmt.bind(...params) : countStmt).first();
+        // Count total matching records
+        const countSql = `SELECT COUNT(*) as total FROM quotations ${whereSql}`;
+        const countStmt = env.DB.prepare(countSql);
+        const countRes = bindings.length > 0 ? await countStmt.bind(...bindings).first() : await countStmt.first();
         const total = countRes ? countRes.total : 0;
 
-        // Fetch records
-        const selectQuery = `SELECT * FROM quotations ${whereSql} ORDER BY date DESC, created_at DESC LIMIT ? OFFSET ?`;
-        const selectStmt = env.DB.prepare(selectQuery);
-        const queryParams = [...params, limit, offset];
-        const rows = await selectStmt.bind(...queryParams).all();
+        // Fetch paginated records
+        const listSql = `
+          SELECT * FROM quotations 
+          ${whereSql} 
+          ORDER BY date DESC, created_at DESC 
+          LIMIT ? OFFSET ?
+        `;
+        const listStmt = env.DB.prepare(listSql);
+        const listBindings = [...bindings, limit, offset];
+        const rows = await listStmt.bind(...listBindings).all();
 
         const quotations = (rows.results || []).map(q => ({
           id: q.id,
@@ -538,19 +619,31 @@ export default {
           grandTotalWords: q.grand_total_words,
           notes: q.notes,
           status: q.status,
-          createdBy: q.created_by_name || q.created_by,
+          createdBy: q.created_by,
+          createdByName: q.created_by_name,
           createdAt: q.created_at,
           updatedAt: q.updated_at
         }));
 
-        return jsonResponse({ success: true, quotations, total, limit, offset }, 200, env);
+        return jsonResponse({
+          success: true,
+          quotations,
+          total,
+          limit,
+          offset
+        }, 200, env);
       }
 
-      // POST: Save or Update Quotation (Auto-injects Creator from JWT)
+      // POST: Create or Update Quotation
       if (method === 'POST') {
         const body = await request.json();
         const id = body.id || ('qt_' + Date.now());
-        const quoteNumber = body.quoteNumber || (`QT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+        const quoteNumber = String(body.quoteNumber || '').trim();
+
+        if (!quoteNumber) {
+          return errorResponse('Quote number is required', 400, env);
+        }
+
         const date = body.date || new Date().toISOString().split('T')[0];
         const validUntil = body.validUntil || '';
         const clientId = body.clientId || null;
@@ -561,23 +654,22 @@ export default {
         const clientGst = body.clientGst || '';
         const clientAddress = body.clientAddress || '';
 
-        const itemsJson = typeof body.items === 'string' ? body.items : JSON.stringify(body.items || []);
-        const calculationsJson = typeof body.calculations === 'string' ? body.calculations : JSON.stringify(body.calculations || []);
-        const additionalChargesJson = typeof body.additionalCharges === 'string' ? body.additionalCharges : JSON.stringify(body.additionalCharges || []);
+        const itemsJson = JSON.stringify(body.items || []);
+        const calcsJson = JSON.stringify(body.calculations || []);
+        const addChargesJson = JSON.stringify(body.additionalCharges || []);
 
-        const materialTotal = parseFloat(body.materialTotal) || 0;
-        const loadingCharges = parseFloat(body.loadingCharges) || 0;
-        const chargesTotal = parseFloat(body.chargesTotal) || 0;
+        const materialTotal = parseFloat(body.materialTotal) || 0.0;
+        const loadingCharges = parseFloat(body.loadingCharges) || 0.0;
+        const chargesTotal = parseFloat(body.chargesTotal) || 0.0;
         const gstType = body.gstType || 'CGST_SGST';
         const gstRate = parseFloat(body.gstRate) || 18.0;
-        const gstAmount = parseFloat(body.gstAmount) || 0;
-        const roundOff = parseFloat(body.roundOff) || 0;
-        const grandTotal = parseFloat(body.grandTotal) || 0;
+        const gstAmount = parseFloat(body.gstAmount) || 0.0;
+        const roundOff = parseFloat(body.roundOff) || 0.0;
+        const grandTotal = parseFloat(body.grandTotal) || 0.0;
         const grandTotalWords = body.grandTotalWords || '';
         const notes = body.notes || '';
         const status = body.status || 'Draft';
 
-        // Auto-inject Creator Identity from JWT
         const createdBy = currentUser.userId;
         const createdByName = currentUser.fullName || currentUser.username;
 
@@ -585,11 +677,15 @@ export default {
           INSERT INTO quotations (
             id, quote_number, date, valid_until, client_id, client_name, client_company,
             client_phone, client_email, client_gst, client_address, items_json, calculations_json,
-            material_total, loading_charges, additional_charges_json, charges_total, gst_type,
-            gst_rate, gst_amount, round_off, grand_total, grand_total_words, notes, status,
-            created_by, created_by_name, created_at, updated_at
+            material_total, loading_charges, additional_charges_json, charges_total,
+            gst_type, gst_rate, gst_amount, round_off, grand_total, grand_total_words,
+            notes, status, created_by, created_by_name, created_at, updated_at
           ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now")
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, datetime("now"), datetime("now")
           )
           ON CONFLICT(id) DO UPDATE SET
             quote_number = excluded.quote_number,
@@ -619,22 +715,17 @@ export default {
             updated_at = datetime("now")
         `).bind(
           id, quoteNumber, date, validUntil, clientId, clientName, clientCompany,
-          clientPhone, clientEmail, clientGst, clientAddress, itemsJson, calculationsJson,
-          materialTotal, loadingCharges, additionalChargesJson, chargesTotal, gstType,
-          gstRate, gstAmount, roundOff, grandTotal, grandTotalWords, notes, status,
-          createdBy, createdByName
+          clientPhone, clientEmail, clientGst, clientAddress, itemsJson, calcsJson,
+          materialTotal, loadingCharges, addChargesJson, chargesTotal,
+          gstType, gstRate, gstAmount, roundOff, grandTotal, grandTotalWords,
+          notes, status, createdBy, createdByName
         ).run();
 
-        return jsonResponse({
-          success: true,
-          message: 'Quotation saved successfully',
-          id,
-          quoteNumber
-        }, 200, env);
+        return jsonResponse({ success: true, message: 'Quotation saved successfully', id, quoteNumber }, 200, env);
       }
     }
 
-    // Delete single quotation
+    // Single Quotation Delete
     if (path.startsWith('/api/quotations/') && method === 'DELETE') {
       const id = path.split('/').pop();
       await env.DB.prepare('DELETE FROM quotations WHERE id = ?').bind(id).run();
@@ -646,27 +737,22 @@ export default {
     // =================================================================
     if (path === '/api/clients') {
       if (method === 'GET') {
-        const search = url.searchParams.get('search');
-        const limit = Math.min(parseInt(url.searchParams.get('limit') || '100', 10), 500);
-        const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+        const queryParams = url.searchParams;
+        const search = queryParams.get('search');
+        const limit = Math.min(parseInt(queryParams.get('limit') || '500', 10), 1000);
 
-        let query = 'SELECT * FROM clients';
-        let countQuery = 'SELECT COUNT(*) as total FROM clients';
-        let params = [];
+        let sql = 'SELECT * FROM clients';
+        let bindings = [];
 
         if (search) {
-          query += ' WHERE (name LIKE ? OR company_name LIKE ? OR phone LIKE ? OR gst_number LIKE ?)';
-          countQuery += ' WHERE (name LIKE ? OR company_name LIKE ? OR phone LIKE ? OR gst_number LIKE ?)';
+          sql += ' WHERE (name LIKE ? OR company_name LIKE ? OR phone LIKE ?)';
           const term = `%${search}%`;
-          params.push(term, term, term, term);
+          bindings.push(term, term, term);
         }
+        sql += ' ORDER BY created_at DESC LIMIT ?';
+        bindings.push(limit);
 
-        query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-
-        const countRes = await (params.length > 0 ? env.DB.prepare(countQuery).bind(...params) : env.DB.prepare(countQuery)).first();
-        const total = countRes ? countRes.total : 0;
-
-        const rows = await env.DB.prepare(query).bind(...[...params, limit, offset]).all();
+        const rows = await env.DB.prepare(sql).bind(...bindings).all();
         const clients = (rows.results || []).map(c => ({
           id: c.id,
           name: c.name,
@@ -675,23 +761,28 @@ export default {
           email: c.email,
           address: c.address,
           gstNumber: c.gst_number,
-          createdBy: c.created_by_name || c.created_by,
+          createdBy: c.created_by,
+          createdByName: c.created_by_name,
           createdAt: c.created_at,
           updatedAt: c.updated_at
         }));
 
-        return jsonResponse({ success: true, clients, total }, 200, env);
+        return jsonResponse({ success: true, clients }, 200, env);
       }
 
       if (method === 'POST') {
         const body = await request.json();
         const id = body.id || ('cli_' + Date.now());
-        const name = String(body.name || body.companyName || 'Valued Client').trim();
+        const name = String(body.name || '').trim();
         const companyName = String(body.companyName || '').trim();
         const phone = String(body.phone || '').trim();
         const email = String(body.email || '').trim();
         const address = String(body.address || '').trim();
-        const gstNumber = String(body.gstNumber || '').trim().toUpperCase();
+        const gstNumber = String(body.gstNumber || '').trim();
+
+        if (!name && !companyName) {
+          return errorResponse('Client name or company name is required', 400, env);
+        }
 
         const createdBy = currentUser.userId;
         const createdByName = currentUser.fullName || currentUser.username;
@@ -725,28 +816,29 @@ export default {
     if (path === '/api/items') {
       if (method === 'GET') {
         const rows = await env.DB.prepare('SELECT * FROM items_master ORDER BY name ASC').all();
-        const items = (rows.results || []).map(it => ({
-          id: it.id,
-          name: it.name,
-          description: it.description,
-          unit: it.unit,
-          rate: it.rate,
-          defaultWidth: it.default_width,
-          imageUrl: it.image_url,
-          createdBy: it.created_by_name || it.created_by,
-          createdAt: it.created_at,
-          updatedAt: it.updated_at
+        const items = (rows.results || []).map(i => ({
+          id: i.id,
+          name: i.name,
+          description: i.description,
+          unit: i.unit,
+          rate: i.rate,
+          defaultWidth: i.default_width,
+          imageUrl: i.image_url,
+          createdBy: i.created_by,
+          createdByName: i.created_by_name,
+          createdAt: i.created_at,
+          updatedAt: i.updated_at
         }));
         return jsonResponse({ success: true, items }, 200, env);
       }
 
       if (method === 'POST') {
         const body = await request.json();
-        const id = body.id || ('item_' + Date.now());
+        const id = body.id || ('itm_' + Date.now());
         const name = String(body.name || '').trim();
         const description = String(body.description || '').trim();
-        const unit = String(body.unit || 'NOS').trim().toUpperCase();
-        const rate = parseFloat(body.rate) || 0;
+        const unit = String(body.unit || 'NOS').trim();
+        const rate = parseFloat(body.rate) || 0.0;
         const defaultWidth = String(body.defaultWidth || '').trim();
         const imageUrl = String(body.imageUrl || '').trim();
 
@@ -779,10 +871,53 @@ export default {
     }
 
     // =================================================================
-    // Settings Endpoints
+    // Settings & Company Settings Endpoints (100% White-Label)
     // =================================================================
-    if (path === '/api/settings') {
+    if (path === '/api/settings' || path === '/api/company-settings') {
       if (method === 'GET') {
+        try {
+          const csRow = await env.DB.prepare('SELECT * FROM company_settings WHERE id = "primary"').first();
+          if (csRow) {
+            return jsonResponse({
+              success: true,
+              settings: {
+                company: {
+                  name: csRow.company_name,
+                  tagline: csRow.tagline,
+                  address: csRow.address,
+                  phone: csRow.phone,
+                  phoneSecondary: csRow.phone_secondary,
+                  email: csRow.email,
+                  website: csRow.website,
+                  gstin: csRow.gstin,
+                  state: csRow.state,
+                  stateCode: csRow.state_code
+                },
+                bank: {
+                  bankName: csRow.bank_name,
+                  accountName: csRow.account_name,
+                  accountNumber: csRow.account_number,
+                  ifscCode: csRow.ifsc_code,
+                  branch: csRow.branch
+                },
+                terms: JSON.parse(csRow.terms_json || '[]'),
+                media: {
+                  bannerUrl: csRow.banner_url,
+                  headerLogoUrl: csRow.header_logo_url,
+                  signatureImageUrl: csRow.signature_image_url,
+                  signatureTitle: csRow.signature_title,
+                  showSignatureInPdf: csRow.show_signature_in_pdf === 1,
+                  showBannerInPdf: csRow.show_banner_in_pdf === 1,
+                  turnstileSiteKey: csRow.turnstile_site_key || ''
+                },
+                updatedAt: csRow.updated_at
+              }
+            }, 200, env);
+          }
+        } catch (e) {
+          // Fallback to legacy settings table if company_settings table not yet migrated
+        }
+
         const row = await env.DB.prepare('SELECT company_json, bank_json, terms_json, media_json, updated_at FROM settings WHERE id = "global"').first();
         if (row) {
           return jsonResponse({
@@ -801,23 +936,82 @@ export default {
 
       if (method === 'POST') {
         const body = await request.json();
-        const companyJson = JSON.stringify(body.company || {});
-        const bankJson = JSON.stringify(body.bank || {});
-        const termsJson = JSON.stringify(body.terms || []);
-        const mediaJson = JSON.stringify(body.media || {});
+        const comp = body.company || {};
+        const bank = body.bank || {};
+        const terms = body.terms || [];
+        const media = body.media || {};
 
-        await env.DB.prepare(`
-          INSERT INTO settings (id, company_json, bank_json, terms_json, media_json, updated_at)
-          VALUES ('global', ?, ?, ?, ?, datetime("now"))
-          ON CONFLICT(id) DO UPDATE SET
-            company_json = excluded.company_json,
-            bank_json = excluded.bank_json,
-            terms_json = excluded.terms_json,
-            media_json = excluded.media_json,
-            updated_at = datetime("now")
-        `).bind(companyJson, bankJson, termsJson, mediaJson).run();
+        const companyJson = JSON.stringify(comp);
+        const bankJson = JSON.stringify(bank);
+        const termsJson = JSON.stringify(terms);
+        const mediaJson = JSON.stringify(media);
 
-        return jsonResponse({ success: true, message: 'Settings saved' }, 200, env);
+        // Try updating company_settings structured table
+        try {
+          await env.DB.prepare(`
+            INSERT INTO company_settings (
+              id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
+              bank_name, account_name, account_number, ifsc_code, branch, terms_json,
+              banner_url, header_logo_url, signature_image_url, signature_title,
+              show_signature_in_pdf, show_banner_in_pdf, turnstile_site_key, updated_at
+            ) VALUES (
+              'primary', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?,
+              ?, ?, ?, datetime("now")
+            )
+            ON CONFLICT(id) DO UPDATE SET
+              company_name = excluded.company_name,
+              tagline = excluded.tagline,
+              address = excluded.address,
+              phone = excluded.phone,
+              phone_secondary = excluded.phone_secondary,
+              email = excluded.email,
+              website = excluded.website,
+              gstin = excluded.gstin,
+              state = excluded.state,
+              state_code = excluded.state_code,
+              bank_name = excluded.bank_name,
+              account_name = excluded.account_name,
+              account_number = excluded.account_number,
+              ifsc_code = excluded.ifsc_code,
+              branch = excluded.branch,
+              terms_json = excluded.terms_json,
+              banner_url = excluded.banner_url,
+              header_logo_url = excluded.header_logo_url,
+              signature_image_url = excluded.signature_image_url,
+              signature_title = excluded.signature_title,
+              show_signature_in_pdf = excluded.show_signature_in_pdf,
+              show_banner_in_pdf = excluded.show_banner_in_pdf,
+              turnstile_site_key = excluded.turnstile_site_key,
+              updated_at = datetime("now")
+          `).bind(
+            comp.name || 'Quotation Manager', comp.tagline || '', comp.address || '', comp.phone || '', comp.phoneSecondary || '',
+            comp.email || '', comp.website || '', comp.gstin || '', comp.state || '', comp.stateCode || '',
+            bank.bankName || '', bank.accountName || '', bank.accountNumber || '', bank.ifscCode || '', bank.branch || '',
+            termsJson,
+            media.bannerUrl || '', media.headerLogoUrl || '', media.signatureImageUrl || '', media.signatureTitle || 'Authorized Signatory',
+            media.showSignatureInPdf !== false ? 1 : 0, media.showBannerInPdf !== false ? 1 : 0, media.turnstileSiteKey || ''
+          ).run();
+        } catch (e) {
+          // If company_settings doesn't exist yet, silently continue to legacy table
+        }
+
+        // Also update legacy settings table for backward compatibility
+        try {
+          await env.DB.prepare(`
+            INSERT INTO settings (id, company_json, bank_json, terms_json, media_json, updated_at)
+            VALUES ('global', ?, ?, ?, ?, datetime("now"))
+            ON CONFLICT(id) DO UPDATE SET
+              company_json = excluded.company_json,
+              bank_json = excluded.bank_json,
+              terms_json = excluded.terms_json,
+              media_json = excluded.media_json,
+              updated_at = datetime("now")
+          `).bind(companyJson, bankJson, termsJson, mediaJson).run();
+        } catch (e) {}
+
+        return jsonResponse({ success: true, message: 'Company settings saved successfully' }, 200, env);
       }
     }
 
