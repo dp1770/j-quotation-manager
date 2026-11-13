@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; connect-src 'self' https: data: blob: wss:; frame-src 'self' https: data: blob:; img-src 'self' https: data: blob:; font-src 'self' https: data:;" />
   <title>Quotation Manager - Professional Quotation System</title>
   
   <!-- PWA & Mobile Web Meta -->
@@ -45,10 +46,22 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <!-- Cloudflare Turnstile Captcha (Free Bot Protection) -->
+  <script>
+    window.turnstileResponse = '';
+    window.onTurnstileSuccess = function(token) {
+      window.turnstileResponse = token || '';
+    };
+    window.onTurnstileExpired = function() {
+      window.turnstileResponse = '';
+    };
+    window.onTurnstileError = function() {
+      window.turnstileResponse = '';
+    };
+  </script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
   <!-- Custom Styles & Print Stylesheet -->
-  <link rel="stylesheet" href="css/custom.css?v=3.5.5" />
+  <link rel="stylesheet" href="css/custom.css?v=3.5.6" />
 </head>
 <body class="bg-slate-100 text-slate-900 font-sans min-h-screen flex flex-col antialiased selection:bg-blue-900 selection:text-white">
 
@@ -847,7 +860,7 @@
 
         <!-- Cloudflare Turnstile Captcha Widget Container -->
         <div id="login-turnstile-wrapper" class="my-2 flex flex-col items-center justify-center min-h-[65px]">
-          <div class="cf-turnstile" data-sitekey="0x4AAAAAAF_JrYnpZJeO07cJ" data-callback="onTurnstileSuccess" data-theme="light"></div>
+          <div class="cf-turnstile" data-sitekey="0x4AAAAAAF_JrYnpZJeO07cJ" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileError" data-theme="light"></div>
         </div>
 
         <button type="submit" id="btn-login-submit" class="w-full py-3 bg-blue-900 hover:bg-blue-800 text-white font-black rounded-xl text-xs sm:text-sm shadow-lg hover:shadow-xl transition-all uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-2">
@@ -1533,20 +1546,20 @@
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
 
   <!-- Application Core Scripts -->
-  <script src="js/default-data.js?v=3.5.5"></script>
-  <script src="js/calculations.js?v=3.5.5"></script>
-  <script src="js/storage.js?v=3.5.5"></script>
-  <script src="js/auth.js?v=3.5.5"></script>
-  <script src="js/csv-helper.js?v=3.5.5"></script>
-  <script src="js/pdf-generator.js?v=3.5.5"></script>
-  <script src="js/app.js?v=3.5.5"></script>
+  <script src="js/default-data.js?v=3.5.6"></script>
+  <script src="js/calculations.js?v=3.5.6"></script>
+  <script src="js/storage.js?v=3.5.6"></script>
+  <script src="js/auth.js?v=3.5.6"></script>
+  <script src="js/csv-helper.js?v=3.5.6"></script>
+  <script src="js/pdf-generator.js?v=3.5.6"></script>
+  <script src="js/app.js?v=3.5.6"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {
         regs.forEach(reg => reg.update());
       });
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('[PWA] Service Worker controller updated to v3.5.5');
+        console.log('[PWA] Service Worker controller updated to v3.5.6');
       });
     }
   </script>

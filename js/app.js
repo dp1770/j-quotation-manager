@@ -202,6 +202,10 @@ const App = {
           alertBox.classList.remove('hidden');
           alertBox.className = 'text-xs p-3 rounded-xl mb-4 font-semibold bg-rose-50 text-rose-800 border border-rose-200';
         }
+        if (window.turnstile && typeof window.turnstile.reset === 'function') {
+          try { window.turnstile.reset(); } catch (e) {}
+        }
+        window.turnstileResponse = '';
         this.showToast(res.message || 'Login failed', 'error');
       }
     } catch (err) {
@@ -210,6 +214,10 @@ const App = {
         alertBox.classList.remove('hidden');
         alertBox.className = 'text-xs p-3 rounded-xl mb-4 font-semibold bg-rose-50 text-rose-800 border border-rose-200';
       }
+      if (window.turnstile && typeof window.turnstile.reset === 'function') {
+        try { window.turnstile.reset(); } catch (e) {}
+      }
+      window.turnstileResponse = '';
     } finally {
       if (btn) {
         btn.disabled = false;

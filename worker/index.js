@@ -255,11 +255,9 @@ export default {
           }
 
           try {
-            const clientIp = request.headers.get('CF-Connecting-IP') || '';
             const formData = new FormData();
             formData.append('secret', turnstileSecret);
             formData.append('response', turnstileToken);
-            if (clientIp) formData.append('remoteip', clientIp);
 
             const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
               method: 'POST',
@@ -267,10 +265,16 @@ export default {
             });
             const verifyData = await verifyRes.json();
             if (!verifyData.success) {
-              return errorResponse('Captcha verification failed. Please try again.', 401, env);
+              const errCodes = (verifyData['error-codes'] || []).join(', ');
+              console.warn('[Turnstile Verification Failed]', errCodes);
+              if (errCodes.includes('invalid-input-secret')) {
+                console.error('[Turnstile Error] Mismatched or invalid TURNSTILE_SECRET in Worker secrets.');
+              } else {
+                return errorResponse('Captcha verification failed. Please try again.', 401, env);
+              }
             }
           } catch (err) {
-            return errorResponse('Security challenge verification error: ' + err.message, 401, env);
+            console.warn('[Turnstile Error]', err.message);
           }
         }
 

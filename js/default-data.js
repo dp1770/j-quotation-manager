@@ -43,7 +43,7 @@ const DEFAULT_SETTINGS = {
     ]
   },
   integration: {
-    workerUrl: 'https://j-quotation-manager.pansuriyadhaval7.workers.dev',
+    workerUrl: '',
     autoSync: true,
     lastSyncTime: null
   }

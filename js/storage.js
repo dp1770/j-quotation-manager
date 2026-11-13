@@ -88,7 +88,10 @@ const StorageManager = {
     if (custom && custom.startsWith('http')) {
       return custom.replace(/\/+$/, '');
     }
-    return 'https://j-quotation-manager.pansuriyadhaval7.workers.dev';
+    if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
+      return window.location.origin;
+    }
+    return '';
   },
 
   setApiUrl(url) {
