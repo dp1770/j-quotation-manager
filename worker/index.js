@@ -484,14 +484,17 @@ export default {
           return errorResponse('Username is required', 400, env);
         }
 
+        const existing = await env.DB.prepare('SELECT id, password_hash FROM users WHERE id = ? OR username = ?').bind(id, username).first();
+
         let passHash = null;
         if (body.password) {
+          if (String(body.password).length < 6) {
+            return errorResponse('Password must be at least 6 characters long', 400, env);
+          }
           passHash = await sha256(body.password);
         } else if (body.passwordHash) {
           passHash = body.passwordHash;
         }
-
-        const existing = await env.DB.prepare('SELECT id, password_hash FROM users WHERE id = ? OR username = ?').bind(id, username).first();
 
         if (existing) {
           const finalHash = passHash || existing.password_hash;
@@ -502,7 +505,7 @@ export default {
           `).bind(fullName, role, isSuper, permsJson, finalHash, existing.id).run();
         } else {
           if (!passHash) {
-            return errorResponse('Password is required for new user', 400, env);
+            return errorResponse('Password is required and must be at least 6 characters long', 400, env);
           }
           await env.DB.prepare(`
             INSERT INTO users (id, username, password_hash, full_name, role, is_super_admin, permissions_json, created_at, updated_at)

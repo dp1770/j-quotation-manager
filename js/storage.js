@@ -512,11 +512,30 @@ const StorageManager = {
     return true;
   },
 
+  // Safe guard: Always false in pure Cloudflare web application
+  isElectron() {
+    return false;
+  },
+
   // -------------------------------------------------------------
   // Users Management (Super Admin via Worker API)
   // -------------------------------------------------------------
   getUsers() {
     return this._users;
+  },
+
+  saveUser(userData) {
+    if (!userData) return;
+    const idx = this._users.findIndex(u => u.id === userData.id || (userData.username && u.username === userData.username));
+    if (idx >= 0) {
+      this._users[idx] = { ...this._users[idx], ...userData };
+    } else {
+      this._users.push(userData);
+    }
+  },
+
+  deleteUser(id) {
+    this._users = this._users.filter(u => u.id !== id);
   },
 
   async fetchUsersFromCloud() {

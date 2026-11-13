@@ -99,6 +99,22 @@ const AuthManager = {
   },
 
   /**
+   * Securely hash a plain text password using browser Web Crypto SHA-256
+   */
+  async hashPassword(str) {
+    if (!str) return '';
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(str);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) {
+      console.warn('[AuthManager] Web Crypto SHA-256 fallback warning:', e);
+      return str;
+    }
+  },
+
+  /**
    * Authenticate with Cloudflare Worker API.
    * On success: stores JWT in sessionStorage and sets up the active session.
    */
@@ -264,7 +280,7 @@ const AuthManager = {
 
   getUsers() {
     if (!window.StorageManager) return [this.DEFAULT_SUPER_ADMIN];
-    const users = StorageManager.getUsers();
+    const users = [...(StorageManager.getUsers() || [])];
     if (!users.some(u => u.isSuperAdmin || u.role === 'Super Admin')) {
       users.unshift(this.DEFAULT_SUPER_ADMIN);
     }
@@ -281,25 +297,21 @@ const AuthManager = {
 
     // Push to Cloudflare Worker API if online
     if (apiUrl && token && navigator.onLine) {
-      try {
-        const response = await fetch(`${apiUrl}/api/users`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(userData)
-        });
-        const res = await response.json();
-        if (!response.ok || !res.success) {
-          throw new Error(res.error || 'Failed to save user in Cloudflare D1');
-        }
-      } catch (err) {
-        console.warn('[AuthManager] Remote user save warning:', err);
+      const response = await fetch(`${apiUrl}/api/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(userData)
+      });
+      const res = await response.json().catch(() => ({}));
+      if (!response.ok || !res.success) {
+        throw new Error(res.error || res.message || 'Failed to save user in Cloudflare D1');
       }
     }
 
-    // Save to local storage cache
+    // Save to local storage cache / in-memory
     if (window.StorageManager) {
       StorageManager.saveUser(userData);
     }
@@ -315,17 +327,13 @@ const AuthManager = {
     const apiUrl = (window.StorageManager && StorageManager.getApiUrl()) || '';
 
     if (apiUrl && token && navigator.onLine) {
-      try {
-        const response = await fetch(`${apiUrl}/api/users/${userId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const res = await response.json();
-        if (!response.ok || !res.success) {
-          throw new Error(res.error || 'Failed to delete user in Cloudflare D1');
-        }
-      } catch (err) {
-        console.warn('[AuthManager] Remote delete user warning:', err);
+      const response = await fetch(`${apiUrl}/api/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const res = await response.json().catch(() => ({}));
+      if (!response.ok || !res.success) {
+        throw new Error(res.error || res.message || 'Failed to delete user in Cloudflare D1');
       }
     }
 

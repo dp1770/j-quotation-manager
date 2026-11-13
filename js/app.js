@@ -24,7 +24,6 @@ const App = {
     } catch (e) {
       console.warn('[App] StorageManager.init error:', e);
     }
-    this.initDesktopFeatures();
     this.registerServiceWorker();
     this.initSyncStatusListener();
     this.setupEventListeners();
@@ -477,6 +476,27 @@ const App = {
     const role = document.getElementById('edit-user-role')?.value || 'Sub-Admin';
     const password = document.getElementById('edit-user-password')?.value || '';
 
+    if (!username.trim()) {
+      this.showToast('Username is required.', 'error');
+      document.getElementById('edit-user-username')?.focus();
+      return;
+    }
+
+    // Strict Password Validation (Min 6 Characters)
+    if (!id) {
+      if (!password || password.length < 6) {
+        this.showToast('Password must be at least 6 characters long.', 'error');
+        document.getElementById('edit-user-password')?.focus();
+        return;
+      }
+    } else {
+      if (password && password.length < 6) {
+        this.showToast('Password must be at least 6 characters long.', 'error');
+        document.getElementById('edit-user-password')?.focus();
+        return;
+      }
+    }
+
     const permissions = {
       canManageClients: !!document.getElementById('perm-manage-clients')?.checked,
       canCreateQuotations: !!document.getElementById('perm-create-quotes')?.checked,
@@ -495,11 +515,9 @@ const App = {
     };
 
     if (password) {
+      userData.password = password;
       userData.passwordHash = await AuthManager.hashPassword(password);
-    } else if (!id) {
-      this.showToast('Password is required for new sub-admins.', 'error');
-      return;
-    } else {
+    } else if (id) {
       const existing = AuthManager.getUsers().find(u => u.id === id);
       if (existing && existing.passwordHash) {
         userData.passwordHash = existing.passwordHash;
@@ -508,74 +526,25 @@ const App = {
 
     try {
       await AuthManager.saveUser(userData);
+      await StorageManager.pullAllFromCloud();
       this.showToast('Sub-admin saved successfully!', 'success');
       this.closeUserEditorModal();
       this.renderUsersList();
     } catch (err) {
-      this.showToast(err.message, 'error');
+      this.showToast(err.message || 'Error saving user', 'error');
     }
   },
 
-  deleteUser(userId) {
+  async deleteUser(userId) {
     if (confirm('Are you sure you want to delete this sub-admin account?')) {
       try {
-        AuthManager.deleteUser(userId);
+        await AuthManager.deleteUser(userId);
+        await StorageManager.pullAllFromCloud();
         this.showToast('Sub-admin account deleted.', 'info');
         this.renderUsersList();
       } catch (err) {
-        this.showToast(err.message, 'error');
+        this.showToast(err.message || 'Error deleting user', 'error');
       }
-    }
-  },
-
-  // -------------------------------------------------------------
-  // Electron Desktop Architecture & Runtime Helpers
-  // -------------------------------------------------------------
-  async initDesktopFeatures() {
-    if (!StorageManager.isElectron()) {
-      const badge = document.getElementById('app-environment-badge');
-      if (badge) {
-        badge.innerText = 'Web / PWA Mode';
-        badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700';
-      }
-      return;
-    }
-
-    try {
-      // In standalone Electron desktop app: hide PWA install button from navbar
-      const pwaBtn = document.getElementById('btn-pwa-install');
-      if (pwaBtn) pwaBtn.style.display = 'none';
-
-      const info = await window.electronAPI.getAppInfo();
-      console.log('[App] Electron Desktop Info:', info);
-
-      const envBadge = document.getElementById('app-environment-badge');
-      if (envBadge) {
-        const platformLabel = info.platform === 'darwin' ? 'macOS Desktop' : (info.platform === 'win32' ? 'Windows Desktop' : 'Desktop App');
-        envBadge.innerText = platformLabel;
-        envBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300';
-      }
-
-      const verDisplay = document.getElementById('app-version-display');
-      if (verDisplay && info.version) {
-        verDisplay.innerText = 'v' + info.version;
-      }
-
-      const bundleStatus = document.getElementById('app-bundle-status');
-      const rollbackBtn = document.getElementById('btn-rollback-assets');
-      if (bundleStatus) {
-        if (info.isCustomBundle) {
-          bundleStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Custom Dynamic Bundle Active';
-          bundleStatus.className = 'font-bold text-emerald-800 flex items-center gap-1.5';
-          if (rollbackBtn) rollbackBtn.classList.remove('hidden');
-        } else {
-          bundleStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-blue-600"></span> Factory Packaged Assets';
-          bundleStatus.className = 'font-bold text-slate-800 flex items-center gap-1.5';
-          if (rollbackBtn) rollbackBtn.classList.add('hidden');
-        }
-      }
-    } catch (err) {
-      console.warn('[App] Error initializing desktop features:', err);
     }
   },
 
