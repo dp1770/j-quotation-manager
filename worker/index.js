@@ -288,8 +288,8 @@ export default {
         let authenticatedUser = null;
 
         if (userRow) {
-          const storedHash = String(userRow.password_hash);
-          const isMatch = (storedHash === passHash || (await sha256(storedHash)) === passHash || storedHash === rawPass);
+          const storedHash = String(userRow.password_hash || '').trim().toLowerCase();
+          const isMatch = (storedHash === passHash.toLowerCase());
 
           if (isMatch) {
             let perms = {};
@@ -1061,9 +1061,9 @@ export default {
       }
 
       try {
-        const quotesRes = await env.DB.prepare('SELECT * FROM quotations ORDER BY date DESC, created_at DESC').all();
-        const clientsRes = await env.DB.prepare('SELECT * FROM clients ORDER BY created_at DESC').all();
-        const itemsRes = await env.DB.prepare('SELECT * FROM items_master ORDER BY name ASC').all();
+        const quotesRes = await env.DB.prepare('SELECT * FROM quotations ORDER BY date DESC, created_at DESC LIMIT 5000').all();
+        const clientsRes = await env.DB.prepare('SELECT * FROM clients ORDER BY created_at DESC LIMIT 5000').all();
+        const itemsRes = await env.DB.prepare('SELECT * FROM items_master ORDER BY name ASC LIMIT 5000').all();
         const csRow = await env.DB.prepare('SELECT * FROM company_settings WHERE id = "primary"').first().catch(() => null);
         const sRow = await env.DB.prepare('SELECT * FROM settings WHERE id = "global"').first().catch(() => null);
         const usersRes = await env.DB.prepare('SELECT id, username, full_name, role, is_super_admin, permissions_json, created_at, updated_at FROM users').all().catch(() => ({ results: [] }));
@@ -1112,8 +1112,9 @@ export default {
         let importedQuotations = 0;
         let importedClients = 0;
         let importedItems = 0;
+        const statements = [];
 
-        // 1. Import Clients
+        // 1. Prepare Clients statements
         const clientsList = Array.isArray(data.clients) ? data.clients : [];
         for (const c of clientsList) {
           const id = c.id || ('cli_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
@@ -1128,7 +1129,7 @@ export default {
           const createdByName = c.created_by_name || c.createdByName || currentUser.fullName;
           const createdAt = c.created_at || c.createdAt || new Date().toISOString();
 
-          await env.DB.prepare(`
+          statements.push(env.DB.prepare(`
             INSERT INTO clients (id, name, company_name, phone, email, address, gst_number, created_by, created_by_name, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))
             ON CONFLICT(id) DO UPDATE SET
@@ -1139,11 +1140,11 @@ export default {
               address = excluded.address,
               gst_number = excluded.gst_number,
               updated_at = datetime("now")
-          `).bind(id, name, companyName, phone, email, address, gstNumber, createdBy, createdByName, createdAt).run();
+          `).bind(id, name, companyName, phone, email, address, gstNumber, createdBy, createdByName, createdAt));
           importedClients++;
         }
 
-        // 2. Import Items Master
+        // 2. Prepare Items Master statements
         const itemsList = Array.isArray(data.items) ? data.items : (Array.isArray(data.items_master) ? data.items_master : []);
         for (const it of itemsList) {
           const id = it.id || ('item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
@@ -1158,7 +1159,7 @@ export default {
           const createdByName = it.created_by_name || it.createdByName || currentUser.fullName;
           const createdAt = it.created_at || it.createdAt || new Date().toISOString();
 
-          await env.DB.prepare(`
+          statements.push(env.DB.prepare(`
             INSERT INTO items_master (id, name, description, unit, rate, default_width, image_url, created_by, created_by_name, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))
             ON CONFLICT(id) DO UPDATE SET
@@ -1169,11 +1170,11 @@ export default {
               default_width = excluded.default_width,
               image_url = excluded.image_url,
               updated_at = datetime("now")
-          `).bind(id, name, desc, unit, rate, String(defaultWidth), imageUrl, createdBy, createdByName, createdAt).run();
+          `).bind(id, name, desc, unit, rate, String(defaultWidth), imageUrl, createdBy, createdByName, createdAt));
           importedItems++;
         }
 
-        // 3. Import Quotations
+        // 3. Prepare Quotations statements
         const quotesList = Array.isArray(data.quotations) ? data.quotations : [];
         for (const q of quotesList) {
           const id = q.id || ('qt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
@@ -1209,7 +1210,7 @@ export default {
           const createdByName = q.created_by_name || q.createdByName || currentUser.fullName;
           const createdAt = q.created_at || q.createdAt || new Date().toISOString();
 
-          await env.DB.prepare(`
+          statements.push(env.DB.prepare(`
             INSERT INTO quotations (
               id, quote_number, date, valid_until, client_id, client_name, client_company,
               client_phone, client_email, client_gst, client_address,
@@ -1258,14 +1259,14 @@ export default {
             addChargesJson, chargesTotal, gstType, gstRate, gstAmount,
             roundOff, grandTotal, grandTotalWords, notes, status,
             createdBy, createdByName, createdAt
-          ).run();
+          ));
           importedQuotations++;
         }
 
-        // 4. Import Company Settings if present
+        // 4. Prepare Company Settings statement if present
         if (data.companySettings || data.company_settings) {
           const cs = data.companySettings || data.company_settings;
-          await env.DB.prepare(`
+          statements.push(env.DB.prepare(`
             INSERT INTO company_settings (
               id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
               bank_name, account_name, account_number, ifsc_code, branch, terms_json,
@@ -1326,7 +1327,16 @@ export default {
             cs.show_signature_in_pdf !== undefined ? (cs.show_signature_in_pdf ? 1 : 0) : 1,
             cs.show_banner_in_pdf !== undefined ? (cs.show_banner_in_pdf ? 1 : 0) : 1,
             cs.turnstile_site_key || cs.turnstileSiteKey || ''
-          ).run();
+          ));
+        }
+
+        // Execute all collected statements in atomic D1 batches (chunks of 50)
+        const BATCH_SIZE = 50;
+        for (let i = 0; i < statements.length; i += BATCH_SIZE) {
+          const chunk = statements.slice(i, i + BATCH_SIZE);
+          if (chunk.length > 0) {
+            await env.DB.batch(chunk);
+          }
         }
 
         return jsonResponse({

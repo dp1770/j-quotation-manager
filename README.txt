@@ -7,17 +7,15 @@ This application runs natively on the 100% Cloudflare Ecosystem
 (Cloudflare Workers + Cloudflare D1 Database + Cloudflare Turnstile).
 
 ------------------------------------------------------------------------
-LOCAL SERVER LAUNCH (WINDOWS / LINUX / MAC)
+LOCAL DEVELOPMENT
 ------------------------------------------------------------------------
 
-1. WINDOWS:
-   Double-click "start.bat" to start the portable local server.
-   Your default browser will open to:
-   http://localhost:8000
+1. Start local dev server with Wrangler:
+   npm run dev
+   (or: npx wrangler dev)
 
-2. LINUX / MAC:
-   Run:
-   python3 server.py
+2. Run automated test suite:
+   npm test
 
 ------------------------------------------------------------------------
 CLOUDFLARE DEPLOYMENT

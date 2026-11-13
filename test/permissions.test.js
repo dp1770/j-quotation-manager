@@ -50,6 +50,9 @@ function createMockEnv(overrides = {}) {
             };
           }
         };
+      },
+      async batch(stmts) {
+        return stmts.map(() => ({ success: true }));
       }
     },
     ...overrides
@@ -219,4 +222,89 @@ test('POST /api/settings: Sub-admin without canManageSettings is forbidden (403)
   assert.equal(res.status, 403);
   const body = await res.json();
   assert.match(body.error, /do not have permission to modify settings/i);
+});
+
+test('POST /api/backup/import: Executes batch import of quotations, clients, and items', async () => {
+  let batchCalls = 0;
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  const customEnv = createMockEnv({
+    DB: {
+      prepare() {
+        return {
+          bind() {
+            return { sql: 'mock-statement' };
+          }
+        };
+      },
+      async batch(stmts) {
+        batchCalls++;
+        return stmts.map(() => ({ success: true }));
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/backup/import', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      clients: [{ id: 'c1', name: 'Client 1' }],
+      items: [{ id: 'i1', name: 'Item 1' }],
+      quotations: [{ id: 'q1', quoteNumber: 'QT-1' }]
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.equal(body.counts.quotations, 1);
+  assert.equal(body.counts.clients, 1);
+  assert.equal(body.counts.items, 1);
+  assert.ok(batchCalls >= 1, 'env.DB.batch must be called');
+});
+
+test('POST /api/auth/login: Rejects unhashed plaintext stored password', async () => {
+  const customEnv = createMockEnv({
+    DB: {
+      prepare() {
+        return {
+          bind() {
+            return {
+              async first() {
+                // User row where password_hash was stored in plaintext as 'plainPass123'
+                return {
+                  id: 'u1',
+                  username: 'insecure_user',
+                  password_hash: 'plainPass123',
+                  full_name: 'Test Insecure',
+                  role: 'Sub-Admin',
+                  is_super_admin: 0,
+                  permissions_json: '{}'
+                };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'insecure_user', password: 'plainPass123' })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 401);
+  const body = await res.json();
+  assert.match(body.error, /invalid username or password/i);
 });
