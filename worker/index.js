@@ -161,13 +161,25 @@ export default {
     const path = url.pathname;
     const method = request.method;
 
-    // 2. Health Check & Root Info
+    // 2. Static Assets Handler (Serves Frontend UI: HTML, JS, CSS, PWA assets)
+    if (!path.startsWith('/api') && path !== '/health' && env.ASSETS) {
+      try {
+        const assetResponse = await env.ASSETS.fetch(request);
+        if (assetResponse.status !== 404) {
+          return assetResponse;
+        }
+      } catch (e) {
+        // Fall through to API handlers if assets error
+      }
+    }
+
+    // 3. Health Check & Root Info
     if (path === '/' || path === '/api/health' || path === '/health') {
       return jsonResponse({
         status: 'online',
         service: 'Quotation Manager Cloudflare D1 API',
         environment: 'Cloudflare Workers & D1',
-        message: 'Quotation Manager API is operational. Access the web app frontend via Cloudflare Pages.',
+        message: 'Quotation Manager API is operational.',
         time: new Date().toISOString()
       }, 200, env);
     }
