@@ -490,35 +490,90 @@ const PdfGenerator = {
     }
   },
 
+  _isPrinting: false,
+
   printQuotation(quote, settings) {
+    // 1. Guard against rapid duplicate clicks (Debounce Lock)
+    if (this._isPrinting) {
+      console.warn('[PdfGenerator] Print already in progress, ignoring duplicate call');
+      return;
+    }
+    this._isPrinting = true;
+
     const contentHtml = this.generateQuotationHtml(quote, settings);
 
-    // 1. Also update #printable-area in main DOM as fallback and unhide it
-    const printArea = document.getElementById('printable-area');
-    if (printArea) {
-      printArea.innerHTML = contentHtml;
-      printArea.classList.remove('hidden');
-      printArea.classList.add('block');
+    // 2. Remove any leftover iframe before creating a new one
+    const oldFrame = document.getElementById('print-isolation-frame');
+    if (oldFrame) {
+      try { oldFrame.remove(); } catch (e) {}
     }
 
-    // 2. High-reliability Iframe-based Print Isolation
-    try {
-      let iframe = document.getElementById('print-isolation-frame');
-      if (iframe) {
-        iframe.remove();
+    // 3. Create isolated hidden iframe
+    const iframe = document.createElement('iframe');
+    iframe.id = 'print-isolation-frame';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    iframe.style.visibility = 'hidden';
+    iframe.style.pointerEvents = 'none';
+    document.body.appendChild(iframe);
+
+    let hasTriggered = false;
+    let isCleanedUp = false;
+
+    // 4. Strict cleanup function that immediately destroys the iframe and ensures no ghost DOM remains
+    const cleanup = () => {
+      if (isCleanedUp) return;
+      isCleanedUp = true;
+      this._isPrinting = false;
+
+      try {
+        const frame = document.getElementById('print-isolation-frame');
+        if (frame && frame.parentNode) {
+          frame.parentNode.removeChild(frame);
+        }
+      } catch (err) {
+        console.warn('[PdfGenerator] Error removing print iframe:', err);
       }
 
-      iframe = document.createElement('iframe');
-      iframe.id = 'print-isolation-frame';
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      iframe.style.visibility = 'hidden';
-      document.body.appendChild(iframe);
+      // Ensure printable-area in main body is never left visible
+      const printArea = document.getElementById('printable-area');
+      if (printArea) {
+        printArea.innerHTML = '';
+        printArea.classList.add('hidden');
+        printArea.classList.remove('block');
+      }
+    };
 
+    // 5. Trigger print exactly once and wire up afterprint listener
+    const triggerPrint = () => {
+      if (hasTriggered) return;
+      hasTriggered = true;
+
+      try {
+        if (iframe && iframe.contentWindow) {
+          // Listen for afterprint on both the iframe window and parent window
+          iframe.contentWindow.addEventListener('afterprint', cleanup, { once: true });
+          window.addEventListener('afterprint', cleanup, { once: true });
+
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } else {
+          cleanup();
+        }
+      } catch (printErr) {
+        console.warn('[PdfGenerator] Iframe print error:', printErr);
+        cleanup();
+      }
+
+      // Safety timeout: If browser does not dispatch afterprint (e.g. cancelled immediately), cleanup
+      setTimeout(cleanup, 1200);
+    };
+
+    try {
       const doc = iframe.contentWindow.document;
       doc.open();
       doc.write(`<!DOCTYPE html>
@@ -577,42 +632,17 @@ const PdfGenerator = {
 </html>`);
       doc.close();
 
-      const triggerPrint = () => {
-        try {
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
-        } catch (printErr) {
-          console.warn('[PdfGenerator] Iframe print fallback to window.print():', printErr);
-          window.print();
-        } finally {
-          setTimeout(() => {
-            if (iframe && iframe.parentNode) {
-              iframe.parentNode.removeChild(iframe);
-            }
-            if (printArea) {
-              printArea.classList.add('hidden');
-              printArea.classList.remove('block');
-            }
-          }, 30000);
-        }
-      };
-
-      // Check if tailwind or DOM is ready
+      // Trigger print once ready (single-fire only)
       if (iframe.contentWindow.tailwind) {
         setTimeout(triggerPrint, 150);
       } else {
-        iframe.onload = () => setTimeout(triggerPrint, 200);
-        setTimeout(triggerPrint, 400);
+        iframe.onload = () => setTimeout(triggerPrint, 180);
+        // Fallback safety if onload doesn't fire
+        setTimeout(triggerPrint, 350);
       }
     } catch (iframeErr) {
-      console.warn('[PdfGenerator] Iframe setup error, falling back to window.print():', iframeErr);
-      window.print();
-      if (printArea) {
-        setTimeout(() => {
-          printArea.classList.add('hidden');
-          printArea.classList.remove('block');
-        }, 3000);
-      }
+      console.warn('[PdfGenerator] Iframe setup error, fallback to window.print():', iframeErr);
+      cleanup();
     }
   },
 

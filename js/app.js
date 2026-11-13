@@ -2064,12 +2064,26 @@ const App = {
       container.innerHTML = html;
       previewModal.classList.remove('hidden');
 
-      document.getElementById('btn-modal-print').onclick = () => {
-        PdfGenerator.printQuotation(quote, settings);
-      };
-      document.getElementById('btn-modal-download').onclick = () => {
-        PdfGenerator.downloadPdf(quote, settings);
-      };
+      const printBtn = document.getElementById('btn-modal-print');
+      if (printBtn) {
+        printBtn.onclick = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+          PdfGenerator.printQuotation(quote, settings);
+        };
+      }
+      const downloadBtn = document.getElementById('btn-modal-download');
+      if (downloadBtn) {
+        downloadBtn.onclick = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+          PdfGenerator.downloadPdf(quote, settings);
+        };
+      }
     }
   },
 
