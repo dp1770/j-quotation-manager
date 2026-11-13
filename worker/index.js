@@ -316,8 +316,7 @@ export default {
           }
         } else {
           // Fresh Database Fallback (allows initial Super Admin setup)
-          const isDefaultAdmin = (username === 'admin' && (passHash === 'a679cb086580f4949ad453e00bb982d1598f804791522f7c088ef577ef3724ff' || rawPass === 'admin@2026')) ||
-                                 (username === 'jalaram' && (passHash === 'd9bc47a5fad6ba64112f7d87a4ec566caff796e1032793ee9a18ad0202482126' || rawPass === 'jalaram@2026'));
+          const isDefaultAdmin = (username === 'admin' && (passHash === 'a679cb086580f4949ad453e00bb982d1598f804791522f7c088ef577ef3724ff' || rawPass === 'admin@2026'));
           if (isDefaultAdmin) {
             authenticatedUser = {
               id: 'user_super_admin_' + username,
@@ -1012,6 +1011,297 @@ export default {
         } catch (e) {}
 
         return jsonResponse({ success: true, message: 'Company settings saved successfully' }, 200, env);
+      }
+    }
+
+    // =================================================================
+    // Cloudflare D1 Database Backup & Restore (Super Admin Only)
+    // =================================================================
+    if (path === '/api/backup/export' && method === 'GET') {
+      if (!isSuperAdmin && !currentUser.permissions?.canBackupDatabase) {
+        return errorResponse('Access denied: Only Super Admin can export database backups', 403, env);
+      }
+
+      try {
+        const quotesRes = await env.DB.prepare('SELECT * FROM quotations ORDER BY date DESC, created_at DESC').all();
+        const clientsRes = await env.DB.prepare('SELECT * FROM clients ORDER BY created_at DESC').all();
+        const itemsRes = await env.DB.prepare('SELECT * FROM items_master ORDER BY name ASC').all();
+        const csRow = await env.DB.prepare('SELECT * FROM company_settings WHERE id = "primary"').first().catch(() => null);
+        const sRow = await env.DB.prepare('SELECT * FROM settings WHERE id = "global"').first().catch(() => null);
+        const usersRes = await env.DB.prepare('SELECT id, username, full_name, role, is_super_admin, permissions_json, created_at, updated_at FROM users').all().catch(() => ({ results: [] }));
+
+        const backupData = {
+          version: '2.0.0',
+          exportedAt: new Date().toISOString(),
+          exportedBy: currentUser.username,
+          service: 'Cloudflare D1 Database Export',
+          counts: {
+            quotations: quotesRes.results ? quotesRes.results.length : 0,
+            clients: clientsRes.results ? clientsRes.results.length : 0,
+            items: itemsRes.results ? itemsRes.results.length : 0,
+            users: usersRes.results ? usersRes.results.length : 0
+          },
+          companySettings: csRow || null,
+          settings: sRow || null,
+          quotations: quotesRes.results || [],
+          clients: clientsRes.results || [],
+          items: itemsRes.results || [],
+          users: usersRes.results || []
+        };
+
+        return new Response(JSON.stringify(backupData, null, 2), {
+          status: 200,
+          headers: {
+            ...corsHeaders(env),
+            'Content-Type': 'application/json',
+            'Content-Disposition': `attachment; filename="quotation_backup_${new Date().toISOString().split('T')[0]}.json"`
+          }
+        });
+      } catch (err) {
+        return errorResponse(`Database export failed: ${err.message}`, 500, env);
+      }
+    }
+
+    if (path === '/api/backup/import' && method === 'POST') {
+      if (!isSuperAdmin && !currentUser.permissions?.canBackupDatabase) {
+        return errorResponse('Access denied: Only Super Admin can import database backups', 403, env);
+      }
+
+      try {
+        const body = await request.json();
+        const data = body.data || body;
+
+        let importedQuotations = 0;
+        let importedClients = 0;
+        let importedItems = 0;
+
+        // 1. Import Clients
+        const clientsList = Array.isArray(data.clients) ? data.clients : [];
+        for (const c of clientsList) {
+          const id = c.id || ('cli_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
+          const name = String(c.name || '').trim();
+          if (!name) continue;
+          const companyName = c.company_name || c.companyName || '';
+          const phone = c.phone || '';
+          const email = c.email || '';
+          const address = c.address || '';
+          const gstNumber = c.gst_number || c.gstNumber || '';
+          const createdBy = c.created_by || c.createdBy || currentUser.userId;
+          const createdByName = c.created_by_name || c.createdByName || currentUser.fullName;
+          const createdAt = c.created_at || c.createdAt || new Date().toISOString();
+
+          await env.DB.prepare(`
+            INSERT INTO clients (id, name, company_name, phone, email, address, gst_number, created_by, created_by_name, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))
+            ON CONFLICT(id) DO UPDATE SET
+              name = excluded.name,
+              company_name = excluded.company_name,
+              phone = excluded.phone,
+              email = excluded.email,
+              address = excluded.address,
+              gst_number = excluded.gst_number,
+              updated_at = datetime("now")
+          `).bind(id, name, companyName, phone, email, address, gstNumber, createdBy, createdByName, createdAt).run();
+          importedClients++;
+        }
+
+        // 2. Import Items Master
+        const itemsList = Array.isArray(data.items) ? data.items : (Array.isArray(data.items_master) ? data.items_master : []);
+        for (const it of itemsList) {
+          const id = it.id || ('item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
+          const name = String(it.name || '').trim();
+          if (!name) continue;
+          const desc = it.description || '';
+          const unit = it.unit || 'NOS';
+          const rate = parseFloat(it.rate) || 0;
+          const defaultWidth = it.default_width || it.defaultWidth || '3.50';
+          const imageUrl = it.image_url || it.imageUrl || '';
+          const createdBy = it.created_by || it.createdBy || currentUser.userId;
+          const createdByName = it.created_by_name || it.createdByName || currentUser.fullName;
+          const createdAt = it.created_at || it.createdAt || new Date().toISOString();
+
+          await env.DB.prepare(`
+            INSERT INTO items_master (id, name, description, unit, rate, default_width, image_url, created_by, created_by_name, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))
+            ON CONFLICT(id) DO UPDATE SET
+              name = excluded.name,
+              description = excluded.description,
+              unit = excluded.unit,
+              rate = excluded.rate,
+              default_width = excluded.default_width,
+              image_url = excluded.image_url,
+              updated_at = datetime("now")
+          `).bind(id, name, desc, unit, rate, String(defaultWidth), imageUrl, createdBy, createdByName, createdAt).run();
+          importedItems++;
+        }
+
+        // 3. Import Quotations
+        const quotesList = Array.isArray(data.quotations) ? data.quotations : [];
+        for (const q of quotesList) {
+          const id = q.id || ('qt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
+          const quoteNumber = q.quote_number || q.quoteNumber || '';
+          if (!quoteNumber) continue;
+
+          const date = q.date || new Date().toISOString().split('T')[0];
+          const validUntil = q.valid_until || q.validUntil || '';
+          const clientId = q.client_id || q.clientId || null;
+          const clientName = q.client_name || q.clientName || 'Valued Customer';
+          const clientCompany = q.client_company || q.clientCompany || '';
+          const clientPhone = q.client_phone || q.clientPhone || '';
+          const clientEmail = q.client_email || q.clientEmail || '';
+          const clientGst = q.client_gst || q.clientGst || '';
+          const clientAddress = q.client_address || q.clientAddress || '';
+
+          const itemsJson = typeof q.items_json === 'string' ? q.items_json : JSON.stringify(q.items || []);
+          const calcsJson = typeof q.calculations_json === 'string' ? q.calculations_json : JSON.stringify(q.calculations || []);
+          const addChargesJson = typeof q.additional_charges_json === 'string' ? q.additional_charges_json : JSON.stringify(q.additionalCharges || []);
+
+          const materialTotal = parseFloat(q.material_total !== undefined ? q.material_total : q.materialTotal) || 0;
+          const loadingCharges = parseFloat(q.loading_charges !== undefined ? q.loading_charges : q.loadingCharges) || 0;
+          const chargesTotal = parseFloat(q.charges_total !== undefined ? q.charges_total : q.chargesTotal) || 0;
+          const gstType = q.gst_type || q.gstType || 'CGST_SGST';
+          const gstRate = parseFloat(q.gst_rate !== undefined ? q.gst_rate : q.gstRate) || 18.0;
+          const gstAmount = parseFloat(q.gst_amount !== undefined ? q.gst_amount : q.gstAmount) || 0;
+          const roundOff = parseFloat(q.round_off !== undefined ? q.round_off : q.roundOff) || 0;
+          const grandTotal = parseFloat(q.grand_total !== undefined ? q.grand_total : q.grandTotal) || 0;
+          const grandTotalWords = q.grand_total_words || q.grandTotalWords || '';
+          const notes = q.notes || '';
+          const status = q.status || 'Draft';
+          const createdBy = q.created_by || q.createdBy || currentUser.userId;
+          const createdByName = q.created_by_name || q.createdByName || currentUser.fullName;
+          const createdAt = q.created_at || q.createdAt || new Date().toISOString();
+
+          await env.DB.prepare(`
+            INSERT INTO quotations (
+              id, quote_number, date, valid_until, client_id, client_name, client_company,
+              client_phone, client_email, client_gst, client_address,
+              items_json, calculations_json, material_total, loading_charges,
+              additional_charges_json, charges_total, gst_type, gst_rate, gst_amount,
+              round_off, grand_total, grand_total_words, notes, status,
+              created_by, created_by_name, created_at, updated_at
+            ) VALUES (
+              ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?,
+              ?, ?, ?, ?,
+              ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?,
+              ?, ?, ?, datetime("now")
+            )
+            ON CONFLICT(id) DO UPDATE SET
+              quote_number = excluded.quote_number,
+              date = excluded.date,
+              valid_until = excluded.valid_until,
+              client_id = excluded.client_id,
+              client_name = excluded.client_name,
+              client_company = excluded.client_company,
+              client_phone = excluded.client_phone,
+              client_email = excluded.client_email,
+              client_gst = excluded.client_gst,
+              client_address = excluded.client_address,
+              items_json = excluded.items_json,
+              calculations_json = excluded.calculations_json,
+              material_total = excluded.material_total,
+              loading_charges = excluded.loading_charges,
+              additional_charges_json = excluded.additional_charges_json,
+              charges_total = excluded.charges_total,
+              gst_type = excluded.gst_type,
+              gst_rate = excluded.gst_rate,
+              gst_amount = excluded.gst_amount,
+              round_off = excluded.round_off,
+              grand_total = excluded.grand_total,
+              grand_total_words = excluded.grand_total_words,
+              notes = excluded.notes,
+              status = excluded.status,
+              updated_at = datetime("now")
+          `).bind(
+            id, quoteNumber, date, validUntil, clientId, clientName, clientCompany,
+            clientPhone, clientEmail, clientGst, clientAddress,
+            itemsJson, calcsJson, materialTotal, loadingCharges,
+            addChargesJson, chargesTotal, gstType, gstRate, gstAmount,
+            roundOff, grandTotal, grandTotalWords, notes, status,
+            createdBy, createdByName, createdAt
+          ).run();
+          importedQuotations++;
+        }
+
+        // 4. Import Company Settings if present
+        if (data.companySettings || data.company_settings) {
+          const cs = data.companySettings || data.company_settings;
+          await env.DB.prepare(`
+            INSERT INTO company_settings (
+              id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
+              bank_name, account_name, account_number, ifsc_code, branch, terms_json,
+              banner_url, header_logo_url, signature_image_url, signature_title,
+              show_signature_in_pdf, show_banner_in_pdf, turnstile_site_key, updated_at
+            ) VALUES (
+              'primary', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?,
+              ?, ?, ?, datetime("now")
+            )
+            ON CONFLICT(id) DO UPDATE SET
+              company_name = excluded.company_name,
+              tagline = excluded.tagline,
+              address = excluded.address,
+              phone = excluded.phone,
+              phone_secondary = excluded.phone_secondary,
+              email = excluded.email,
+              website = excluded.website,
+              gstin = excluded.gstin,
+              state = excluded.state,
+              state_code = excluded.state_code,
+              bank_name = excluded.bank_name,
+              account_name = excluded.account_name,
+              account_number = excluded.account_number,
+              ifsc_code = excluded.ifsc_code,
+              branch = excluded.branch,
+              terms_json = excluded.terms_json,
+              banner_url = excluded.banner_url,
+              header_logo_url = excluded.header_logo_url,
+              signature_image_url = excluded.signature_image_url,
+              signature_title = excluded.signature_title,
+              show_signature_in_pdf = excluded.show_signature_in_pdf,
+              show_banner_in_pdf = excluded.show_banner_in_pdf,
+              turnstile_site_key = excluded.turnstile_site_key,
+              updated_at = datetime("now")
+          `).bind(
+            cs.company_name || cs.companyName || 'Quotation Manager',
+            cs.tagline || '',
+            cs.address || '',
+            cs.phone || '',
+            cs.phone_secondary || cs.phoneSecondary || '',
+            cs.email || '',
+            cs.website || '',
+            cs.gstin || '',
+            cs.state || '',
+            cs.state_code || cs.stateCode || '',
+            cs.bank_name || cs.bankName || '',
+            cs.account_name || cs.accountName || '',
+            cs.account_number || cs.accountNumber || '',
+            cs.ifsc_code || cs.ifscCode || '',
+            cs.branch || '',
+            typeof cs.terms_json === 'string' ? cs.terms_json : JSON.stringify(cs.terms || []),
+            cs.banner_url || cs.bannerUrl || '',
+            cs.header_logo_url || cs.headerLogoUrl || '',
+            cs.signature_image_url || cs.signatureImageUrl || '',
+            cs.signature_title || cs.signatureTitle || 'Authorized Signatory',
+            cs.show_signature_in_pdf !== undefined ? (cs.show_signature_in_pdf ? 1 : 0) : 1,
+            cs.show_banner_in_pdf !== undefined ? (cs.show_banner_in_pdf ? 1 : 0) : 1,
+            cs.turnstile_site_key || cs.turnstileSiteKey || ''
+          ).run();
+        }
+
+        return jsonResponse({
+          success: true,
+          message: `Cloudflare D1 database successfully restored! (${importedQuotations} quotations, ${importedClients} clients, ${importedItems} items imported)`,
+          counts: {
+            quotations: importedQuotations,
+            clients: importedClients,
+            items: importedItems
+          }
+        }, 200, env);
+      } catch (err) {
+        return errorResponse(`Database import failed: ${err.message}`, 500, env);
       }
     }
 

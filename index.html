@@ -697,6 +697,31 @@
           </div>
         </div>
 
+        <!-- Cloudflare D1 Database Backup & Restore System (Super Admin Only) -->
+        <div id="settings-db-backup-card" class="lg:col-span-2 bg-gradient-to-r from-slate-900 to-blue-950 p-6 rounded-2xl border border-slate-800 shadow-md text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-400 text-blue-950 font-black text-[10px] uppercase tracking-wider">CLOUDFLARE D1 BACKUP</span>
+              <h4 class="text-sm sm:text-base font-black text-white uppercase tracking-wide">D1 Cloud Database Backup &amp; Restore</h4>
+            </div>
+            <p class="text-xs text-blue-200">
+              Export all Quotations, Clients, Item Master catalog, and business settings from Cloudflare D1 into a <code class="bg-blue-900/80 px-2 py-0.5 rounded font-mono text-amber-300 font-bold">quotation_backup.json</code> file.
+            </p>
+            <p class="text-[11px] text-slate-400">
+              Direct cloud sync: Restores and merges data securely into your Cloudflare D1 database (Super Admin only).
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button type="button" onclick="App.handleDatabaseBackupExport()" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-blue-950 rounded-xl text-xs font-black shadow-md transition-all flex items-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-cloud-arrow-down text-sm"></i> <span>Export Database (JSON)</span>
+            </button>
+            <label class="px-4 py-2.5 bg-blue-800/80 hover:bg-blue-700 text-white rounded-xl text-xs font-bold border border-blue-600/50 shadow-md transition-all flex items-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-cloud-arrow-up text-sm text-sky-300"></i> <span>Import Database (JSON)</span>
+              <input type="file" id="db-restore-file-input" accept=".json" class="hidden" onchange="App.handleDatabaseBackupImport(event)" />
+            </label>
+          </div>
+        </div>
+
         <!-- Account Security & Change Password -->
         <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div class="flex items-center justify-between border-b border-slate-200 pb-3">
@@ -827,7 +852,7 @@
 
         <!-- Cloudflare Turnstile Captcha Widget Container -->
         <div id="login-turnstile-wrapper" class="my-2 flex flex-col items-center justify-center min-h-[65px]">
-          <div class="cf-turnstile" data-sitekey="YOUR_CLOUDFLARE_TURNSTILE_SITE_KEY" data-callback="onTurnstileSuccess" data-theme="light"></div>
+          <div class="cf-turnstile" data-sitekey="0x4AAAAAAF_JrdLfl_Um8sEScZ4r-XtEN3o" data-callback="onTurnstileSuccess" data-theme="light"></div>
         </div>
 
         <button type="submit" id="btn-login-submit" class="w-full py-3 bg-blue-900 hover:bg-blue-800 text-white font-black rounded-xl text-xs sm:text-sm shadow-lg hover:shadow-xl transition-all uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-2">

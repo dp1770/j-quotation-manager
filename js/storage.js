@@ -576,6 +576,62 @@ const StorageManager = {
     }
   },
 
+  // -------------------------------------------------------------
+  // Cloudflare D1 Full Database Backup & Restore Handlers
+  // -------------------------------------------------------------
+  async exportBackup() {
+    if (!navigator.onLine) {
+      throw new Error('No Internet Connection - Please check your network');
+    }
+    const res = await this.fetchWithAuth('/api/backup/export');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Export failed with HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `quotation_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return { success: true, message: 'Cloud database exported successfully!' };
+  },
+
+  async importBackup(jsonStringOrObject) {
+    if (!navigator.onLine) {
+      throw new Error('No Internet Connection - Please check your network');
+    }
+    let payload;
+    if (typeof jsonStringOrObject === 'string') {
+      try {
+        payload = JSON.parse(jsonStringOrObject);
+      } catch (e) {
+        throw new Error('Invalid JSON format in backup file');
+      }
+    } else {
+      payload = jsonStringOrObject;
+    }
+
+    const res = await this.fetchWithAuth('/api/backup/import', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Import failed with HTTP ${res.status}`);
+    }
+
+    const result = await res.json();
+    // Refresh memory cache from Cloudflare D1
+    await this.pullAllFromCloud();
+    return result;
+  },
+
   async testBackendConnection(url) {
     const targetUrl = (url || this.getApiUrl() || '').trim();
     const endpoint = targetUrl ? `${targetUrl.replace(/\/+$/, '')}/api/health` : '/api/health';

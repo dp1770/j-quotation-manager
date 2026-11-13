@@ -580,6 +580,59 @@ const App = {
   },
 
   // -------------------------------------------------------------
+  // Full Cloudflare D1 Database Backup & Restore Handlers
+  // -------------------------------------------------------------
+  async handleDatabaseBackupExport() {
+    if (!AuthManager.isSuperAdmin() && !AuthManager.hasPermission('canBackupDatabase')) {
+      this.showToast('Permission denied: Only Super Admin can export database backups.', 'error');
+      return;
+    }
+    try {
+      this.showToast('Preparing Cloudflare D1 database export...', 'info');
+      const res = await StorageManager.exportBackup();
+      this.showToast(res.message || 'Database exported successfully!', 'success');
+    } catch (err) {
+      this.showToast('Export failed: ' + (err.message || err), 'error');
+    }
+  },
+
+  async handleDatabaseBackupImport(event) {
+    if (!AuthManager.isSuperAdmin() && !AuthManager.hasPermission('canBackupDatabase')) {
+      this.showToast('Permission denied: Only Super Admin can import database backups.', 'error');
+      if (event?.target) event.target.value = '';
+      return;
+    }
+
+    const file = event?.target?.files && event.target.files[0];
+    if (!file) return;
+
+    if (!confirm('Warning: Restoring this backup will update and merge records in your Cloudflare D1 database. Continue?')) {
+      if (event.target) event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        this.showToast('Uploading & restoring database into Cloudflare D1...', 'info');
+        const content = e.target.result;
+        const res = await StorageManager.importBackup(content);
+        if (res && res.success) {
+          alert(res.message || 'Database restored successfully to Cloudflare D1!');
+          this.renderActiveTab();
+        } else {
+          alert(res?.error || 'Database restore failed.');
+        }
+      } catch (err) {
+        alert('Failed restoring database: ' + (err.message || err));
+      } finally {
+        if (event?.target) event.target.value = '';
+      }
+    };
+    reader.readAsText(file);
+  },
+
+  // -------------------------------------------------------------
   // Navigation & Tab Switching
   // -------------------------------------------------------------
   switchTab(tabName) {
@@ -2494,6 +2547,15 @@ const App = {
 
     this.renderSettingsTerms(settings.terms || []);
     this.renderSettingsBanners(settings.media);
+
+    const backupCard = document.getElementById('settings-db-backup-card');
+    if (backupCard) {
+      if (AuthManager.isSuperAdmin() || AuthManager.hasPermission('canBackupDatabase')) {
+        backupCard.classList.remove('hidden');
+      } else {
+        backupCard.classList.add('hidden');
+      }
+    }
   },
 
   handleSignatureUpload(event) {
