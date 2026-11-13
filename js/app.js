@@ -17,6 +17,7 @@ const App = {
   itemsPageSize: 15,
   pendingClientCsvData: null,
   pendingItemCsvData: null,
+  turnstileWidgetId: null,
 
   async init() {
     try {
@@ -38,7 +39,7 @@ const App = {
   async refreshCloudDataInBackground() {
     if (!AuthManager.isAuthenticated()) return;
     try {
-      console.log('[App] Refreshing live data from Cloudflare D1...');
+      console.log('[App] Refreshing live data from server...');
       const res = await StorageManager.pullAllFromCloud();
       this.renderActiveTab();
       if (!res.success && res.offline) {
@@ -51,11 +52,11 @@ const App = {
   },
 
   async refreshDataLive() {
-    this.showToast('Connecting to Cloudflare D1...', 'info');
+    this.showToast('Connecting to server...', 'info');
     const res = await StorageManager.pullAllFromCloud();
     this.renderActiveTab();
     if (res.success) {
-      this.showToast('Connected to Cloudflare D1!', 'success');
+      this.showToast('Connected to database!', 'success');
     } else {
       this.showToast('No Internet Connection - Please check your network', 'error');
     }
@@ -103,7 +104,7 @@ const App = {
         badge.innerHTML = `<i class="fa-solid fa-rotate fa-spin text-blue-600"></i> <span class="hidden sm:inline">Syncing...</span>`;
         badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200';
       } else if (statusInfo.status === 'online') {
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> <span class="hidden sm:inline">Cloudflare D1 Synced</span>`;
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> <span class="hidden sm:inline">Database Synced</span>`;
         badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200';
       } else {
         badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span> <span class="hidden sm:inline">Local Cache Active</span>`;
@@ -154,9 +155,50 @@ const App = {
       modal.classList.remove('hidden');
       const userInput = document.getElementById('login-username-input');
       if (userInput) setTimeout(() => userInput.focus(), 100);
+      this.renderTurnstileWidget();
     } else {
       modal.classList.add('hidden');
+      this.cleanupTurnstileWidget();
     }
+  },
+
+  renderTurnstileWidget() {
+    const wrapper = document.getElementById('login-turnstile-wrapper');
+    if (!wrapper) return;
+    if (window.turnstile && typeof window.turnstile.render === 'function') {
+      if (this.turnstileWidgetId !== null) {
+        try { window.turnstile.remove(this.turnstileWidgetId); } catch (e) {}
+        this.turnstileWidgetId = null;
+      }
+      wrapper.innerHTML = '';
+      try {
+        this.turnstileWidgetId = window.turnstile.render(wrapper, {
+          sitekey: '0x4AAAAAAF_JrYnpZJeO07cJ',
+          theme: 'light',
+          callback: (token) => {
+            window.turnstileResponse = token || '';
+          },
+          'expired-callback': () => {
+            window.turnstileResponse = '';
+          },
+          'error-callback': () => {
+            window.turnstileResponse = '';
+          }
+        });
+      } catch (e) {
+        console.warn('[App] Turnstile render note:', e);
+      }
+    }
+  },
+
+  cleanupTurnstileWidget() {
+    if (this.turnstileWidgetId !== null && window.turnstile && typeof window.turnstile.remove === 'function') {
+      try { window.turnstile.remove(this.turnstileWidgetId); } catch (e) {}
+      this.turnstileWidgetId = null;
+    }
+    const wrapper = document.getElementById('login-turnstile-wrapper');
+    if (wrapper) wrapper.innerHTML = '';
+    window.turnstileResponse = '';
   },
 
   async handleLoginSubmit(e) {
@@ -277,6 +319,19 @@ const App = {
       } else {
         usersTabBtn.classList.add('hidden');
         if (this.currentTab === 'users') {
+          this.switchTab('dashboard');
+        }
+      }
+    }
+
+    // Nav Settings tab: only visible if user has canManageSettings
+    const settingsTabBtn = document.getElementById('nav-btn-settings');
+    if (settingsTabBtn) {
+      if (AuthManager.canManageSettings()) {
+        settingsTabBtn.classList.remove('hidden');
+      } else {
+        settingsTabBtn.classList.add('hidden');
+        if (this.currentTab === 'settings') {
           this.switchTab('dashboard');
         }
       }
@@ -557,7 +612,7 @@ const App = {
   },
 
   // -------------------------------------------------------------
-  // Full Cloudflare D1 Database Backup & Restore Handlers
+  // Database Backup & Restore Handlers
   // -------------------------------------------------------------
   async handleDatabaseBackupExport() {
     if (!AuthManager.isSuperAdmin() && !AuthManager.hasPermission('canBackupDatabase')) {
@@ -565,7 +620,7 @@ const App = {
       return;
     }
     try {
-      this.showToast('Preparing Cloudflare D1 database export...', 'info');
+      this.showToast('Preparing database export...', 'info');
       const res = await StorageManager.exportBackup();
       this.showToast(res.message || 'Database exported successfully!', 'success');
     } catch (err) {
@@ -583,7 +638,7 @@ const App = {
     const file = event?.target?.files && event.target.files[0];
     if (!file) return;
 
-    if (!confirm('Warning: Restoring this backup will update and merge records in your Cloudflare D1 database. Continue?')) {
+    if (!confirm('Warning: Restoring this backup will update and merge records in your database. Continue?')) {
       if (event.target) event.target.value = '';
       return;
     }
@@ -591,11 +646,11 @@ const App = {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        this.showToast('Uploading & restoring database into Cloudflare D1...', 'info');
+        this.showToast('Uploading & restoring database...', 'info');
         const content = e.target.result;
         const res = await StorageManager.importBackup(content);
         if (res && res.success) {
-          alert(res.message || 'Database restored successfully to Cloudflare D1!');
+          alert(res.message || 'Database restored successfully!');
           this.renderActiveTab();
         } else {
           alert(res?.error || 'Database restore failed.');
@@ -613,6 +668,13 @@ const App = {
   // Navigation & Tab Switching
   // -------------------------------------------------------------
   switchTab(tabName) {
+    if (tabName === 'users' && !AuthManager.isSuperAdmin()) {
+      tabName = 'dashboard';
+    }
+    if (tabName === 'settings' && !AuthManager.canManageSettings()) {
+      this.showToast('Permission denied: You do not have permission to access Settings.', 'error');
+      tabName = 'dashboard';
+    }
     this.currentTab = tabName;
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
       const t = btn.getAttribute('data-tab');
@@ -710,7 +772,7 @@ const App = {
           <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
             <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
             <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
-            <p class="text-xs text-rose-600 mt-1 mb-3">Live connection to Cloudflare D1 is required.</p>
+            <p class="text-xs text-rose-600 mt-1 mb-3">Live connection to server is required.</p>
             <button onclick="App.refreshDataLive()" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition">
               <i class="fa-solid fa-rotate-right mr-1"></i> Retry Connection
             </button>
@@ -824,7 +886,7 @@ const App = {
         <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
           <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
           <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
-          <p class="text-xs text-rose-600 mt-1 mb-3">Cannot load quotations without an active Cloudflare D1 connection.</p>
+          <p class="text-xs text-rose-600 mt-1 mb-3">Cannot load quotations without an active server connection.</p>
           <button onclick="App.refreshDataLive()" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition">
             <i class="fa-solid fa-rotate-right mr-1"></i> Retry Connection
           </button>
@@ -850,6 +912,8 @@ const App = {
     const paginated = filtered.slice(startIdx, endIdx);
 
     const canDelete = AuthManager.canDeleteQuotes();
+    const canEdit = AuthManager.canEditQuotes();
+    const canCreate = AuthManager.canCreateQuotations();
 
     tbody.innerHTML = paginated.map(q => {
       let statusColor = 'bg-slate-100 text-slate-700';
@@ -883,12 +947,16 @@ const App = {
               <button onclick="App.openPrintPreview('${q.id}')" class="p-1.5 text-blue-700 hover:bg-blue-50 rounded" title="View / Print PDF">
                 <i class="fa-solid fa-file-pdf text-sm"></i>
               </button>
+              ${canEdit ? `
               <button onclick="App.editQuotation('${q.id}')" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Edit Quote">
                 <i class="fa-solid fa-pen-to-square text-sm"></i>
               </button>
+              ` : ''}
+              ${canCreate ? `
               <button onclick="App.duplicateQuote('${q.id}')" class="p-1.5 text-purple-600 hover:bg-purple-50 rounded" title="Duplicate Quote">
                 <i class="fa-solid fa-copy text-sm"></i>
               </button>
+              ` : ''}
               ${canDelete ? `
                 <button onclick="App.deleteQuote('${q.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Quote">
                   <i class="fa-solid fa-trash-can text-sm"></i>
@@ -970,7 +1038,7 @@ const App = {
         <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
           <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
           <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
-          <p class="text-xs text-rose-600 mt-1 mb-3">Cannot load Item Master without an active Cloudflare D1 connection.</p>
+          <p class="text-xs text-rose-600 mt-1 mb-3">Cannot load Item Master without an active server connection.</p>
           <button onclick="App.refreshDataLive()" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition">
             <i class="fa-solid fa-rotate-right mr-1"></i> Retry Connection
           </button>
@@ -979,6 +1047,9 @@ const App = {
       if (paginationBar) paginationBar.innerHTML = '';
       return;
     }
+
+    const canManageItems = AuthManager.canManageItems();
+    const canDeleteRecords = AuthManager.canDeleteQuotes();
 
     const totalRecords = filtered.length;
     const totalPages = Math.max(1, Math.ceil(totalRecords / this.itemsPageSize));
@@ -1024,12 +1095,17 @@ const App = {
           </span>
         </td>
         <td class="py-2.5 px-3 text-right space-x-1">
-          <button onclick="App.openItemModal('${it.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Item">
-            <i class="fa-solid fa-pen-to-square"></i>
-          </button>
-          <button onclick="App.deleteItem('${it.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Item">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
+          ${canManageItems ? `
+            <button onclick="App.openItemModal('${it.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Item">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+          ` : ''}
+          ${canDeleteRecords ? `
+            <button onclick="App.deleteItem('${it.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Item">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          ` : ''}
+          ${!canManageItems && !canDeleteRecords ? `<span class="text-[11px] text-slate-400 font-medium">Read-Only</span>` : ''}
         </td>
       </tr>
     `).join('');
@@ -1051,6 +1127,10 @@ const App = {
   },
 
   openItemModal(itemId = null) {
+    if (!AuthManager.canManageItems()) {
+      this.showToast('Permission denied: You cannot manage items.', 'error');
+      return;
+    }
     const modal = document.getElementById('item-modal');
     if (!modal) return;
 
@@ -1134,7 +1214,7 @@ const App = {
   },
 
   async deleteItem(itemId) {
-    if (!AuthManager.hasPermission('canManageItems') && !AuthManager.isSuperAdmin()) {
+    if (!AuthManager.canDeleteQuotes() && !AuthManager.canManageItems()) {
       this.showToast('Permission denied: You cannot delete items.', 'error');
       return;
     }
@@ -1153,6 +1233,10 @@ const App = {
   // Quotation Editor (Create & Edit)
   // -------------------------------------------------------------
   createNewQuotation() {
+    if (!AuthManager.canCreateQuotations()) {
+      this.showToast('Permission denied: You cannot create quotations.', 'error');
+      return;
+    }
     const nextNo = StorageManager.generateNextQuoteNumber();
     const today = new Date().toISOString().split('T')[0];
     const exp = new Date();
@@ -1215,6 +1299,10 @@ const App = {
   },
 
   editQuotation(id) {
+    if (!AuthManager.canEditQuotes()) {
+      this.showToast('Permission denied: You cannot edit quotations.', 'error');
+      return;
+    }
     console.log('[App] Opening editQuotation for ID:', id);
     const quote = StorageManager.getQuotationById(id);
     if (!quote) {
@@ -1227,6 +1315,10 @@ const App = {
   },
 
   duplicateQuote(id) {
+    if (!AuthManager.canCreateQuotations()) {
+      this.showToast('Permission denied: You cannot create quotations.', 'error');
+      return;
+    }
     const copy = StorageManager.duplicateQuotation(id);
     if (copy) {
       this.showToast(`Quotation duplicated as ${copy.quoteNumber}`, 'success');
@@ -2113,7 +2205,7 @@ const App = {
         <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
           <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
           <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
-          <p class="text-xs text-rose-600 mt-1 mb-3">Cannot load clients without an active Cloudflare D1 connection.</p>
+          <p class="text-xs text-rose-600 mt-1 mb-3">Cannot load clients without an active server connection.</p>
           <button onclick="App.refreshDataLive()" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition">
             <i class="fa-solid fa-rotate-right mr-1"></i> Retry Connection
           </button>
@@ -2122,6 +2214,9 @@ const App = {
       if (paginationBar) paginationBar.innerHTML = '';
       return;
     }
+
+    const canManageClients = AuthManager.canManageClients();
+    const canDeleteRecords = AuthManager.canDeleteQuotes();
 
     const totalRecords = filtered.length;
     const totalPages = Math.max(1, Math.ceil(totalRecords / this.clientsPageSize));
@@ -2155,12 +2250,17 @@ const App = {
           </span>
         </td>
         <td class="py-3 px-3 text-right space-x-1">
-          <button onclick="App.openClientModal('${c.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Client">
-            <i class="fa-solid fa-pen-to-square"></i>
-          </button>
-          <button onclick="App.deleteClient('${c.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Client">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
+          ${canManageClients ? `
+            <button onclick="App.openClientModal('${c.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Client">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+          ` : ''}
+          ${canDeleteRecords ? `
+            <button onclick="App.deleteClient('${c.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Client">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          ` : ''}
+          ${!canManageClients && !canDeleteRecords ? `<span class="text-[11px] text-slate-400 font-medium">Read-Only</span>` : ''}
         </td>
       </tr>
     `).join('');
@@ -2302,6 +2402,10 @@ const App = {
   },
 
   openClientCsvImportModal() {
+    if (!AuthManager.canManageClients()) {
+      this.showToast('Permission denied: You cannot manage clients.', 'error');
+      return;
+    }
     this.pendingClientCsvData = null;
     const fileInp = document.getElementById('client-csv-file-input');
     if (fileInp) fileInp.value = '';
@@ -2363,10 +2467,14 @@ const App = {
     const saved = StorageManager.bulkSaveClients(this.pendingClientCsvData);
     this.closeClientCsvImportModal();
     this.renderClientsList();
-    this.showToast(`Successfully imported ${saved.length} clients to local database!`, 'success');
+    this.showToast(`Successfully imported ${saved.length} clients!`, 'success');
   },
 
   openItemCsvImportModal() {
+    if (!AuthManager.canManageItems()) {
+      this.showToast('Permission denied: You cannot manage items.', 'error');
+      return;
+    }
     this.pendingItemCsvData = null;
     const fileInp = document.getElementById('item-csv-file-input');
     if (fileInp) fileInp.value = '';
@@ -2432,6 +2540,10 @@ const App = {
   },
 
   openClientModal(clientId = null) {
+    if (!AuthManager.canManageClients()) {
+      this.showToast('Permission denied: You cannot manage clients.', 'error');
+      return;
+    }
     const modal = document.getElementById('client-modal');
     if (!modal) return;
 
@@ -2489,7 +2601,7 @@ const App = {
   },
 
   async deleteClient(clientId) {
-    if (!AuthManager.canManageClients()) {
+    if (!AuthManager.canDeleteQuotes() && !AuthManager.canManageClients()) {
       this.showToast('Permission denied: You cannot delete clients.', 'error');
       return;
     }
@@ -2690,7 +2802,7 @@ const App = {
 
     try {
       await StorageManager.saveSettings(settings);
-      this.showToast('Settings saved successfully to Cloudflare D1!', 'success');
+      this.showToast('Settings saved successfully!', 'success');
     } catch (err) {
       this.showToast(err.message || 'No Internet Connection - Unable to save settings', 'error');
     }

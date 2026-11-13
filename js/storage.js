@@ -62,7 +62,7 @@ const StorageManager = {
     window.addEventListener('online', () => {
       this._isOffline = false;
       this._lastError = null;
-      this.notifySyncStatus('online', 'Connected to Cloudflare D1');
+      this.notifySyncStatus('online', 'Connected to database');
       if (window.App && typeof App.refreshCloudDataInBackground === 'function') {
         App.refreshCloudDataInBackground();
       }
@@ -190,7 +190,7 @@ const StorageManager = {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || `Failed to save settings: HTTP ${res.status}`);
     }
-    this.notifySyncStatus('online', 'Settings saved to Cloudflare D1');
+    this.notifySyncStatus('online', 'Settings saved');
     return settings;
   },
 
@@ -265,7 +265,7 @@ const StorageManager = {
           this._quotations = data.quotations.map(q => this.normalizeQuotation(q));
           this._isOffline = false;
           this._lastError = null;
-          this.notifySyncStatus('online', 'Connected to Cloudflare D1');
+          this.notifySyncStatus('online', 'Connected to database');
           return { success: true, quotations: this._quotations, total: data.total || this._quotations.length };
         }
       }
@@ -281,7 +281,7 @@ const StorageManager = {
 
   async saveQuotation(quote) {
     if (!navigator.onLine) {
-      throw new Error('No Internet Connection - Unable to save quotation to Cloudflare D1.');
+      throw new Error('No Internet Connection - Unable to save quotation to server.');
     }
 
     if (!quote.id) {
@@ -313,13 +313,13 @@ const StorageManager = {
       this._quotations.unshift(normalized);
     }
 
-    this.notifySyncStatus('online', `Quotation ${quote.quoteNumber} saved to D1`);
+    this.notifySyncStatus('online', `Quotation ${quote.quoteNumber} saved`);
     return normalized;
   },
 
   async deleteQuotation(id) {
     if (!navigator.onLine) {
-      throw new Error('No Internet Connection - Unable to delete quotation from Cloudflare D1.');
+      throw new Error('No Internet Connection - Unable to delete quotation from server.');
     }
 
     const res = await this.fetchWithAuth(`/api/quotations/${id}`, { method: 'DELETE' });
@@ -389,7 +389,7 @@ const StorageManager = {
 
   async saveClient(client) {
     if (!navigator.onLine) {
-      throw new Error('No Internet Connection - Unable to save client to Cloudflare D1.');
+      throw new Error('No Internet Connection - Unable to save client to server.');
     }
 
     if (!client.id) client.id = 'cli_' + Date.now();
@@ -412,13 +412,13 @@ const StorageManager = {
       this._clients.unshift(client);
     }
 
-    this.notifySyncStatus('online', 'Client saved to Cloudflare D1');
+    this.notifySyncStatus('online', 'Client saved');
     return client;
   },
 
   async deleteClient(id) {
     if (!navigator.onLine) {
-      throw new Error('No Internet Connection - Unable to delete client from Cloudflare D1.');
+      throw new Error('No Internet Connection - Unable to delete client from server.');
     }
 
     const res = await this.fetchWithAuth(`/api/clients/${id}`, { method: 'DELETE' });
@@ -472,7 +472,7 @@ const StorageManager = {
 
   async saveItem(item) {
     if (!navigator.onLine) {
-      throw new Error('No Internet Connection - Unable to save item to Cloudflare D1.');
+      throw new Error('No Internet Connection - Unable to save item to server.');
     }
 
     if (!item.id) item.id = 'itm_' + Date.now();
@@ -495,13 +495,13 @@ const StorageManager = {
       this._items.push(item);
     }
 
-    this.notifySyncStatus('online', 'Item saved to Cloudflare D1');
+    this.notifySyncStatus('online', 'Item saved');
     return item;
   },
 
   async deleteItem(id) {
     if (!navigator.onLine) {
-      throw new Error('No Internet Connection - Unable to delete item from Cloudflare D1.');
+      throw new Error('No Internet Connection - Unable to delete item from server.');
     }
 
     const res = await this.fetchWithAuth(`/api/items/${id}`, { method: 'DELETE' });
@@ -511,7 +511,7 @@ const StorageManager = {
     }
 
     this._items = this._items.filter(i => i.id !== id);
-    this.notifySyncStatus('online', 'Item deleted from D1');
+    this.notifySyncStatus('online', 'Item deleted');
     return true;
   },
 
@@ -572,7 +572,7 @@ const StorageManager = {
       return { success: false, offline: true, message: this._lastError };
     }
 
-    this.notifySyncStatus('syncing', 'Fetching live data from Cloudflare D1...');
+    this.notifySyncStatus('syncing', 'Fetching live data from server...');
 
     try {
       await Promise.all([
@@ -588,8 +588,8 @@ const StorageManager = {
 
       this._isOffline = false;
       this._lastError = null;
-      this.notifySyncStatus('online', 'Connected to Cloudflare D1');
-      return { success: true, message: 'Data loaded from Cloudflare D1' };
+      this.notifySyncStatus('online', 'Connected to database');
+      return { success: true, message: 'Data loaded successfully' };
     } catch (err) {
       this._isOffline = true;
       this._lastError = 'No Internet Connection - Please check your network';

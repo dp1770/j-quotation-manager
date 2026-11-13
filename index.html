@@ -48,20 +48,19 @@
   <!-- Cloudflare Turnstile Captcha (Free Bot Protection) -->
   <script>
     window.turnstileResponse = '';
-    window.onTurnstileSuccess = function(token) {
-      window.turnstileResponse = token || '';
-    };
-    window.onTurnstileExpired = function() {
-      window.turnstileResponse = '';
-    };
-    window.onTurnstileError = function() {
-      window.turnstileResponse = '';
+    window.onloadTurnstileCallback = function() {
+      if (window.App && typeof App.renderTurnstileWidget === 'function') {
+        const modal = document.getElementById('login-gate-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+          App.renderTurnstileWidget();
+        }
+      }
     };
   </script>
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" async defer></script>
 
   <!-- Custom Styles & Print Stylesheet -->
-  <link rel="stylesheet" href="css/custom.css?v=3.5.6" />
+  <link rel="stylesheet" href="css/custom.css?v=3.5.7" />
 </head>
 <body class="bg-slate-100 text-slate-900 font-sans min-h-screen flex flex-col antialiased selection:bg-blue-900 selection:text-white">
 
@@ -139,7 +138,7 @@
         <button id="nav-btn-users" class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all hidden" data-tab="users">
           <i class="fa-solid fa-user-shield text-purple-600"></i> <span>Users &amp; Roles</span>
         </button>
-        <button class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all" data-tab="settings">
+        <button id="nav-btn-settings" class="nav-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all" data-tab="settings">
           <i class="fa-solid fa-gear"></i> <span>Settings</span>
         </button>
       </div>
@@ -160,7 +159,7 @@
       <div class="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-2xl p-6 text-white shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 class="text-xl sm:text-2xl font-black">Quotation Management Dashboard</h2>
-          <p id="dash-company-info" class="text-xs sm:text-sm text-blue-200 mt-1">Multi-Tenant Cloud Quotation Management • Cloudflare D1 Database</p>
+          <p id="dash-company-info" class="text-xs sm:text-sm text-blue-200 mt-1">Professional Quotation &amp; Measurement Management</p>
         </div>
         <button id="btn-create-quote-dash" onclick="App.createNewQuotation()" class="bg-amber-500 hover:bg-amber-600 text-blue-950 font-black px-5 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2 text-sm cursor-pointer">
           <i class="fa-solid fa-plus text-base"></i> Create New Quotation
@@ -240,7 +239,7 @@
           <button onclick="App.exportQuotationsCsv()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Export all quotations to CSV">
             <i class="fa-solid fa-file-csv text-sm"></i> <span>Export to CSV</span>
           </button>
-          <button onclick="App.createNewQuotation()" class="bg-blue-900 hover:bg-blue-800 text-white font-bold px-4 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-2">
+          <button id="btn-create-quote-list" onclick="App.createNewQuotation()" class="bg-blue-900 hover:bg-blue-800 text-white font-bold px-4 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-2">
             <i class="fa-solid fa-plus"></i> New Quotation
           </button>
         </div>
@@ -367,13 +366,13 @@
           <p class="text-xs text-slate-500">Maintain buyer information, GST numbers, and delivery addresses</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <button onclick="App.openClientCsvImportModal()" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold px-3 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Import clients from CSV file">
+          <button id="btn-import-client-csv" onclick="App.openClientCsvImportModal()" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold px-3 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Import clients from CSV file">
             <i class="fa-solid fa-file-import"></i> <span>Import CSV</span>
           </button>
           <button onclick="App.exportClientsCsv()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Export clients to CSV file">
             <i class="fa-solid fa-file-csv"></i> <span>Export to CSV</span>
           </button>
-          <button onclick="App.openClientModal()" class="bg-blue-900 hover:bg-blue-800 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5">
+          <button id="btn-add-client" onclick="App.openClientModal()" class="bg-blue-900 hover:bg-blue-800 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5">
             <i class="fa-solid fa-user-plus"></i> <span>Add Client</span>
           </button>
         </div>
@@ -460,13 +459,13 @@
           <p class="text-xs text-slate-500">Dedicated standalone dashboard to manage products, default prices, sheet widths, and cross-section diagrams</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <button onclick="App.openItemCsvImportModal()" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold px-3 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Import products from CSV file">
+          <button id="btn-import-item-csv" onclick="App.openItemCsvImportModal()" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold px-3 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Import products from CSV file">
             <i class="fa-solid fa-file-import"></i> <span>Import CSV</span>
           </button>
           <button onclick="App.exportItemsCsv()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5" title="Export products to CSV file">
             <i class="fa-solid fa-file-csv"></i> <span>Export to CSV</span>
           </button>
-          <button onclick="App.openItemModal()" class="bg-blue-900 hover:bg-blue-800 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5">
+          <button id="btn-add-item" onclick="App.openItemModal()" class="bg-blue-900 hover:bg-blue-800 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-1.5">
             <i class="fa-solid fa-plus"></i> <span>Add Product</span>
           </button>
         </div>
@@ -490,9 +489,9 @@
           <span class="text-[10px] text-slate-500 font-semibold"><i class="fa-solid fa-ruler-horizontal mr-1"></i> Default roofing width</span>
         </div>
         <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
-          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Cloudflare D1 Sync</span>
-          <span class="text-xl font-black text-cyan-700 mt-0.5 block">Active</span>
-          <span class="text-[10px] text-cyan-600 font-semibold"><i class="fa-solid fa-cloud mr-1"></i> Edge Database</span>
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Database Status</span>
+          <span class="text-xl font-black text-cyan-700 mt-0.5 block">Online</span>
+          <span class="text-[10px] text-cyan-600 font-semibold"><i class="fa-solid fa-database mr-1"></i> Synchronized</span>
         </div>
       </div>
 
@@ -542,7 +541,7 @@
       <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div>
           <h2 class="text-lg font-black text-slate-900">Company Profile &amp; Settings</h2>
-          <p class="text-xs text-slate-500">Configure business identity, bank details, terms, and cloud database</p>
+          <p class="text-xs text-slate-500">Configure business profile, banking details, quotation terms, and branding</p>
         </div>
         <button onclick="App.saveAllSettings()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-2">
           <i class="fa-solid fa-floppy-disk"></i> Save Settings
@@ -619,31 +618,7 @@
           </div>
         </div>
 
-        <!-- Cloudflare D1 & Cloud Backend Integration -->
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
-          <h3 class="text-sm font-bold text-blue-950 uppercase tracking-wide border-b border-slate-200 pb-2 flex items-center gap-2">
-            <i class="fa-solid fa-cloud text-blue-600"></i> Cloudflare Workers &amp; D1 Database
-          </h3>
-          <p class="text-xs text-slate-600 leading-relaxed">
-            Configure your Cloudflare Worker REST API endpoint. If left empty, the application routes automatically to <code class="bg-slate-100 text-blue-900 px-1 py-0.5 rounded font-mono">/api</code> on your domain.
-          </p>
-          <div>
-            <label class="text-xs font-semibold text-slate-700 block mb-1">Cloudflare Worker API Endpoint</label>
-            <input type="url" id="set-worker-url" placeholder="https://quotation-manager-api.your-subdomain.workers.dev" 
-                   class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 font-mono focus:border-blue-600" />
-            <p class="text-[10px] text-slate-400 mt-1">Leave blank to use relative <code class="text-slate-600">/api</code></p>
-          </div>
-          <div class="flex items-center gap-2 pt-1">
-            <button type="button" id="btn-test-backend" onclick="App.testBackendConnection()" class="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white rounded text-xs font-bold shadow-sm cursor-pointer flex items-center gap-1.5 transition-colors">
-              <i class="fa-solid fa-bolt"></i> <span>Test Connection</span>
-            </button>
-            <button type="button" id="btn-sync-now" onclick="App.syncNow()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow-sm cursor-pointer flex items-center gap-1.5 transition-colors">
-              <i class="fa-solid fa-arrows-rotate"></i> <span>Sync All Data Now</span>
-            </button>
-          </div>
-          <!-- Live Diagnostic Feedback Panel -->
-          <div id="backend-test-result" class="hidden mt-2.5 p-3 rounded-lg text-xs leading-relaxed transition-all"></div>
-        </div>
+        <input type="hidden" id="set-worker-url" />
 
         <!-- Promotional Banner Management -->
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
@@ -705,18 +680,18 @@
           </div>
         </div>
 
-        <!-- Cloudflare D1 Database Backup & Restore System (Super Admin Only) -->
+        <!-- Database Backup & Restore System (Super Admin Only) -->
         <div id="settings-db-backup-card" class="lg:col-span-2 bg-gradient-to-r from-slate-900 to-blue-950 p-6 rounded-2xl border border-slate-800 shadow-md text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div class="space-y-1">
             <div class="flex items-center gap-2">
-              <span class="px-2.5 py-0.5 rounded-full bg-emerald-400 text-blue-950 font-black text-[10px] uppercase tracking-wider">CLOUDFLARE D1 BACKUP</span>
-              <h4 class="text-sm sm:text-base font-black text-white uppercase tracking-wide">D1 Cloud Database Backup &amp; Restore</h4>
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-400 text-blue-950 font-black text-[10px] uppercase tracking-wider">DATABASE BACKUP</span>
+              <h4 class="text-sm sm:text-base font-black text-white uppercase tracking-wide">Database Backup &amp; Restore</h4>
             </div>
             <p class="text-xs text-blue-200">
-              Export all Quotations, Clients, Item Master catalog, and business settings from Cloudflare D1 into a <code class="bg-blue-900/80 px-2 py-0.5 rounded font-mono text-amber-300 font-bold">quotation_backup.json</code> file.
+              Export all Quotations, Clients, Item Master catalog, and business settings into a secure <code class="bg-blue-900/80 px-2 py-0.5 rounded font-mono text-amber-300 font-bold">quotation_backup.json</code> file.
             </p>
             <p class="text-[11px] text-slate-400">
-              Direct cloud sync: Restores and merges data securely into your Cloudflare D1 database (Super Admin only).
+              Direct cloud sync: Restores and merges data securely into your database (Super Admin only).
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-2.5">
@@ -756,8 +731,8 @@
               <span id="settings-profile-role" class="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px] uppercase">Super Admin</span>
             </div>
             <div>
-              <span class="text-slate-500 font-semibold block text-[11px]">Hosting &amp; CI/CD:</span>
-              <span class="text-emerald-700 font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Cloudflare Pages &amp; Workers</span>
+              <span class="text-slate-500 font-semibold block text-[11px]">System Status:</span>
+              <span class="text-emerald-700 font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Operational &amp; Secure</span>
             </div>
           </div>
         </div>
@@ -1526,7 +1501,7 @@
         <div class="flex items-start gap-2.5">
           <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5"><i class="fa-solid fa-check text-[9px]"></i></span>
           <div>
-            <strong class="text-slate-900">Native Windows Launch:</strong> Pin to your Windows Taskbar and Start Menu. Operates completely offline with IndexedDB.
+            <strong class="text-slate-900">Native Windows Launch:</strong> Pin to your Windows Taskbar and Start Menu for instant access.
           </div>
         </div>
       </div>
@@ -1546,20 +1521,20 @@
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
 
   <!-- Application Core Scripts -->
-  <script src="js/default-data.js?v=3.5.6"></script>
-  <script src="js/calculations.js?v=3.5.6"></script>
-  <script src="js/storage.js?v=3.5.6"></script>
-  <script src="js/auth.js?v=3.5.6"></script>
-  <script src="js/csv-helper.js?v=3.5.6"></script>
-  <script src="js/pdf-generator.js?v=3.5.6"></script>
-  <script src="js/app.js?v=3.5.6"></script>
+  <script src="js/default-data.js?v=3.5.7"></script>
+  <script src="js/calculations.js?v=3.5.7"></script>
+  <script src="js/storage.js?v=3.5.7"></script>
+  <script src="js/auth.js?v=3.5.7"></script>
+  <script src="js/csv-helper.js?v=3.5.7"></script>
+  <script src="js/pdf-generator.js?v=3.5.7"></script>
+  <script src="js/app.js?v=3.5.7"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {
         regs.forEach(reg => reg.update());
       });
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('[PWA] Service Worker controller updated to v3.5.6');
+        console.log('[PWA] Service Worker controller updated to v3.5.7');
       });
     }
   </script>

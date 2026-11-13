@@ -307,7 +307,7 @@ const AuthManager = {
       });
       const res = await response.json().catch(() => ({}));
       if (!response.ok || !res.success) {
-        throw new Error(res.error || res.message || 'Failed to save user in Cloudflare D1');
+        throw new Error(res.error || res.message || 'Failed to save user');
       }
     }
 
@@ -333,7 +333,7 @@ const AuthManager = {
       });
       const res = await response.json().catch(() => ({}));
       if (!response.ok || !res.success) {
-        throw new Error(res.error || res.message || 'Failed to delete user in Cloudflare D1');
+        throw new Error(res.error || res.message || 'Failed to delete user');
       }
     }
 

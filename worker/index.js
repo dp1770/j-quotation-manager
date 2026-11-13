@@ -178,8 +178,8 @@ export default {
     if (path === '/' || path === '/api/health' || path === '/health') {
       return jsonResponse({
         status: 'online',
-        service: 'Quotation Manager Cloudflare D1 API',
-        environment: 'Cloudflare Workers & D1',
+        service: 'Quotation Manager API',
+        environment: 'Cloud Native',
         message: 'Quotation Manager API is operational.',
         time: new Date().toISOString()
       }, 200, env);
@@ -476,6 +476,9 @@ export default {
 
       // POST: Create or Update User
       if (method === 'POST') {
+        if (!isSuperAdmin) {
+          return errorResponse('Access denied: Only Super Admin can manage user accounts', 403, env);
+        }
         const body = await request.json();
         const id = body.id || ('user_sub_' + Date.now());
         const username = String(body.username || '').trim().toLowerCase();
@@ -650,6 +653,17 @@ export default {
           return errorResponse('Quote number is required', 400, env);
         }
 
+        const isExisting = await env.DB.prepare('SELECT id FROM quotations WHERE id = ?').bind(id).first();
+        const canCreate = isSuperAdmin || !!currentUser.permissions?.canCreateQuotations;
+        const canEdit = isSuperAdmin || !!currentUser.permissions?.canEditQuotes || !!currentUser.permissions?.canCreateQuotations;
+
+        if (isExisting && !canEdit) {
+          return errorResponse('Access denied: You do not have permission to edit quotations', 403, env);
+        }
+        if (!isExisting && !canCreate) {
+          return errorResponse('Access denied: You do not have permission to create quotations', 403, env);
+        }
+
         const date = body.date || new Date().toISOString().split('T')[0];
         const validUntil = body.validUntil || '';
         const clientId = body.clientId || null;
@@ -733,6 +747,9 @@ export default {
 
     // Single Quotation Delete
     if (path.startsWith('/api/quotations/') && method === 'DELETE') {
+      if (!isSuperAdmin && !currentUser.permissions?.canDeleteQuotes) {
+        return errorResponse('Access denied: You do not have permission to delete quotations', 403, env);
+      }
       const id = path.split('/').pop();
       await env.DB.prepare('DELETE FROM quotations WHERE id = ?').bind(id).run();
       return jsonResponse({ success: true, message: 'Quotation deleted' }, 200, env);
@@ -777,6 +794,9 @@ export default {
       }
 
       if (method === 'POST') {
+        if (!isSuperAdmin && !currentUser.permissions?.canManageClients) {
+          return errorResponse('Access denied: You do not have permission to manage clients', 403, env);
+        }
         const body = await request.json();
         const id = body.id || ('cli_' + Date.now());
         const name = String(body.name || '').trim();
@@ -811,6 +831,9 @@ export default {
     }
 
     if (path.startsWith('/api/clients/') && method === 'DELETE') {
+      if (!isSuperAdmin && !currentUser.permissions?.canDeleteQuotes && !currentUser.permissions?.canManageClients) {
+        return errorResponse('Access denied: You do not have permission to delete clients', 403, env);
+      }
       const id = path.split('/').pop();
       await env.DB.prepare('DELETE FROM clients WHERE id = ?').bind(id).run();
       return jsonResponse({ success: true, message: 'Client deleted' }, 200, env);
@@ -839,6 +862,9 @@ export default {
       }
 
       if (method === 'POST') {
+        if (!isSuperAdmin && !currentUser.permissions?.canManageItems) {
+          return errorResponse('Access denied: You do not have permission to manage Items Master', 403, env);
+        }
         const body = await request.json();
         const id = body.id || ('itm_' + Date.now());
         const name = String(body.name || '').trim();
@@ -871,6 +897,9 @@ export default {
     }
 
     if (path.startsWith('/api/items/') && method === 'DELETE') {
+      if (!isSuperAdmin && !currentUser.permissions?.canDeleteQuotes && !currentUser.permissions?.canManageItems) {
+        return errorResponse('Access denied: You do not have permission to delete items from Items Master', 403, env);
+      }
       const id = path.split('/').pop();
       await env.DB.prepare('DELETE FROM items_master WHERE id = ?').bind(id).run();
       return jsonResponse({ success: true, message: 'Item deleted' }, 200, env);
@@ -941,6 +970,9 @@ export default {
       }
 
       if (method === 'POST') {
+        if (!isSuperAdmin && !currentUser.permissions?.canManageSettings) {
+          return errorResponse('Access denied: You do not have permission to modify settings', 403, env);
+        }
         const body = await request.json();
         const comp = body.company || {};
         const bank = body.bank || {};
@@ -1041,7 +1073,7 @@ export default {
           version: '2.0.0',
           exportedAt: new Date().toISOString(),
           exportedBy: currentUser.username,
-          service: 'Cloudflare D1 Database Export',
+          service: 'Database Export',
           counts: {
             quotations: quotesRes.results ? quotesRes.results.length : 0,
             clients: clientsRes.results ? clientsRes.results.length : 0,
@@ -1300,7 +1332,7 @@ export default {
 
         return jsonResponse({
           success: true,
-          message: `Cloudflare D1 database successfully restored! (${importedQuotations} quotations, ${importedClients} clients, ${importedItems} items imported)`,
+          message: `Database successfully restored! (${importedQuotations} quotations, ${importedClients} clients, ${importedItems} items imported)`,
           counts: {
             quotations: importedQuotations,
             clients: importedClients,
