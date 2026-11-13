@@ -171,9 +171,12 @@ export default {
       }, 200, env);
     }
 
-    // 3. Database Check
+    // 3. Database Check (supports DB, Quotation_Manager, or quotation_manager_db binding names)
+    if (!env.DB && (env.Quotation_Manager || env.quotation_manager_db || env.QUOTATION_MANAGER)) {
+      env.DB = env.Quotation_Manager || env.quotation_manager_db || env.QUOTATION_MANAGER;
+    }
     if (!env.DB) {
-      return errorResponse('D1 database binding "DB" not configured in wrangler.toml.', 500, env);
+      return errorResponse('D1 database binding "DB" or "Quotation_Manager" not configured.', 500, env);
     }
 
     const jwtSecret = env.JWT_SECRET;
