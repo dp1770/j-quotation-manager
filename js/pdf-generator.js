@@ -491,10 +491,128 @@ const PdfGenerator = {
   },
 
   printQuotation(quote, settings) {
+    const contentHtml = this.generateQuotationHtml(quote, settings);
+
+    // 1. Also update #printable-area in main DOM as fallback and unhide it
     const printArea = document.getElementById('printable-area');
     if (printArea) {
-      printArea.innerHTML = this.generateQuotationHtml(quote, settings);
+      printArea.innerHTML = contentHtml;
+      printArea.classList.remove('hidden');
+      printArea.classList.add('block');
+    }
+
+    // 2. High-reliability Iframe-based Print Isolation
+    try {
+      let iframe = document.getElementById('print-isolation-frame');
+      if (iframe) {
+        iframe.remove();
+      }
+
+      iframe = document.createElement('iframe');
+      iframe.id = 'print-isolation-frame';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.style.visibility = 'hidden';
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentWindow.document;
+      doc.open();
+      doc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${PdfGenerator.escapeHtml(quote.quoteNumber || 'Quotation')}</title>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 6mm 8mm 6mm 8mm;
+    }
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff !important;
+      color: #000000 !important;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #000000 !important;
+    }
+    .avoid-break, .pdf-section, .calc-block {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .pdf-page-container {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-after: always;
+      break-after: page;
+      min-height: 275mm;
+    }
+    .pdf-page-container:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="quotation-print-root">
+    ${contentHtml}
+  </div>
+</body>
+</html>`);
+      doc.close();
+
+      const triggerPrint = () => {
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } catch (printErr) {
+          console.warn('[PdfGenerator] Iframe print fallback to window.print():', printErr);
+          window.print();
+        } finally {
+          setTimeout(() => {
+            if (iframe && iframe.parentNode) {
+              iframe.parentNode.removeChild(iframe);
+            }
+            if (printArea) {
+              printArea.classList.add('hidden');
+              printArea.classList.remove('block');
+            }
+          }, 30000);
+        }
+      };
+
+      // Check if tailwind or DOM is ready
+      if (iframe.contentWindow.tailwind) {
+        setTimeout(triggerPrint, 150);
+      } else {
+        iframe.onload = () => setTimeout(triggerPrint, 200);
+        setTimeout(triggerPrint, 400);
+      }
+    } catch (iframeErr) {
+      console.warn('[PdfGenerator] Iframe setup error, falling back to window.print():', iframeErr);
       window.print();
+      if (printArea) {
+        setTimeout(() => {
+          printArea.classList.add('hidden');
+          printArea.classList.remove('block');
+        }, 3000);
+      }
     }
   },
 

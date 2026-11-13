@@ -11,26 +11,79 @@
   }
 }
 
-/* Print Rules */
+/* =====================================================================
+   Robust Print Stylesheet (Fixes Blank Print Page Bug)
+   ===================================================================== */
 @media print {
-  body * {
-    visibility: hidden;
+  /* 1. Hide all application chrome, navigation, headers, footers, buttons, and backdrop overlays */
+  nav, header, aside, footer, #app, #login-screen, #quote-editor-modal, #client-modal, #item-modal, #user-modal, #change-password-modal, #item-csv-modal, .no-print, button, input, select, textarea, .toast-container {
+    display: none !important;
   }
 
-  #printable-area, #printable-area * {
-    visibility: visible;
+  /* 2. Top toolbar inside preview modal must be hidden */
+  #pdf-preview-modal > div > div:first-child {
+    display: none !important;
   }
 
-  #printable-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
+  /* 3. If printing directly while preview modal is open, ensure modal doesn't mask background */
+  #pdf-preview-modal {
+    position: static !important;
+    background: transparent !important;
+    overflow: visible !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    z-index: auto !important;
+  }
+
+  #pdf-preview-modal > div {
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
+  }
+
+  /* 4. Ensure quotation containers are fully visible, positioned, and formatted */
+  #printable-area,
+  #printable-area.hidden,
+  #pdf-preview-container,
+  .quotation-preview,
+  .pdf-page-container {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
     background: #ffffff !important;
+    color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  #printable-area *,
+  #pdf-preview-container * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 5. Force all table borders to be solid black and distinct in print */
+  #printable-area table,
+  #printable-area th,
+  #printable-area td,
+  #pdf-preview-container table,
+  #pdf-preview-container th,
+  #pdf-preview-container td {
+    border: 1px solid #000000 !important;
+    border-color: #000000 !important;
+    color: #000000 !important;
+  }
+
+  /* 6. Page setup and pagination breaks */
+  @page {
+    size: A4 portrait;
+    margin: 6mm 8mm 6mm 8mm;
   }
 
   .pdf-page-container {
@@ -46,19 +99,9 @@
     break-after: auto;
   }
 
-  /* Hide app navigation, header, sidebar, buttons in print */
-  nav, header, aside, .no-print, button, .modal, .toast-container {
-    display: none !important;
-  }
-
-  @page {
-    size: A4 portrait;
-    margin: 6mm 8mm 6mm 8mm;
-  }
-
-  tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
+  tr, .avoid-break, .pdf-section, .calc-block {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
 

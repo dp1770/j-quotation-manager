@@ -37,7 +37,7 @@ const DEFAULT_SETTINGS = {
     signatureTitle: 'Authorized Signatory',
     showSignatureInPdf: true,
     showBannerInPdf: true,
-    turnstileSiteKey: '1x00000000000000000000AA',
+    turnstileSiteKey: 'YOUR_CLOUDFLARE_TURNSTILE_SITE_KEY',
     galleryImages: [
       { id: 'img_1', title: 'Product Gallery & Partner Brands', url: 'assets/sample-banner.svg', active: true }
     ]
