@@ -19,6 +19,7 @@ const App = {
   pendingItemCsvData: null,
   turnstileWidgetId: null,
   activeCompanyId: 'primary',
+  isLoadingData: true,
 
   async init() {
     try {
@@ -39,15 +40,17 @@ const App = {
 
   async loadDashboardStats() {
     if (!AuthManager.isAuthenticated()) return;
+    this.isLoadingData = true;
+    this.renderDashboard();
+    this.renderCurrentTab();
     try {
-      this.renderDashboard();
       await StorageManager.pullAllFromCloud();
-      this.renderDashboard();
-      if (this.currentTab === 'dashboard') {
-        this.renderCurrentTab();
-      }
     } catch (e) {
+      console.warn('[App] Pull all error:', e);
+    } finally {
+      this.isLoadingData = false;
       this.renderDashboard();
+      this.renderCurrentTab();
     }
   },
 
@@ -603,9 +606,17 @@ const App = {
       this.switchTab('dashboard');
       return;
     }
-    const users = AuthManager.getUsers();
     const tbody = document.getElementById('users-list-tbody');
     if (!tbody) return;
+
+    if (this.isLoadingData) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-16 text-slate-400 font-medium">
+        <i class="fa-solid fa-spinner fa-spin mr-2 text-blue-600 text-lg"></i> Loading users from Cloudflare D1...
+      </td></tr>`;
+      return;
+    }
+
+    const users = AuthManager.getUsers();
 
     if (users.length === 0) {
       tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400">No users found.</td></tr>`;
@@ -1245,6 +1256,25 @@ const App = {
   // Dashboard View
   // -------------------------------------------------------------
   renderDashboard() {
+    if (this.isLoadingData) {
+      const qEl = document.getElementById('dash-total-quotes');
+      const vEl = document.getElementById('dash-total-value');
+      const cEl = document.getElementById('dash-total-clients');
+      const mEl = document.getElementById('dash-month-value');
+      if (qEl) qEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-slate-400 text-sm"></i>';
+      if (vEl) vEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-slate-400 text-sm"></i>';
+      if (cEl) cEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-slate-400 text-sm"></i>';
+      if (mEl) mEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-slate-400 text-sm"></i>';
+
+      const recentTable = document.getElementById('dash-recent-quotes-table');
+      if (recentTable) {
+        recentTable.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-400 font-medium">
+          <i class="fa-solid fa-spinner fa-spin text-blue-600 mr-2 text-base"></i> Loading live metrics from Cloudflare D1...
+        </td></tr>`;
+      }
+      return;
+    }
+
     if (StorageManager.isOffline()) {
       const qEl = document.getElementById('dash-total-quotes');
       const vEl = document.getElementById('dash-total-value');
@@ -1325,6 +1355,16 @@ const App = {
   // Quotations List View & Advanced Filters
   // -------------------------------------------------------------
   renderQuotationsList() {
+    const tbody = document.getElementById('quotes-list-tbody');
+    if (this.isLoadingData) {
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-slate-400 font-medium">
+          <i class="fa-solid fa-spinner fa-spin mr-2 text-blue-600 text-lg"></i> Loading quotations from Cloudflare D1...
+        </td></tr>`;
+      }
+      return;
+    }
+
     const quotes = StorageManager.getQuotations();
     const searchVal = (document.getElementById('quote-search-input')?.value || '').toLowerCase().trim();
     const statusVal = document.getElementById('quote-filter-status')?.value || 'ALL';
@@ -1366,7 +1406,6 @@ const App = {
       infoEl.textContent = `Showing ${filtered.length} of ${quotes.length} total quotations`;
     }
 
-    const tbody = document.getElementById('quotes-list-tbody');
     const paginationBar = document.getElementById('quotes-pagination-bar');
     if (!tbody) return;
 
@@ -1501,6 +1540,16 @@ const App = {
   // ITEM MASTER (CRUD & Profile Image Uploads)
   // -------------------------------------------------------------
   renderItemsList() {
+    const tbody = document.getElementById('items-list-tbody');
+    if (this.isLoadingData) {
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-slate-400 font-medium">
+          <i class="fa-solid fa-spinner fa-spin mr-2 text-blue-600 text-lg"></i> Loading items from Cloudflare D1...
+        </td></tr>`;
+      }
+      return;
+    }
+
     const items = StorageManager.getItems();
     const searchVal = (document.getElementById('item-search-input')?.value || '').toLowerCase().trim();
 
@@ -1518,7 +1567,6 @@ const App = {
         (it.unit && it.unit.toLowerCase().includes(searchVal));
     });
 
-    const tbody = document.getElementById('items-list-tbody');
     const paginationBar = document.getElementById('items-pagination-bar');
     if (!tbody) return;
 
@@ -2730,6 +2778,16 @@ const App = {
   // Clients Management View & Advanced Filters
   // -------------------------------------------------------------
   renderClientsList() {
+    const tbody = document.getElementById('clients-list-tbody');
+    if (this.isLoadingData) {
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-slate-400 font-medium">
+          <i class="fa-solid fa-spinner fa-spin mr-2 text-blue-600 text-lg"></i> Loading clients from Cloudflare D1...
+        </td></tr>`;
+      }
+      return;
+    }
+
     const clients = StorageManager.getClients();
     const searchVal = (document.getElementById('client-search-input')?.value || '').toLowerCase().trim();
     const monthVal = document.getElementById('client-filter-month')?.value || 'ALL';
@@ -2761,7 +2819,6 @@ const App = {
       infoEl.textContent = `Showing ${filtered.length} of ${clients.length} total clients`;
     }
 
-    const tbody = document.getElementById('clients-list-tbody');
     const paginationBar = document.getElementById('clients-pagination-bar');
     if (!tbody) return;
 
@@ -3312,6 +3369,11 @@ const App = {
       }
     }
 
+    const elBannerToggle = document.getElementById('set-banner-toggle');
+    if (elBannerToggle) {
+      elBannerToggle.checked = (comp.showBannerInPdf !== undefined ? Boolean(comp.showBannerInPdf) : (comp.show_banner_in_pdf !== undefined ? Boolean(Number(comp.show_banner_in_pdf)) : true));
+    }
+
     // Terms
     let terms = [];
     if (Array.isArray(comp.terms)) terms = comp.terms;
@@ -3711,9 +3773,14 @@ const App = {
 
     const sigTitleInput = document.getElementById('set-signature-title');
     const sigToggleInput = document.getElementById('set-signature-toggle');
+    const bannerToggleInput = document.getElementById('set-banner-toggle');
+    const showBannerVal = bannerToggleInput ? bannerToggleInput.checked : true;
+    activeComp.showBannerInPdf = showBannerVal;
+    activeComp.show_banner_in_pdf = showBannerVal ? 1 : 0;
+
     settings.media = {
       ...settings.media,
-      showBannerInPdf: document.getElementById('set-banner-toggle').checked,
+      showBannerInPdf: showBannerVal,
       showSignatureInPdf: sigToggleInput ? sigToggleInput.checked : true,
       signatureTitle: sigTitleInput ? sigTitleInput.value.trim() : 'Authorized Signatory'
     };

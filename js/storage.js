@@ -284,8 +284,17 @@ const StorageManager = {
       body: JSON.stringify(companyData)
     });
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Failed to save company profile (HTTP ${res.status})`);
+      let errorMsg = `Failed to save company profile (HTTP ${res.status})`;
+      try {
+        const text = await res.text();
+        try {
+          const errData = JSON.parse(text);
+          errorMsg = errData.error || errData.message || errorMsg;
+        } catch {
+          errorMsg = text.slice(0, 150) || errorMsg;
+        }
+      } catch {}
+      throw new Error(errorMsg);
     }
     const data = await res.json();
     await this.fetchCompaniesFromCloud();
@@ -296,8 +305,17 @@ const StorageManager = {
   async deleteCompany(id) {
     const res = await this.fetchWithAuth(`/api/companies/${id}`, { method: 'DELETE' });
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Failed to delete company profile (HTTP ${res.status})`);
+      let errorMsg = `Failed to delete company profile (HTTP ${res.status})`;
+      try {
+        const text = await res.text();
+        try {
+          const errData = JSON.parse(text);
+          errorMsg = errData.error || errData.message || errorMsg;
+        } catch {
+          errorMsg = text.slice(0, 150) || errorMsg;
+        }
+      } catch {}
+      throw new Error(errorMsg);
     }
     await this.fetchCompaniesFromCloud();
     this.notifySyncStatus('online', 'Company profile deleted');

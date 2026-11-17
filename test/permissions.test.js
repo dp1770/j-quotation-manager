@@ -557,6 +557,74 @@ test('POST /api/companies: Enforces maximum limit of 3 company profiles (400)', 
   assert.match(body.error, /Maximum.*3 company profiles/i);
 });
 
+test('POST /api/companies: Successfully saves company profile with banner preference and default flag (200)', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  let savedCompanyId = null;
+  let savedShowBanner = null;
+  let savedIsDefault = null;
+
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          first() {
+            if (sql.includes('COUNT')) return { count: 1 };
+            return null;
+          },
+          bind(...args) {
+            return {
+              async first() {
+                if (sql.includes('SELECT id FROM company_settings WHERE id = ?')) return null;
+                if (sql.includes('COUNT')) return { count: 1 };
+                if (sql.includes('WHERE is_default = 1')) return { id: 'primary' };
+                return null;
+              },
+              async run() {
+                if (sql.includes('INSERT INTO company_settings')) {
+                  savedCompanyId = args[0];
+                  savedShowBanner = args[22];
+                  savedIsDefault = args[23];
+                }
+                return { success: true };
+              }
+            };
+          },
+          async run() {
+            return { success: true };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/companies', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: 'comp_test_2',
+      companyName: 'Balaji Industries Ltd',
+      showBannerInPdf: true,
+      isDefault: true
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.equal(savedCompanyId, 'comp_test_2');
+  assert.equal(savedShowBanner, 1);
+  assert.equal(savedIsDefault, 1);
+});
+
 test('POST /api/users: Saves user email and preserves Super Admin role on edit', async () => {
   const token = await createTestToken({
     userId: 'admin_1',

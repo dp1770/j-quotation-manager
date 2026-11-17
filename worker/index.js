@@ -184,6 +184,14 @@ async function ensureDatabaseSchema(env) {
   if (schemaInitialized || !env || !env.DB) return;
   if (!schemaInitPromise) {
     schemaInitPromise = (async () => {
+      try {
+        const testCheck = await env.DB.prepare('SELECT id FROM users LIMIT 1').first().catch(() => null);
+        if (testCheck !== null) {
+          schemaInitialized = true;
+          return;
+        }
+      } catch (e) {}
+
       const execSql = async (sql) => {
         try {
           const s = env.DB.prepare(sql);
@@ -302,7 +310,8 @@ async function ensureDatabaseSchema(env) {
 
 export default {
   async fetch(request, env, ctx) {
-    // 1. Handle CORS Preflight
+    try {
+      // 1. Handle CORS Preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
@@ -1487,21 +1496,6 @@ export default {
     // Multi-Company Profile Management Endpoints (Up to 3 Companies)
     // =================================================================
     if (path === '/api/companies') {
-      // Safe Auto-migration helpers for company_settings table
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN is_default INTEGER DEFAULT 0').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN created_at TEXT DEFAULT ""').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN updated_at TEXT DEFAULT ""').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN phone_secondary TEXT DEFAULT ""').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN website TEXT DEFAULT ""').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN state TEXT DEFAULT "Gujarat"').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN state_code TEXT DEFAULT "24"').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN banner_url TEXT DEFAULT ""').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN header_logo_url TEXT DEFAULT ""').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN signature_image_url TEXT DEFAULT ""').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN signature_title TEXT DEFAULT "Authorized Signatory"').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN show_signature_in_pdf INTEGER DEFAULT 1').run(); } catch (e) {}
-      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN show_banner_in_pdf INTEGER DEFAULT 1').run(); } catch (e) {}
-
       // GET: List all company profiles (up to 3)
       if (method === 'GET') {
         let rows = await env.DB.prepare('SELECT * FROM company_settings ORDER BY is_default DESC, created_at ASC LIMIT 3').all().catch(() => ({ results: [] }));
@@ -2156,5 +2150,9 @@ export default {
 
     // Default 404
     return errorResponse(`Endpoint not found: ${method} ${path}`, 404, env);
+    } catch (unhandledErr) {
+      console.error('[Worker Fatal Error]:', unhandledErr);
+      return errorResponse(unhandledErr.message || String(unhandledErr), 500, env);
+    }
   }
 };
