@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS quotations (
   grand_total REAL NOT NULL DEFAULT 0.0,
   grand_total_words TEXT,
   notes TEXT,
+  include_banner INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL DEFAULT 'Draft',
   created_by TEXT NOT NULL,
   created_by_name TEXT,
@@ -95,6 +96,8 @@ CREATE INDEX IF NOT EXISTS idx_quotations_date ON quotations(date);
 CREATE INDEX IF NOT EXISTS idx_quotations_number ON quotations(quote_number);
 CREATE INDEX IF NOT EXISTS idx_quotations_client_id ON quotations(client_id);
 CREATE INDEX IF NOT EXISTS idx_quotations_company_id ON quotations(company_id);
+CREATE INDEX IF NOT EXISTS idx_quotations_created_at ON quotations(created_at);
+CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);
 
 -- 5. Company Settings Table (Multi-Company Support - Up to 3 Distinct Company Profiles)
 CREATE TABLE IF NOT EXISTS company_settings (

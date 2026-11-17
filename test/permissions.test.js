@@ -479,8 +479,8 @@ test('POST /api/quotations: Saves author full name in created_by and created_by_
               },
               async run() {
                 if (sql.includes('INSERT INTO quotations')) {
-                  savedCreatedBy = args[27];
-                  savedCreatedByName = args[28];
+                  savedCreatedBy = args[28];
+                  savedCreatedByName = args[29];
                 }
                 return { success: true };
               }
@@ -713,4 +713,55 @@ test('POST /api/quotations: Atomically assigns next sequential quote number on c
   assert.equal(body.success, true);
   assert.equal(body.quoteNumber, 'QT-2026-0006');
   assert.equal(savedQuoteNumber, 'QT-2026-0006');
+});
+
+test('POST /api/quotations: Saves include_banner preference (0 or 1)', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true,
+    permissions: { canCreateQuotations: true }
+  });
+
+  let savedIncludeBanner = null;
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                return null;
+              },
+              async run() {
+                if (sql.includes('INSERT INTO quotations')) {
+                  savedIncludeBanner = args[26];
+                }
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/quotations', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: 'qt_banner_test',
+      quoteNumber: 'QT-2026-101',
+      includeBanner: 0,
+      clientName: 'Test Client',
+      grandTotal: 1000
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  assert.equal(savedIncludeBanner, 0);
 });

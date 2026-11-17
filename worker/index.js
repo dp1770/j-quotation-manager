@@ -279,7 +279,11 @@ async function ensureDatabaseSchema(env) {
           execSql('ALTER TABLE clients ADD COLUMN created_by_name TEXT DEFAULT ""'),
           execSql('ALTER TABLE items_master ADD COLUMN created_by_name TEXT DEFAULT ""'),
           execSql('ALTER TABLE password_resets ADD COLUMN attempts INTEGER DEFAULT 0'),
-          execSql('ALTER TABLE password_resets ADD COLUMN created_at TEXT DEFAULT ""')
+          execSql('ALTER TABLE password_resets ADD COLUMN created_at TEXT DEFAULT ""'),
+          execSql('ALTER TABLE quotations ADD COLUMN include_banner INTEGER DEFAULT 1'),
+          execSql('CREATE INDEX IF NOT EXISTS idx_quotations_created_at ON quotations(created_at)'),
+          execSql('CREATE INDEX IF NOT EXISTS idx_quotations_company_id ON quotations(company_id)'),
+          execSql('CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name)')
         ]);
 
         schemaInitialized = true;
@@ -396,45 +400,45 @@ export default {
           return errorResponse('Username and password are required', 400, env);
         }
 
+        const reqHost = (url.hostname || request.headers.get('Host') || '').toLowerCase();
+        const isLocalhost = reqHost.includes('localhost') || reqHost.includes('127.0.0.1');
+
         // 1. Cloudflare Turnstile Captcha Verification (if TURNSTILE_SECRET is configured)
         const turnstileSecret = env.TURNSTILE_SECRET;
         if (turnstileSecret) {
           const turnstileToken = body.turnstileToken || body['cf-turnstile-response'] || request.headers.get('CF-Turnstile-Token');
           if (!turnstileToken) {
-            return errorResponse('Captcha verification required. Please complete the security check.', 401, env);
-          }
-
-          try {
-            const clientIp = request.headers.get('CF-Connecting-IP') || '';
-            const formData = new FormData();
-            formData.append('secret', turnstileSecret);
-            formData.append('response', turnstileToken);
-            if (clientIp) {
-              formData.append('remoteip', clientIp);
+            if (!isLocalhost) {
+              return errorResponse('Captcha verification required. Please complete the security check.', 401, env);
             }
+          } else {
+            try {
+              const clientIp = request.headers.get('CF-Connecting-IP') || '';
+              const formData = new FormData();
+              formData.append('secret', turnstileSecret);
+              formData.append('response', turnstileToken);
+              if (clientIp) {
+                formData.append('remoteip', clientIp);
+              }
 
-            const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-              method: 'POST',
-              body: formData
-            });
-            const verifyData = await verifyRes.json();
-            if (!verifyData.success) {
-              const errCodes = (verifyData['error-codes'] || []).join(', ');
-              console.warn('[Turnstile Verification Note]', errCodes, verifyData);
-              // Reject if token was already used or explicitly expired
-              if (errCodes.includes('timeout-or-duplicate')) {
-                return errorResponse('Security token expired or already used. Please complete captcha again.', 401, env);
+              const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+                method: 'POST',
+                body: formData
+              });
+              const verifyData = await verifyRes.json();
+              if (!verifyData.success) {
+                const errCodes = (verifyData['error-codes'] || []).join(', ');
+                console.warn('[Turnstile Verification Note]', errCodes, verifyData);
+                if (!isLocalhost) {
+                  return errorResponse('Captcha verification failed. Please complete the security check.', 401, env);
+                }
               }
-              if (errCodes.includes('missing-input-response')) {
-                return errorResponse('Captcha verification required. Please complete the security check.', 401, env);
+            } catch (err) {
+              console.warn('[Turnstile Error]', err.message);
+              if (!isLocalhost) {
+                return errorResponse('Security verification service unavailable. Please try again.', 500, env);
               }
-              // For domain mismatch, invalid secret, or adapter configuration issues,
-              // log warning and fall through to strict credential authentication in D1
-              // so legitimate users are not locked out due to Cloudflare domain/secret provisioning mismatches.
-              console.warn('[Turnstile Fallback] Proceeding with credential authentication for user:', username);
             }
-          } catch (err) {
-            console.warn('[Turnstile Error]', err.message);
           }
         }
 
@@ -1056,7 +1060,12 @@ export default {
           clientAddress: q.client_address,
           companyId: q.company_id || 'primary',
           companyName: q.company_name || '',
-          items: JSON.parse(q.items_json || '[]'),
+          items: JSON.parse(q.items_json || '[]').map(it => {
+            if (it && it.imageUrl && it.imageUrl.startsWith('data:image/') && it.imageUrl.length > 500) {
+              return { ...it, imageUrl: '' };
+            }
+            return it;
+          }),
           calculations: JSON.parse(q.calculations_json || '[]'),
           materialTotal: q.material_total,
           loadingCharges: q.loading_charges,
@@ -1069,6 +1078,8 @@ export default {
           grandTotal: q.grand_total,
           grandTotalWords: q.grand_total_words,
           notes: q.notes,
+          includeBanner: q.include_banner === 1 || q.include_banner === '1' || q.include_banner === true || q.include_banner === null || q.include_banner === undefined,
+          include_banner: q.include_banner === 0 || q.include_banner === '0' || q.include_banner === false ? 0 : 1,
           status: q.status,
           createdBy: q.created_by_name || q.created_by || 'System Administrator',
           createdByName: q.created_by_name || q.created_by || 'System Administrator',
@@ -1160,6 +1171,7 @@ export default {
         const grandTotal = parseFloat(body.grandTotal) || 0.0;
         const grandTotalWords = body.grandTotalWords || '';
         const notes = body.notes || '';
+        const includeBanner = (body.includeBanner === false || body.includeBanner === 0 || body.include_banner === 0 || body.include_banner === false) ? 0 : 1;
         const status = body.status || 'Draft';
 
         // Audit Trail: Store user's actual Full Name (e.g. Ramesh Patel) instead of Role
@@ -1172,6 +1184,9 @@ export default {
         try {
           await env.DB.prepare('ALTER TABLE quotations ADD COLUMN company_name TEXT DEFAULT ""').run();
         } catch (e) {}
+        try {
+          await env.DB.prepare('ALTER TABLE quotations ADD COLUMN include_banner INTEGER DEFAULT 1').run();
+        } catch (e) {}
 
         await env.DB.prepare(`
           INSERT INTO quotations (
@@ -1179,13 +1194,13 @@ export default {
             client_phone, client_email, client_gst, client_address, company_id, company_name,
             items_json, calculations_json, material_total, loading_charges, additional_charges_json, charges_total,
             gst_type, gst_rate, gst_amount, round_off, grand_total, grand_total_words,
-            notes, status, created_by, created_by_name, created_at, updated_at
+            notes, include_banner, status, created_by, created_by_name, created_at, updated_at
           ) VALUES (
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, datetime("now"), datetime("now")
+            ?, ?, ?, ?, ?, datetime("now"), datetime("now")
           )
           ON CONFLICT(id) DO UPDATE SET
             quote_number = excluded.quote_number,
@@ -1213,6 +1228,7 @@ export default {
             grand_total = excluded.grand_total,
             grand_total_words = excluded.grand_total_words,
             notes = excluded.notes,
+            include_banner = excluded.include_banner,
             status = excluded.status,
             updated_at = datetime("now")
         `).bind(
@@ -1220,21 +1236,66 @@ export default {
           clientPhone, clientEmail, clientGst, clientAddress, companyId, companyName,
           itemsJson, calcsJson, materialTotal, loadingCharges, addChargesJson, chargesTotal,
           gstType, gstRate, gstAmount, roundOff, grandTotal, grandTotalWords,
-          notes, status, authorName, authorName
+          notes, includeBanner, status, authorName, authorName
         ).run();
 
         return jsonResponse({ success: true, message: 'Quotation saved successfully', id, quoteNumber: finalQuoteNumber }, 200, env);
       }
     }
 
-    // Single Quotation Delete
-    if (path.startsWith('/api/quotations/') && method === 'DELETE') {
-      if (!isSuperAdmin && !currentUser.permissions?.canDeleteQuotes) {
-        return errorResponse('Access denied: You do not have permission to delete quotations', 403, env);
+    // Single Quotation Retrieval & Delete
+    if (path.startsWith('/api/quotations/')) {
+      const targetId = path.split('/').pop();
+      if (method === 'GET') {
+        const q = await env.DB.prepare('SELECT * FROM quotations WHERE id = ?').bind(targetId).first();
+        if (!q) {
+          return errorResponse('Quotation not found', 404, env);
+        }
+        const quotation = {
+          id: q.id,
+          quoteNumber: q.quote_number,
+          date: q.date,
+          validUntil: q.valid_until,
+          clientId: q.client_id,
+          clientName: q.client_name,
+          clientCompany: q.client_company,
+          clientPhone: q.client_phone,
+          clientEmail: q.client_email,
+          clientGst: q.client_gst,
+          clientAddress: q.client_address,
+          companyId: q.company_id || 'primary',
+          companyName: q.company_name || '',
+          items: JSON.parse(q.items_json || '[]'),
+          calculations: JSON.parse(q.calculations_json || '[]'),
+          materialTotal: q.material_total,
+          loadingCharges: q.loading_charges,
+          additionalCharges: JSON.parse(q.additional_charges_json || '[]'),
+          chargesTotal: q.charges_total,
+          gstType: q.gst_type,
+          gstRate: q.gst_rate,
+          gstAmount: q.gst_amount,
+          roundOff: q.round_off,
+          grandTotal: q.grand_total,
+          grandTotalWords: q.grand_total_words,
+          notes: q.notes,
+          includeBanner: q.include_banner === 1 || q.include_banner === '1' || q.include_banner === true || q.include_banner === null || q.include_banner === undefined,
+          include_banner: q.include_banner === 0 || q.include_banner === '0' || q.include_banner === false ? 0 : 1,
+          status: q.status,
+          createdBy: q.created_by_name || q.created_by || 'System Administrator',
+          createdByName: q.created_by_name || q.created_by || 'System Administrator',
+          createdAt: q.created_at,
+          updatedAt: q.updated_at
+        };
+        return jsonResponse({ success: true, quotation }, 200, env);
       }
-      const id = path.split('/').pop();
-      await env.DB.prepare('DELETE FROM quotations WHERE id = ?').bind(id).run();
-      return jsonResponse({ success: true, message: 'Quotation deleted' }, 200, env);
+
+      if (method === 'DELETE') {
+        if (!isSuperAdmin && !currentUser.permissions?.canDeleteQuotes) {
+          return errorResponse('Access denied: You do not have permission to delete quotations', 403, env);
+        }
+        await env.DB.prepare('DELETE FROM quotations WHERE id = ?').bind(targetId).run();
+        return jsonResponse({ success: true, message: 'Quotation deleted' }, 200, env);
+      }
     }
 
     // =================================================================

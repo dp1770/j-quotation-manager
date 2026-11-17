@@ -1418,16 +1418,19 @@
           <!-- PART 4 BADGE -->
           <div class="flex items-center gap-2 border-b-2 border-cyan-500 pb-1.5 pt-4">
             <span class="bg-cyan-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded uppercase">PART 4</span>
-            <span class="text-xs font-black uppercase tracking-wider text-slate-900">Bottom Promotional &amp; Product Banner Gallery (Page 7)</span>
+            <span class="text-xs font-black uppercase tracking-wider text-slate-900">Bottom Promotional Banner (Page 7)</span>
           </div>
 
-          <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs flex justify-between items-center">
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <p class="font-bold text-slate-900">Promotional Product Catalog &amp; Brand Partner Showcase</p>
-              <p class="text-[11px] text-slate-500">Includes Air Ventilators, Polycarbonate Sheets, Deck Sheets, Tile Profile, and Brand Badges (TILARA, JSW, AM/NS, PRIMUS, Landmark).</p>
+              <label for="edit-quote-include-banner" class="flex items-center gap-2 cursor-pointer font-bold text-slate-900">
+                <input type="checkbox" id="edit-quote-include-banner" class="rounded text-blue-900 w-4 h-4 cursor-pointer" checked />
+                <span>Include Promotional Banner at bottom of Quotation PDF</span>
+              </label>
+              <p class="text-[11px] text-slate-500 mt-1">When checked, the selected company's promotional product banner will be printed on the final page of this quotation.</p>
             </div>
-            <span class="text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
-              <i class="fa-solid fa-circle-check mr-1"></i> Active on Final Page
+            <span class="text-blue-900 font-bold bg-blue-50 px-2.5 py-1 rounded border border-blue-200 text-[11px]">
+              <i class="fa-solid fa-image mr-1"></i> Final Page Footer
             </span>
           </div>
 

@@ -31,6 +31,7 @@ const PdfGenerator = {
     const headerLogo = media.headerLogoUrl || 'assets/header-roof-logo.svg';
     const signatureImg = media.signatureImageUrl || 'assets/sample-signature.svg';
     const showSignature = media.showSignatureInPdf !== false;
+    const shouldIncludeBanner = (quote.includeBanner !== undefined ? Boolean(quote.includeBanner) : (quote.include_banner !== undefined ? (quote.include_banner === 1 || quote.include_banner === '1' || quote.include_banner === true) : true)) && (media.showBannerInPdf !== false);
 
     // -------------------------------------------------------------
     // PART 1: MAIN ITEMS PRICING TABLE (PAGE 1)
@@ -404,7 +405,7 @@ const PdfGenerator = {
         <!-- ======================================================= -->
         <!-- PART 4: PROMOTIONAL & PRODUCT BANNER GALLERY           -->
         <!-- ======================================================= -->
-        ${media.showBannerInPdf && bannerImg ? `
+        ${shouldIncludeBanner && bannerImg ? `
           <div class="mt-8 pt-4 avoid-break" style="page-break-before: always;">
             <div class="text-center">
               <img src="${bannerImg}" alt="${this.escapeHtml(comp.name)} Promotional Banner" class="w-full max-h-[960px] object-contain mx-auto rounded shadow-sm border border-slate-200" />

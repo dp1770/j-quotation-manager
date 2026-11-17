@@ -374,6 +374,8 @@ const StorageManager = {
     }
     q.companyId = q.companyId || q.company_id || 'primary';
     q.companyName = q.companyName || q.company_name || '';
+    q.includeBanner = (q.includeBanner !== undefined ? Boolean(q.includeBanner) : (q.include_banner !== undefined ? (q.include_banner === 1 || q.include_banner === '1' || q.include_banner === true) : true));
+    q.include_banner = q.includeBanner ? 1 : 0;
     q.createdBy = q.createdByName || q.createdBy || 'System Administrator';
     q.createdByName = q.createdByName || q.createdBy || 'System Administrator';
     return q;

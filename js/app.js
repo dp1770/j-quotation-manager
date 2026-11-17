@@ -33,7 +33,21 @@ const App = {
     // Check authentication and setup gates
     const isReady = this.checkGatekeepers();
     if (isReady) {
-      this.refreshCloudDataInBackground();
+      this.loadDashboardStats();
+    }
+  },
+
+  async loadDashboardStats() {
+    if (!AuthManager.isAuthenticated()) return;
+    try {
+      this.renderDashboard();
+      await StorageManager.pullAllFromCloud();
+      this.renderDashboard();
+      if (this.currentTab === 'dashboard') {
+        this.renderCurrentTab();
+      }
+    } catch (e) {
+      this.renderDashboard();
     }
   },
 
@@ -42,12 +56,14 @@ const App = {
     try {
       console.log('[App] Refreshing live data from server...');
       const res = await StorageManager.pullAllFromCloud();
+      this.renderDashboard();
       this.renderActiveTab();
       if (!res.success && res.offline) {
         this.showToast('No Internet Connection - Please check your network', 'error');
       }
     } catch (err) {
       console.warn('[App] Background cloud refresh note:', err);
+      this.renderDashboard();
       this.renderActiveTab();
     }
   },
@@ -140,6 +156,8 @@ const App = {
 
     this.updateUserInterfaceForAuth();
     this.applyRouteFromHash();
+    this.renderDashboard();
+    this.loadDashboardStats();
     return true;
   },
 
@@ -230,7 +248,8 @@ const App = {
           if (appShell) appShell.classList.remove('hidden');
           this.updateUserInterfaceForAuth();
           this.applyRouteFromHash();
-          this.refreshCloudDataInBackground();
+          this.renderDashboard();
+          this.loadDashboardStats();
           this.showToast('Welcome, ' + (res.user?.fullName || res.user?.username) + '!', 'success');
         }, 300);
       } else {
@@ -1913,6 +1932,12 @@ const App = {
     const selectedCompanyId = q.companyId || defComp?.id || 'primary';
     this.populateQuotationCompanySelector(selectedCompanyId);
 
+    // Promotional Banner toggle
+    const elBanner = document.getElementById('edit-quote-include-banner');
+    if (elBanner) {
+      elBanner.checked = (q.includeBanner !== undefined ? Boolean(q.includeBanner) : (q.include_banner !== undefined ? (q.include_banner === 1 || q.include_banner === '1' || q.include_banner === true) : true));
+    }
+
     // Render items and calculation blocks
     this.renderEditorItemsTable();
     this.renderEditorCalculations();
@@ -2615,6 +2640,11 @@ const App = {
       const matchedComp = companies.find(c => c.id === selectedCompanyId) || companies[0] || {};
       this.currentQuotation.companyId = selectedCompanyId;
       this.currentQuotation.companyName = matchedComp.companyName || matchedComp.name || '';
+
+      // Promotional Banner Checkbox
+      const bannerEl = document.getElementById('edit-quote-include-banner');
+      this.currentQuotation.includeBanner = bannerEl ? (bannerEl.checked ? 1 : 0) : 1;
+      this.currentQuotation.include_banner = this.currentQuotation.includeBanner;
 
       // Audit Trail Full Name Attribution
       const currentUser = AuthManager.getCurrentUser();
