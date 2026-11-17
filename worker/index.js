@@ -1178,14 +1178,23 @@ export default {
     // =================================================================
     // Multi-Company Management Endpoints (Up to 3 Distinct Profiles)
     // =================================================================
+    // Multi-Company Profile Management Endpoints (Up to 3 Companies)
+    // =================================================================
     if (path === '/api/companies') {
-      // Auto-migration helper for company_settings table
-      try {
-        await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN is_default INTEGER DEFAULT 0').run();
-      } catch (e) {}
-      try {
-        await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime("now"))').run();
-      } catch (e) {}
+      // Safe Auto-migration helpers for company_settings table
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN is_default INTEGER DEFAULT 0').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN created_at TEXT DEFAULT ""').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN updated_at TEXT DEFAULT ""').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN phone_secondary TEXT DEFAULT ""').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN website TEXT DEFAULT ""').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN state TEXT DEFAULT "Gujarat"').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN state_code TEXT DEFAULT "24"').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN banner_url TEXT DEFAULT ""').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN header_logo_url TEXT DEFAULT ""').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN signature_image_url TEXT DEFAULT ""').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN signature_title TEXT DEFAULT "Authorized Signatory"').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN show_signature_in_pdf INTEGER DEFAULT 1').run(); } catch (e) {}
+      try { await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN show_banner_in_pdf INTEGER DEFAULT 1').run(); } catch (e) {}
 
       // GET: List all company profiles (up to 3)
       if (method === 'GET') {
@@ -1255,102 +1264,107 @@ export default {
           return errorResponse('Access denied: You do not have permission to manage company profiles', 403, env);
         }
 
-        const body = await request.json();
-        const id = (body.id && body.id !== 'new') ? String(body.id).trim() : ('comp_' + Date.now());
-        const existing = await env.DB.prepare('SELECT id FROM company_settings WHERE id = ?').bind(id).first();
+        try {
+          const body = await request.json();
+          const id = (body.id && body.id !== 'new') ? String(body.id).trim() : ('comp_' + Date.now());
+          const existing = await env.DB.prepare('SELECT id FROM company_settings WHERE id = ?').bind(id).first();
 
-        // Enforce strict maximum limit of 3 companies on insert
-        if (!existing) {
-          const countStmt = env.DB.prepare('SELECT COUNT(*) as count FROM company_settings');
-          const countRes = countStmt.bind ? await countStmt.bind().first() : await countStmt.first();
-          const currentCount = (countRes && (countRes.count ?? countRes.cnt)) ? parseInt(countRes.count ?? countRes.cnt, 10) : 0;
-          if (currentCount >= 3) {
-            return errorResponse('Maximum limit of 3 company profiles reached. You must edit or delete an existing profile.', 400, env);
+          // Enforce strict maximum limit of 3 companies on insert
+          if (!existing) {
+            const countStmt = env.DB.prepare('SELECT COUNT(*) as count FROM company_settings');
+            const countRes = typeof countStmt.first === 'function' ? await countStmt.first() : await countStmt.bind().first();
+            const currentCount = (countRes && (countRes.count ?? countRes.cnt)) ? parseInt(countRes.count ?? countRes.cnt, 10) : 0;
+            if (currentCount >= 3) {
+              return errorResponse('Maximum limit of 3 company profiles reached. You must edit or delete an existing profile.', 400, env);
+            }
           }
+
+          const companyName = String(body.companyName || body.name || 'Company Profile').trim();
+          const tagline = String(body.tagline || body.subtitle || '').trim();
+          const address = String(body.address || '').trim();
+          const phone = String(body.phone || '').trim();
+          const phoneSecondary = String(body.phoneSecondary || '').trim();
+          const email = String(body.email || '').trim();
+          const website = String(body.website || '').trim();
+          const gstin = String(body.gstin || '').trim();
+          const state = String(body.state || 'Gujarat').trim();
+          const stateCode = String(body.stateCode || '24').trim();
+
+          const bankName = String(body.bankName || '').trim();
+          const accountName = String(body.accountName || '').trim();
+          const accountNumber = String(body.accountNumber || body.accountNo || '').trim();
+          const ifscCode = String(body.ifscCode || '').trim();
+          const branch = String(body.branch || '').trim();
+
+          const termsJson = JSON.stringify(body.terms || []);
+          const bannerUrl = body.bannerUrl || body.promotionalBanner || '';
+          const headerLogoUrl = body.headerLogoUrl || '';
+          const signatureImageUrl = body.signatureImageUrl || body.authorizedSignature || '';
+          const signatureTitle = body.signatureTitle || 'Authorized Signatory';
+          const showSig = body.showSignatureInPdf !== false ? 1 : 0;
+          const showBanner = body.showBannerInPdf !== false ? 1 : 0;
+          const isDefault = body.isDefault ? 1 : 0;
+
+          // If marked as default, clear default on other profiles
+          if (isDefault) {
+            try {
+              await env.DB.prepare('UPDATE company_settings SET is_default = 0').run();
+            } catch (e) {}
+          }
+
+          await env.DB.prepare(`
+            INSERT INTO company_settings (
+              id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
+              bank_name, account_name, account_number, ifsc_code, branch, terms_json,
+              banner_url, header_logo_url, signature_image_url, signature_title,
+              show_signature_in_pdf, show_banner_in_pdf, is_default, created_at, updated_at
+            ) VALUES (
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?,
+              ?, ?, ?, datetime("now"), datetime("now")
+            )
+            ON CONFLICT(id) DO UPDATE SET
+              company_name = excluded.company_name,
+              tagline = excluded.tagline,
+              address = excluded.address,
+              phone = excluded.phone,
+              phone_secondary = excluded.phone_secondary,
+              email = excluded.email,
+              website = excluded.website,
+              gstin = excluded.gstin,
+              state = excluded.state,
+              state_code = excluded.state_code,
+              bank_name = excluded.bank_name,
+              account_name = excluded.account_name,
+              account_number = excluded.account_number,
+              ifsc_code = excluded.ifsc_code,
+              branch = excluded.branch,
+              terms_json = excluded.terms_json,
+              banner_url = excluded.banner_url,
+              header_logo_url = excluded.header_logo_url,
+              signature_image_url = excluded.signature_image_url,
+              signature_title = excluded.signature_title,
+              show_signature_in_pdf = excluded.show_signature_in_pdf,
+              show_banner_in_pdf = excluded.show_banner_in_pdf,
+              is_default = CASE WHEN excluded.is_default = 1 THEN 1 ELSE company_settings.is_default END,
+              updated_at = datetime("now")
+          `).bind(
+            id, companyName, tagline, address, phone, phoneSecondary, email, website, gstin, state, stateCode,
+            bankName, accountName, accountNumber, ifscCode, branch, termsJson,
+            bannerUrl, headerLogoUrl, signatureImageUrl, signatureTitle,
+            showSig, showBanner, isDefault
+          ).run();
+
+          return jsonResponse({
+            success: true,
+            message: 'Company profile saved successfully',
+            id
+          }, 200, env);
+        } catch (postErr) {
+          console.error('[API /api/companies POST Error]:', postErr);
+          return errorResponse(`Failed to save company profile: ${postErr.message || postErr}`, 500, env);
         }
-
-        const companyName = String(body.companyName || body.name || 'Company Profile').trim();
-        const tagline = String(body.tagline || body.subtitle || '').trim();
-        const address = String(body.address || '').trim();
-        const phone = String(body.phone || '').trim();
-        const phoneSecondary = String(body.phoneSecondary || '').trim();
-        const email = String(body.email || '').trim();
-        const website = String(body.website || '').trim();
-        const gstin = String(body.gstin || '').trim();
-        const state = String(body.state || 'Gujarat').trim();
-        const stateCode = String(body.stateCode || '24').trim();
-
-        const bankName = String(body.bankName || '').trim();
-        const accountName = String(body.accountName || '').trim();
-        const accountNumber = String(body.accountNumber || body.accountNo || '').trim();
-        const ifscCode = String(body.ifscCode || '').trim();
-        const branch = String(body.branch || '').trim();
-
-        const termsJson = JSON.stringify(body.terms || []);
-        const bannerUrl = body.bannerUrl || body.promotionalBanner || '';
-        const headerLogoUrl = body.headerLogoUrl || '';
-        const signatureImageUrl = body.signatureImageUrl || body.authorizedSignature || '';
-        const signatureTitle = body.signatureTitle || 'Authorized Signatory';
-        const showSig = body.showSignatureInPdf !== false ? 1 : 0;
-        const showBanner = body.showBannerInPdf !== false ? 1 : 0;
-        const isDefault = body.isDefault ? 1 : 0;
-
-        // If marked as default, clear default on other profiles
-        if (isDefault) {
-          try {
-            await env.DB.prepare('UPDATE company_settings SET is_default = 0').run();
-          } catch (e) {}
-        }
-
-        await env.DB.prepare(`
-          INSERT INTO company_settings (
-            id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
-            bank_name, account_name, account_number, ifsc_code, branch, terms_json,
-            banner_url, header_logo_url, signature_image_url, signature_title,
-            show_signature_in_pdf, show_banner_in_pdf, is_default, created_at, updated_at
-          ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?,
-            ?, ?, ?, datetime("now"), datetime("now")
-          )
-          ON CONFLICT(id) DO UPDATE SET
-            company_name = excluded.company_name,
-            tagline = excluded.tagline,
-            address = excluded.address,
-            phone = excluded.phone,
-            phone_secondary = excluded.phone_secondary,
-            email = excluded.email,
-            website = excluded.website,
-            gstin = excluded.gstin,
-            state = excluded.state,
-            state_code = excluded.state_code,
-            bank_name = excluded.bank_name,
-            account_name = excluded.account_name,
-            account_number = excluded.account_number,
-            ifsc_code = excluded.ifsc_code,
-            branch = excluded.branch,
-            terms_json = excluded.terms_json,
-            banner_url = excluded.banner_url,
-            header_logo_url = excluded.header_logo_url,
-            signature_image_url = excluded.signature_image_url,
-            signature_title = excluded.signature_title,
-            show_signature_in_pdf = excluded.show_signature_in_pdf,
-            show_banner_in_pdf = excluded.show_banner_in_pdf,
-            is_default = CASE WHEN excluded.is_default = 1 THEN 1 ELSE company_settings.is_default END,
-            updated_at = datetime("now")
-        `).bind(
-          id, companyName, tagline, address, phone, phoneSecondary, email, website, gstin, state, stateCode,
-          bankName, accountName, accountNumber, ifscCode, branch, termsJson,
-          bannerUrl, headerLogoUrl, signatureImageUrl, signatureTitle,
-          showSig, showBanner, isDefault
-        ).run();
-
-        return jsonResponse({
-          success: true,
-          message: 'Company profile saved successfully',
-          id
-        }, 200, env);
       }
     }
 

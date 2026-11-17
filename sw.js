@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qm-quotes-v3.6.0';
+const CACHE_NAME = 'qm-quotes-v3.6.1';
 
 const ASSETS_TO_CACHE = [
   './',

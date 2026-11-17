@@ -78,7 +78,7 @@
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" async defer></script>
 
   <!-- Custom Styles & Print Stylesheet -->
-  <link rel="stylesheet" href="css/custom.css?v=3.6.0" />
+  <link rel="stylesheet" href="css/custom.css?v=3.6.1" />
 </head>
 <body class="bg-slate-100 text-slate-900 font-sans min-h-screen flex flex-col antialiased selection:bg-blue-900 selection:text-white">
 
@@ -573,7 +573,7 @@
           </div>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-          <button type="button" id="btn-add-company-profile" onclick="App.addNewCompanyProfile()" class="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer">
+          <button type="button" id="btn-add-company-profile" onclick="App.openAddCompanyModal()" class="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer">
             <i class="fa-solid fa-plus text-amber-400"></i> <span>Add Company (Max 3)</span>
           </button>
           <button type="button" id="btn-delete-company-profile" onclick="App.deleteCurrentCompanyProfile()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
@@ -1531,6 +1531,103 @@
     </div>
   </div>
 
+  <!-- ========================================================= -->
+  <!-- MODAL: ADD / EDIT COMPANY PROFILE (In-App Form Application) -->
+  <!-- ========================================================= -->
+  <div id="company-profile-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 overflow-y-auto hidden">
+    <div class="min-h-screen p-4 flex items-center justify-center">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden animate-fade-in">
+        <div class="bg-gradient-to-r from-blue-950 via-blue-900 to-slate-900 text-white px-5 py-4 flex justify-between items-center border-b border-blue-900/60">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
+              <i class="fa-solid fa-building"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-black uppercase tracking-wider text-white">New Company Profile</h3>
+              <p class="text-[11px] text-slate-300">Create a billing entity, letterhead & bank identity (Max 3)</p>
+            </div>
+          </div>
+          <button type="button" onclick="App.closeCompanyModal()" class="text-slate-400 hover:text-white transition p-1">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+
+        <form id="company-modal-form" onsubmit="App.handleSaveCompanyModal(event)" class="p-5 space-y-3.5">
+          <div id="company-modal-alert" class="hidden text-xs p-3 rounded-xl font-semibold"></div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-800 block mb-1">Company / Entity Name <span class="text-rose-500">*</span></label>
+            <input type="text" id="modal-comp-name" required placeholder="e.g. Acme Industrial Solutions Pvt Ltd" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Tagline / Subtitle (Optional)</label>
+            <input type="text" id="modal-comp-tagline" placeholder="e.g. Roofing Sheets, Structural Purlins & Hardware" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">Phone Number</label>
+              <input type="text" id="modal-comp-phone" placeholder="+91 99999 00000" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-700 block mb-1">GSTIN</label>
+              <input type="text" id="modal-comp-gstin" placeholder="24AAAAA0000A1Z5" class="w-full text-xs font-mono uppercase border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Official Email</label>
+            <input type="email" id="modal-comp-email" placeholder="billing@yourcompany.com" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Registered Business Address</label>
+            <textarea id="modal-comp-address" rows="2" placeholder="Full address including city, state & pin code" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"></textarea>
+          </div>
+
+          <div class="pt-2 flex items-center justify-between border-t border-slate-100">
+            <label class="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700 select-none">
+              <input type="checkbox" id="modal-comp-is-default" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4" />
+              <span>Set as default company profile</span>
+            </label>
+          </div>
+
+          <div class="pt-3 border-t border-slate-200 flex justify-end gap-2.5">
+            <button type="button" onclick="App.closeCompanyModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition">
+              Cancel
+            </button>
+            <button type="submit" id="btn-submit-company-modal" class="px-5 py-2 bg-gradient-to-r from-blue-900 to-indigo-900 hover:from-blue-800 hover:to-indigo-800 text-white rounded-xl text-xs font-black shadow-md transition flex items-center gap-2">
+              <i class="fa-solid fa-plus text-amber-400"></i>
+              <span>Create Company Profile</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: CONFIRM DELETE COMPANY PROFILE (In-App Modal) -->
+  <!-- ========================================================= -->
+  <div id="delete-company-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full border border-slate-200 overflow-hidden animate-fade-in p-5 text-center">
+      <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl border border-rose-100">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider mb-1">Delete Company Profile</h3>
+      <p id="delete-company-name-text" class="text-xs text-slate-600 mb-5 leading-relaxed">Are you sure you want to delete this company profile? This action cannot be undone.</p>
+      <div class="flex items-center justify-center gap-2.5">
+        <button type="button" onclick="App.closeDeleteCompanyModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition">
+          Cancel
+        </button>
+        <button type="button" id="btn-confirm-delete-company" onclick="App.confirmDeleteCompanyProfile()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5">
+          <i class="fa-solid fa-trash-can"></i>
+          <span>Delete Profile</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- ========================================================= -->
   <!-- MODAL: PDF & PRINT PREVIEW -->
@@ -1714,13 +1811,13 @@
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
 
   <!-- Application Core Scripts -->
-  <script src="js/default-data.js?v=3.6.0"></script>
-  <script src="js/calculations.js?v=3.6.0"></script>
-  <script src="js/storage.js?v=3.6.0"></script>
-  <script src="js/auth.js?v=3.6.0"></script>
-  <script src="js/csv-helper.js?v=3.6.0"></script>
-  <script src="js/pdf-generator.js?v=3.6.0"></script>
-  <script src="js/app.js?v=3.6.0"></script>
+  <script src="js/default-data.js?v=3.6.1"></script>
+  <script src="js/calculations.js?v=3.6.1"></script>
+  <script src="js/storage.js?v=3.6.1"></script>
+  <script src="js/auth.js?v=3.6.1"></script>
+  <script src="js/csv-helper.js?v=3.6.1"></script>
+  <script src="js/pdf-generator.js?v=3.6.1"></script>
+  <script src="js/app.js?v=3.6.1"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {

@@ -1076,6 +1076,18 @@ const App = {
       return true;
     }
 
+    const companyModal = document.getElementById('company-profile-modal');
+    if (companyModal && !companyModal.classList.contains('hidden')) {
+      this.closeCompanyModal();
+      return true;
+    }
+
+    const deleteCompanyModal = document.getElementById('delete-company-modal');
+    if (deleteCompanyModal && !deleteCompanyModal.classList.contains('hidden')) {
+      this.closeDeleteCompanyModal();
+      return true;
+    }
+
     const forgotView = document.getElementById('login-view-forgot');
     if (forgotView && !forgotView.classList.contains('hidden')) {
       this.showForgotPasswordView(false);
@@ -3102,44 +3114,102 @@ const App = {
     this.renderSettingsTerms(terms);
   },
 
-  async addNewCompanyProfile() {
+  openAddCompanyModal() {
     const companies = StorageManager.getCompanies();
     if (companies.length >= 3) {
-      this.showToast('Maximum of 3 Company Profiles allowed.', 'error');
+      this.showToast('Maximum of 3 Company Profiles reached. You must edit or delete an existing profile.', 'error');
+      return;
+    }
+    const modal = document.getElementById('company-profile-modal');
+    const form = document.getElementById('company-modal-form');
+    const alertBox = document.getElementById('company-modal-alert');
+    if (form) form.reset();
+    if (alertBox) alertBox.classList.add('hidden');
+    if (modal) modal.classList.remove('hidden');
+    setTimeout(() => document.getElementById('modal-comp-name')?.focus(), 100);
+  },
+
+  closeCompanyModal() {
+    const modal = document.getElementById('company-profile-modal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  async handleSaveCompanyModal(e) {
+    if (e) e.preventDefault();
+    const nameInp = document.getElementById('modal-comp-name');
+    const taglineInp = document.getElementById('modal-comp-tagline');
+    const phoneInp = document.getElementById('modal-comp-phone');
+    const gstinInp = document.getElementById('modal-comp-gstin');
+    const emailInp = document.getElementById('modal-comp-email');
+    const addrInp = document.getElementById('modal-comp-address');
+    const isDefaultInp = document.getElementById('modal-comp-is-default');
+    const btn = document.getElementById('btn-submit-company-modal');
+    const alertBox = document.getElementById('company-modal-alert');
+
+    const companyName = nameInp?.value?.trim() || '';
+    if (!companyName) {
+      if (alertBox) {
+        alertBox.textContent = 'Company / Entity Name is required.';
+        alertBox.className = 'text-xs p-3 rounded-xl font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+        alertBox.classList.remove('hidden');
+      }
+      nameInp?.focus();
       return;
     }
 
-    const companyName = prompt('Enter new Company / Entity Name (e.g., Secondary Billing Entity):');
-    if (!companyName || !companyName.trim()) return;
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+    }
 
     const newComp = {
       id: 'comp_' + Date.now(),
-      companyName: companyName.trim(),
-      subtitle: '',
-      address: '',
-      phone: '',
-      email: '',
-      gstin: '',
+      companyName: companyName,
+      name: companyName,
+      subtitle: taglineInp?.value?.trim() || '',
+      tagline: taglineInp?.value?.trim() || '',
+      phone: phoneInp?.value?.trim() || '',
+      phoneSecondary: '',
+      gstin: gstinInp?.value?.trim() || '',
+      email: emailInp?.value?.trim() || '',
+      address: addrInp?.value?.trim() || '',
+      state: 'Gujarat',
+      stateCode: '24',
       bankName: '',
+      accountName: companyName,
       accountNo: '',
+      accountNumber: '',
       ifscCode: '',
-      terms: ['Subject to local jurisdiction.', 'Validity 15 days from issuance.'],
+      branch: '',
+      terms: ['Customer will be billed after acceptance of this quote.', 'Subject to local jurisdiction.'],
       authorizedSignature: 'assets/sample-signature.svg',
       promotionalBanner: '',
-      isDefault: false
+      isDefault: !!isDefaultInp?.checked
     };
 
     try {
       await StorageManager.saveCompany(newComp);
       this.activeCompanyId = newComp.id;
+      this.closeCompanyModal();
+      this.renderCompanyProfileTabs();
       this.switchCompanyProfileTab(newComp.id);
-      this.showToast(`Company profile "${companyName.trim()}" created successfully!`, 'success');
+      this.showToast(`Company profile "${companyName}" created successfully!`, 'success');
     } catch (err) {
+      if (alertBox) {
+        alertBox.textContent = err.message || 'Failed to save company profile';
+        alertBox.className = 'text-xs p-3 rounded-xl font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+        alertBox.classList.remove('hidden');
+      }
       this.showToast(err.message || 'Error creating company profile', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plus text-amber-400"></i> <span>Create Company Profile</span>';
+      }
     }
   },
 
-  async deleteCurrentCompanyProfile() {
+  deleteCurrentCompanyProfile() {
     const companies = StorageManager.getCompanies();
     if (companies.length <= 1) {
       this.showToast('Cannot delete the only remaining company profile.', 'error');
@@ -3148,18 +3218,42 @@ const App = {
 
     const current = companies.find(c => c.id === this.activeCompanyId);
     const name = current?.companyName || current?.name || 'this company';
-    if (!confirm(`Are you sure you want to permanently delete "${name}"?`)) {
-      return;
+
+    const modal = document.getElementById('delete-company-modal');
+    const text = document.getElementById('delete-company-name-text');
+    if (text) {
+      text.textContent = `Are you sure you want to permanently delete "${name}"? This action cannot be undone.`;
+    }
+    if (modal) modal.classList.remove('hidden');
+  },
+
+  closeDeleteCompanyModal() {
+    const modal = document.getElementById('delete-company-modal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  async confirmDeleteCompanyProfile() {
+    const btn = document.getElementById('btn-confirm-delete-company');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Deleting...';
     }
 
     try {
       await StorageManager.deleteCompany(this.activeCompanyId);
       const remaining = StorageManager.getCompanies();
       this.activeCompanyId = remaining[0]?.id || 'primary';
+      this.closeDeleteCompanyModal();
+      this.renderCompanyProfileTabs();
       this.switchCompanyProfileTab(this.activeCompanyId);
-      this.showToast(`Company profile deleted successfully!`, 'success');
+      this.showToast('Company profile deleted successfully!', 'success');
     } catch (err) {
       this.showToast(err.message || 'Error deleting company profile', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-trash-can mr-1"></i> <span>Delete Profile</span>';
+      }
     }
   },
 
