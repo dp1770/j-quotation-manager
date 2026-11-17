@@ -7,11 +7,16 @@
 const CsvHelper = {
   /**
    * Properly escapes a cell value for CSV output
+   * Neutralizes CSV Formula Injection (=, +, -, @) for safe opening in Excel/LibreOffice
    */
   escape(val) {
     if (val === null || val === undefined) return '""';
-    const str = String(val).replace(/"/g, '""');
-    return `"${str}"`;
+    let str = String(val);
+    // Neutralize spreadsheet formula injection (=, +, -, @)
+    if (/^[=+\-@]/.test(str)) {
+      str = "'" + str;
+    }
+    return `"${str.replace(/"/g, '""')}"`;
   },
 
   /**

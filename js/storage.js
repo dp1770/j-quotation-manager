@@ -205,6 +205,9 @@ const StorageManager = {
         const data = await res.json();
         if (data && data.success && Array.isArray(data.companies)) {
           this._companies = data.companies;
+          try {
+            localStorage.setItem('qm_companies', JSON.stringify(this._companies));
+          } catch (e) {}
           return { success: true, companies: this._companies };
         }
       }
@@ -219,6 +222,16 @@ const StorageManager = {
     if (this._companies && this._companies.length > 0) {
       return this._companies;
     }
+    try {
+      const cached = localStorage.getItem('qm_companies');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this._companies = parsed;
+          return this._companies;
+        }
+      }
+    } catch (e) {}
     // Fallback: Build default company profile from primary settings
     const settings = this.getSettings();
     const defaultComp = {
@@ -256,8 +269,13 @@ const StorageManager = {
 
   getCompanyById(id) {
     const list = this.getCompanies();
-    if (!id) return list[0] || null;
-    return list.find(c => c.id === id) || list[0] || null;
+    if (!id) return this.getDefaultCompany();
+    return list.find(c => c.id === id) || this.getDefaultCompany() || list[0] || null;
+  },
+
+  getDefaultCompany() {
+    const list = this.getCompanies();
+    return list.find(c => c.isDefault) || list[0] || null;
   },
 
   async saveCompany(companyData) {
@@ -434,6 +452,11 @@ const StorageManager = {
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || `Save failed with HTTP ${res.status}`);
+    }
+
+    const resData = await res.json().catch(() => ({}));
+    if (resData && resData.quoteNumber) {
+      quote.quoteNumber = resData.quoteNumber;
     }
 
     // Update in-memory active list

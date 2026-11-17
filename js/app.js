@@ -458,27 +458,57 @@ const App = {
 
     // Nav Users tab: only visible to Super Admin
     const usersTabBtn = document.getElementById('nav-btn-users');
-    if (usersTabBtn) {
-      if (AuthManager.isSuperAdmin()) {
-        usersTabBtn.classList.remove('hidden');
-      } else {
-        usersTabBtn.classList.add('hidden');
-        if (this.currentTab === 'users') {
-          this.switchTab('dashboard');
-        }
+    const mobileUsersBtn = document.getElementById('mobile-nav-users');
+    if (AuthManager.isSuperAdmin()) {
+      if (usersTabBtn) usersTabBtn.classList.remove('hidden');
+      if (mobileUsersBtn) mobileUsersBtn.classList.remove('hidden');
+    } else {
+      if (usersTabBtn) usersTabBtn.classList.add('hidden');
+      if (mobileUsersBtn) mobileUsersBtn.classList.add('hidden');
+      if (this.currentTab === 'users') {
+        this.switchTab('dashboard');
       }
     }
 
     // Nav Settings tab: only visible if user has canManageSettings
     const settingsTabBtn = document.getElementById('nav-btn-settings');
-    if (settingsTabBtn) {
-      if (AuthManager.canManageSettings()) {
-        settingsTabBtn.classList.remove('hidden');
-      } else {
-        settingsTabBtn.classList.add('hidden');
-        if (this.currentTab === 'settings') {
-          this.switchTab('dashboard');
-        }
+    const mobileSettingsBtn = document.getElementById('mobile-nav-settings');
+    if (AuthManager.canManageSettings()) {
+      if (settingsTabBtn) settingsTabBtn.classList.remove('hidden');
+      if (mobileSettingsBtn) mobileSettingsBtn.classList.remove('hidden');
+    } else {
+      if (settingsTabBtn) settingsTabBtn.classList.add('hidden');
+      if (mobileSettingsBtn) mobileSettingsBtn.classList.add('hidden');
+      if (this.currentTab === 'settings') {
+        this.switchTab('dashboard');
+      }
+    }
+
+    // Nav Items tab: only visible if user has canManageItems
+    const itemsTabBtn = document.getElementById('nav-btn-items');
+    const mobileItemsBtn = document.getElementById('mobile-nav-items');
+    if (AuthManager.canManageItems()) {
+      if (itemsTabBtn) itemsTabBtn.classList.remove('hidden');
+      if (mobileItemsBtn) mobileItemsBtn.classList.remove('hidden');
+    } else {
+      if (itemsTabBtn) itemsTabBtn.classList.add('hidden');
+      if (mobileItemsBtn) mobileItemsBtn.classList.add('hidden');
+      if (this.currentTab === 'items') {
+        this.switchTab('dashboard');
+      }
+    }
+
+    // Nav Clients tab: only visible if user has canManageClients
+    const clientsTabBtn = document.getElementById('nav-btn-clients');
+    const mobileClientsBtn = document.getElementById('mobile-nav-clients');
+    if (AuthManager.canManageClients()) {
+      if (clientsTabBtn) clientsTabBtn.classList.remove('hidden');
+      if (mobileClientsBtn) mobileClientsBtn.classList.remove('hidden');
+    } else {
+      if (clientsTabBtn) clientsTabBtn.classList.add('hidden');
+      if (mobileClientsBtn) mobileClientsBtn.classList.add('hidden');
+      if (this.currentTab === 'clients') {
+        this.switchTab('dashboard');
       }
     }
 
@@ -586,6 +616,9 @@ const App = {
           <td class="py-3 px-3 font-mono font-bold text-blue-900">
             ${this.escapeHtml(u.username)}
           </td>
+          <td class="py-3 px-3 text-slate-600 font-mono text-[11px]">
+            ${this.escapeHtml(u.email || '-')}
+          </td>
           <td class="py-3 px-3">
             <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${isSuper ? 'bg-amber-100 text-amber-900' : 'bg-purple-100 text-purple-900'}">
               ${u.role || (isSuper ? 'Super Admin' : 'Sub-Admin')}
@@ -598,7 +631,16 @@ const App = {
             ${PdfGenerator.formatDate(u.createdAt || new Date().toISOString())}
           </td>
           <td class="py-3 px-3 text-right">
-            ${isSuper ? '<span class="text-[11px] font-bold text-slate-400 italic">Protected</span>' : `
+            ${isSuper ? `
+              <div class="inline-flex items-center gap-1">
+                <button onclick="App.openUserEditorModal('${u.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Admin">
+                  <i class="fa-solid fa-user-pen text-sm"></i>
+                </button>
+                <button onclick="App.openAdminResetUserModal('${u.id}', '${this.escapeHtml(u.username)}')" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Reset Password">
+                  <i class="fa-solid fa-key text-sm"></i>
+                </button>
+              </div>
+            ` : `
               <div class="inline-flex items-center gap-1">
                 <button onclick="App.openUserEditorModal('${u.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Permissions">
                   <i class="fa-solid fa-user-pen text-sm"></i>
@@ -622,6 +664,7 @@ const App = {
     const title = document.getElementById('user-modal-title');
     const idInp = document.getElementById('edit-user-id');
     const nameInp = document.getElementById('edit-user-fullname');
+    const emailInp = document.getElementById('edit-user-email');
     const userInp = document.getElementById('edit-user-username');
     const roleInp = document.getElementById('edit-user-role');
     const passInp = document.getElementById('edit-user-password');
@@ -637,44 +680,58 @@ const App = {
       const u = users.find(x => x.id === userId);
       if (!u) return;
 
+      const isSuper = !!(u.isSuperAdmin || u.role === 'Super Admin');
+
       if (idInp) idInp.value = u.id;
       if (nameInp) nameInp.value = u.fullName || '';
+      if (emailInp) emailInp.value = u.email || '';
       if (userInp) {
         userInp.value = u.username || '';
         userInp.disabled = true;
       }
-      if (roleInp) roleInp.value = u.role || 'Sub-Admin';
+      if (roleInp) {
+        roleInp.value = isSuper ? 'Super Admin' : (u.role || 'Sub-Admin');
+        roleInp.disabled = isSuper;
+      }
       if (passInp) {
         passInp.value = '';
         passInp.placeholder = 'New Password (min 6 chars, leave blank to keep unchanged)';
       }
-      if (title) title.innerHTML = '<i class="fa-solid fa-user-pen"></i> <span>Edit Sub-Admin Permissions</span>';
+      if (title) {
+        title.innerHTML = isSuper
+          ? '<i class="fa-solid fa-user-gear"></i> <span>Edit Super Admin Account</span>'
+          : '<i class="fa-solid fa-user-pen"></i> <span>Edit Sub-Admin Permissions</span>';
+      }
 
       const perms = u.permissions || {};
-      if (permClients) permClients.checked = !!perms.canManageClients;
-      if (permQuotes) permQuotes.checked = !!perms.canCreateQuotations;
-      if (permItems) permItems.checked = !!perms.canManageItems;
-      if (permDelete) permDelete.checked = !!perms.canDeleteQuotes;
-      if (permSettings) permSettings.checked = !!perms.canManageSettings;
+      if (permClients) { permClients.checked = isSuper ? true : !!perms.canManageClients; permClients.disabled = isSuper; }
+      if (permQuotes) { permQuotes.checked = isSuper ? true : !!perms.canCreateQuotations; permQuotes.disabled = isSuper; }
+      if (permItems) { permItems.checked = isSuper ? true : !!perms.canManageItems; permItems.disabled = isSuper; }
+      if (permDelete) { permDelete.checked = isSuper ? true : !!perms.canDeleteQuotes; permDelete.disabled = isSuper; }
+      if (permSettings) { permSettings.checked = isSuper ? true : !!perms.canManageSettings; permSettings.disabled = isSuper; }
     } else {
       if (idInp) idInp.value = '';
       if (nameInp) nameInp.value = '';
+      if (emailInp) emailInp.value = '';
       if (userInp) {
         userInp.value = '';
         userInp.disabled = false;
       }
-      if (roleInp) roleInp.value = 'Sub-Admin';
+      if (roleInp) {
+        roleInp.value = 'Sub-Admin';
+        roleInp.disabled = false;
+      }
       if (passInp) {
         passInp.value = '';
         passInp.placeholder = 'Min 6 characters';
       }
       if (title) title.innerHTML = '<i class="fa-solid fa-user-plus"></i> <span>Add New Sub-Admin</span>';
 
-      if (permClients) permClients.checked = true;
-      if (permQuotes) permQuotes.checked = true;
-      if (permItems) permItems.checked = false;
-      if (permDelete) permDelete.checked = false;
-      if (permSettings) permSettings.checked = false;
+      if (permClients) { permClients.checked = true; permClients.disabled = false; }
+      if (permQuotes) { permQuotes.checked = true; permQuotes.disabled = false; }
+      if (permItems) { permItems.checked = false; permItems.disabled = false; }
+      if (permDelete) { permDelete.checked = false; permDelete.disabled = false; }
+      if (permSettings) { permSettings.checked = false; permSettings.disabled = false; }
     }
 
     if (modal) modal.classList.remove('hidden');
@@ -689,6 +746,7 @@ const App = {
     e.preventDefault();
     const id = document.getElementById('edit-user-id')?.value;
     const fullName = document.getElementById('edit-user-fullname')?.value || '';
+    const email = document.getElementById('edit-user-email')?.value?.trim().toLowerCase() || '';
     const username = document.getElementById('edit-user-username')?.value || '';
     const role = document.getElementById('edit-user-role')?.value || 'Sub-Admin';
     const password = document.getElementById('edit-user-password')?.value || '';
@@ -696,6 +754,12 @@ const App = {
     if (!username.trim()) {
       this.showToast('Username is required.', 'error');
       document.getElementById('edit-user-username')?.focus();
+      return;
+    }
+
+    if (!email || !email.includes('@')) {
+      this.showToast('A valid email address is required for user account and OTP recovery.', 'error');
+      document.getElementById('edit-user-email')?.focus();
       return;
     }
 
@@ -726,6 +790,7 @@ const App = {
     const userData = {
       id: id || ('user_sub_' + Date.now()),
       fullName,
+      email,
       username: username.trim().toLowerCase(),
       role,
       permissions
@@ -741,14 +806,26 @@ const App = {
       }
     }
 
+    const submitBtn = document.getElementById('btn-save-user-submit');
+    const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+    }
+
     try {
       await AuthManager.saveUser(userData);
       await StorageManager.pullAllFromCloud();
-      this.showToast('Sub-admin saved successfully!', 'success');
+      this.showToast('User account saved successfully!', 'success');
       this.closeUserEditorModal();
       this.renderUsersList();
     } catch (err) {
       this.showToast(err.message || 'Error saving user', 'error');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origBtnHtml;
+      }
     }
   },
 
@@ -829,12 +906,23 @@ const App = {
       this.showToast('Permission denied: Only Super Admin can export database backups.', 'error');
       return;
     }
+    const btn = document.getElementById('btn-export-cloud-backup');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> <span>Exporting...</span>';
+    }
     try {
       this.showToast('Preparing database export...', 'info');
       const res = await StorageManager.exportBackup();
       this.showToast(res.message || 'Database exported successfully!', 'success');
     } catch (err) {
       this.showToast('Export failed: ' + (err.message || err), 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+      }
     }
   },
 
@@ -853,6 +941,11 @@ const App = {
       return;
     }
 
+    const label = document.getElementById('label-import-cloud-backup');
+    if (label) {
+      label.classList.add('opacity-75', 'pointer-events-none');
+    }
+
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
@@ -860,15 +953,18 @@ const App = {
         const content = e.target.result;
         const res = await StorageManager.importBackup(content);
         if (res && res.success) {
-          alert(res.message || 'Database restored successfully!');
-          this.renderActiveTab();
+          this.showToast(res.message || 'Database restored successfully!', 'success');
+          this.renderCurrentTab();
         } else {
-          alert(res?.error || 'Database restore failed.');
+          this.showToast(res?.error || 'Database restore failed.', 'error');
         }
       } catch (err) {
-        alert('Failed restoring database: ' + (err.message || err));
+        this.showToast('Failed restoring database: ' + (err.message || err), 'error');
       } finally {
         if (event?.target) event.target.value = '';
+        if (label) {
+          label.classList.remove('opacity-75', 'pointer-events-none');
+        }
       }
     };
     reader.readAsText(file);
@@ -935,7 +1031,17 @@ const App = {
       this.showToast('Permission denied: You do not have permission to access Settings.', 'error');
       tabName = 'dashboard';
     }
+    if (tabName === 'items' && !AuthManager.canManageItems()) {
+      this.showToast('Permission denied: You do not have permission to access Items Master.', 'error');
+      tabName = 'dashboard';
+    }
+    if (tabName === 'clients' && !AuthManager.canManageClients()) {
+      this.showToast('Permission denied: You do not have permission to access Clients.', 'error');
+      tabName = 'dashboard';
+    }
     this.currentTab = tabName;
+
+    // Desktop Nav Buttons
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
       const t = btn.getAttribute('data-tab');
       if (t === tabName) {
@@ -944,6 +1050,18 @@ const App = {
       } else {
         btn.classList.remove('bg-blue-900', 'text-white');
         btn.classList.add('text-slate-600', 'hover:bg-slate-100');
+      }
+    });
+
+    // Mobile Bottom Nav Buttons
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+      const t = btn.getAttribute('data-tab');
+      if (t === tabName) {
+        btn.classList.add('text-blue-900', 'font-black', 'bg-blue-50/70', 'rounded-xl');
+        btn.classList.remove('text-slate-500', 'font-medium');
+      } else {
+        btn.classList.remove('text-blue-900', 'font-black', 'bg-blue-50/70', 'rounded-xl');
+        btn.classList.add('text-slate-500', 'font-medium');
       }
     });
 
@@ -1000,6 +1118,13 @@ const App = {
     });
 
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-tab');
+        if (tab) this.switchTab(tab);
+      });
+    });
+
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const tab = btn.getAttribute('data-tab');
         if (tab) this.switchTab(tab);
@@ -1553,6 +1678,13 @@ const App = {
       return;
     }
 
+    const btn = document.getElementById('btn-save-item');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+    }
+
     try {
       await StorageManager.saveItem(itemData);
       this.showToast(`Product "${itemData.name}" saved to Item Master!`, 'success');
@@ -1560,6 +1692,11 @@ const App = {
       this.renderItemsList();
     } catch (err) {
       this.showToast(err.message || 'No Internet Connection - Unable to save item', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+      }
     }
   },
 
@@ -1602,6 +1739,8 @@ const App = {
       imageUrl: 'assets/profile-indradhanus.svg'
     };
 
+    const defaultCompany = StorageManager.getDefaultCompany ? StorageManager.getDefaultCompany() : null;
+
     this.currentQuotation = {
       id: 'qt_' + Date.now(),
       quoteNumber: nextNo,
@@ -1614,6 +1753,8 @@ const App = {
       clientEmail: '',
       clientGst: '',
       clientAddress: '',
+      companyId: defaultCompany?.id || 'primary',
+      companyName: defaultCompany?.companyName || defaultCompany?.name || '',
       items: [
         {
           id: 'item_' + Date.now(),
@@ -1768,7 +1909,9 @@ const App = {
     if (elNotes) elNotes.value = q.notes || '';
 
     // Multi-Company Selector
-    this.populateQuotationCompanySelector(q.companyId || 'primary');
+    const defComp = StorageManager.getDefaultCompany ? StorageManager.getDefaultCompany() : null;
+    const selectedCompanyId = q.companyId || defComp?.id || 'primary';
+    this.populateQuotationCompanySelector(selectedCompanyId);
 
     // Render items and calculation blocks
     this.renderEditorItemsTable();
@@ -2355,6 +2498,20 @@ const App = {
   },
 
   async saveCurrentQuotation() {
+    const btnTop = document.getElementById('btn-save-quotation-top');
+    const btnBottom = document.getElementById('btn-save-quotation-bottom');
+    const origTopHtml = btnTop ? btnTop.innerHTML : '';
+    const origBottomHtml = btnBottom ? btnBottom.innerHTML : '';
+
+    if (btnTop) {
+      btnTop.disabled = true;
+      btnTop.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Saving...</span>';
+    }
+    if (btnBottom) {
+      btnBottom.disabled = true;
+      btnBottom.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Saving...</span>';
+    }
+
     try {
       console.log('[App] saveCurrentQuotation triggered...');
       if (!this.currentQuotation) {
@@ -2483,6 +2640,15 @@ const App = {
     } catch (err) {
       console.error('[App] Fatal error in saveCurrentQuotation:', err);
       this.showToast(err.message || 'No Internet Connection - Unable to save quotation', 'error');
+    } finally {
+      if (btnTop) {
+        btnTop.disabled = false;
+        btnTop.innerHTML = origTopHtml;
+      }
+      if (btnBottom) {
+        btnBottom.disabled = false;
+        btnBottom.innerHTML = origBottomHtml;
+      }
     }
   },
 
@@ -2969,6 +3135,13 @@ const App = {
       return;
     }
 
+    const btn = document.getElementById('btn-save-client');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+    }
+
     try {
       await StorageManager.saveClient(clientData);
       this.showToast('Client record saved successfully!', 'success');
@@ -2977,6 +3150,11 @@ const App = {
       this.renderDashboard();
     } catch (err) {
       this.showToast(err.message || 'No Internet Connection - Unable to save client', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+      }
     }
   },
 
@@ -3085,6 +3263,9 @@ const App = {
     if (elAcNo) elAcNo.value = comp.accountNo || comp.accountNumber || '';
     if (elIfsc) elIfsc.value = comp.ifscCode || '';
     if (elBranch) elBranch.value = comp.branch || '';
+
+    const elDefault = document.getElementById('set-company-is-default');
+    if (elDefault) elDefault.checked = !!comp.isDefault;
 
     // Signature Preview & Banner Preview
     const sigPreview = document.getElementById('set-signature-preview');
@@ -3411,6 +3592,13 @@ const App = {
       return;
     }
 
+    const btn = document.getElementById('btn-save-settings');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Saving...</span>';
+    }
+
     const settings = StorageManager.getSettings();
 
     const companyName = document.getElementById('set-company-name').value.trim();
@@ -3426,12 +3614,15 @@ const App = {
     const accountNumber = document.getElementById('set-bank-acno').value.trim();
     const ifscCode = document.getElementById('set-bank-ifsc').value.trim();
     const branch = document.getElementById('set-bank-branch').value.trim();
+    const isDefault = !!document.getElementById('set-company-is-default')?.checked;
 
     // 1. Save Active Company Profile in Multi-Company Store
     const companies = StorageManager.getCompanies();
     const activeComp = companies.find(c => c.id === this.activeCompanyId) || { id: this.activeCompanyId };
     activeComp.companyName = companyName || activeComp.companyName || 'Primary Company';
+    activeComp.name = activeComp.companyName;
     activeComp.subtitle = tagline;
+    activeComp.tagline = tagline;
     activeComp.address = address;
     activeComp.phone = phone;
     activeComp.phoneSecondary = phoneSecondary;
@@ -3440,9 +3631,11 @@ const App = {
     activeComp.bankName = bankName;
     activeComp.accountName = accountName;
     activeComp.accountNo = accountNumber;
+    activeComp.accountNumber = accountNumber;
     activeComp.ifscCode = ifscCode;
     activeComp.branch = branch;
     activeComp.terms = settings.terms || [];
+    activeComp.isDefault = isDefault;
 
     const sigPreview = document.getElementById('set-signature-preview');
     if (sigPreview && sigPreview.src && !sigPreview.src.includes('sample-signature.svg')) {
@@ -3453,26 +3646,28 @@ const App = {
       activeComp.promotionalBanner = bannerPreview.src;
     }
 
-    // 2. Save General Settings for Legacy/Fallback
-    settings.company = {
-      name: companyName,
-      tagline: tagline,
-      address: address,
-      phone: phone,
-      phoneSecondary: phoneSecondary,
-      email: email,
-      gstin: gstin,
-      state: 'Gujarat',
-      stateCode: '24'
-    };
+    // 2. Only save general settings fallback if editing primary or default entity
+    if (this.activeCompanyId === 'primary' || activeComp.isDefault) {
+      settings.company = {
+        name: companyName,
+        tagline: tagline,
+        address: address,
+        phone: phone,
+        phoneSecondary: phoneSecondary,
+        email: email,
+        gstin: gstin,
+        state: 'Gujarat',
+        stateCode: '24'
+      };
 
-    settings.bank = {
-      bankName: bankName,
-      accountName: accountName,
-      accountNumber: accountNumber,
-      ifscCode: ifscCode,
-      branch: branch
-    };
+      settings.bank = {
+        bankName: bankName,
+        accountName: accountName,
+        accountNumber: accountNumber,
+        ifscCode: ifscCode,
+        branch: branch
+      };
+    }
 
     const workerUrlVal = document.getElementById('set-worker-url') ? document.getElementById('set-worker-url').value.trim() : '';
     settings.integration = {
@@ -3500,6 +3695,11 @@ const App = {
       this.showToast('Company profile & settings saved successfully!', 'success');
     } catch (err) {
       this.showToast(err.message || 'No Internet Connection - Unable to save settings', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+      }
     }
   },
 

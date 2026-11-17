@@ -367,8 +367,8 @@ test('POST /api/auth/reset-password: Validates OTP and updates user password', a
           bind(...args) {
             return {
               async first() {
-                if (sql.includes('SELECT id, expires_at, used FROM password_resets')) {
-                  return { id: 'reset_1', expires_at: Date.now() + 500000, used: 0 };
+                if (sql.includes('FROM password_resets')) {
+                  return { id: 'reset_1', expires_at: Date.now() + 500000, used: 0, otp_hash: otpHash, attempts: 0 };
                 }
                 if (sql.includes('SELECT id, username FROM users')) {
                   return { id: 'u123', username: 'john_doe' };
@@ -555,4 +555,162 @@ test('POST /api/companies: Enforces maximum limit of 3 company profiles (400)', 
   assert.equal(res.status, 400);
   const body = await res.json();
   assert.match(body.error, /Maximum.*3 company profiles/i);
+});
+
+test('POST /api/users: Saves user email and preserves Super Admin role on edit', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  let updatedEmail = null;
+  let updatedRole = null;
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                if (sql.includes('SELECT id, password_hash, is_super_admin, role FROM users')) {
+                  return { id: 'admin_1', is_super_admin: 1, role: 'Super Admin', password_hash: 'hash123' };
+                }
+                return null;
+              },
+              async run() {
+                if (sql.includes('UPDATE users SET')) {
+                  updatedEmail = args[1];
+                  updatedRole = args[2];
+                }
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/users', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: 'admin_1',
+      username: 'admin',
+      fullName: 'Super Administrator',
+      email: 'new_admin@company.com',
+      role: 'Sub-Admin' // Attempt to demote Super Admin via edit
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  assert.equal(updatedEmail, 'new_admin@company.com');
+  assert.equal(updatedRole, 'Super Admin', 'Super Admin role must be preserved');
+});
+
+test('POST /api/auth/reset-password: Rate limits after 5 failed OTP attempts (400)', async () => {
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async first() {
+                if (sql.includes('FROM password_resets')) {
+                  return { id: 'reset_locked', expires_at: Date.now() + 500000, used: 0, attempts: 5, otp_hash: 'expected_hash' };
+                }
+                return null;
+              },
+              async run() {
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/auth/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'locked@example.com',
+      otp: '111111',
+      newPassword: 'newSecretPassword123'
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.match(body.error, /too many failed attempts/i);
+});
+
+test('POST /api/quotations: Atomically assigns next sequential quote number on collision', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true,
+    permissions: { canCreateQuotations: true }
+  });
+
+  let savedQuoteNumber = null;
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                if (sql.includes('SELECT id FROM quotations WHERE id = ?')) return null;
+                if (sql.includes('SELECT id FROM quotations WHERE quote_number = ?')) {
+                  return { id: 'other_quote_id' };
+                }
+                return null;
+              },
+              async all() {
+                if (sql.includes('SELECT quote_number FROM quotations WHERE quote_number LIKE ?')) {
+                  return { results: [{ quote_number: 'QT-2026-0005' }] };
+                }
+                return { results: [] };
+              },
+              async run() {
+                if (sql.includes('INSERT INTO quotations')) {
+                  savedQuoteNumber = args[1];
+                }
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/quotations', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: 'qt_new_collision_test',
+      quoteNumber: 'QT-2026-0005',
+      clientName: 'Test Client',
+      grandTotal: 1000
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.equal(body.quoteNumber, 'QT-2026-0006');
+  assert.equal(savedQuoteNumber, 'QT-2026-0006');
 });

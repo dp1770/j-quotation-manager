@@ -12,6 +12,7 @@ const AuthManager = {
     id: 'user_super_admin_primary',
     username: 'admin',
     fullName: 'System Administrator',
+    email: 'admin@company.com',
     role: 'Super Admin',
     isSuperAdmin: true,
     permissions: {

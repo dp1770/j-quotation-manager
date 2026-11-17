@@ -43,6 +43,40 @@ async function sha256(text) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toLowerCase();
 }
 
+async function hashPassword(plainText, salt = null) {
+  if (!plainText) return '';
+  const randomSalt = salt || Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+  const data = new TextEncoder().encode(`${randomSalt}:${String(plainText).trim()}`);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashHex = Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0')).join('').toLowerCase();
+  return `s256:${randomSalt}:${hashHex}`;
+}
+
+async function verifyPassword(plainText, storedHash) {
+  if (!plainText || !storedHash) return false;
+  const stored = String(storedHash).trim();
+
+  // Modern salted hash: `s256:salt:hashHex`
+  if (stored.startsWith('s256:')) {
+    const parts = stored.split(':');
+    if (parts.length === 3) {
+      const salt = parts[1];
+      const expected = await hashPassword(plainText, salt);
+      return stored === expected;
+    }
+  }
+
+  // Legacy raw 64-character SHA-256 hex fallback
+  const clean = String(plainText).trim();
+  const data = new TextEncoder().encode(clean);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const legacyHash = Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0')).join('').toLowerCase();
+  return stored.toLowerCase() === legacyHash;
+}
+
 async function signJwt(payload, secret) {
   const header = { alg: 'HS256', typ: 'JWT' };
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
@@ -144,6 +178,120 @@ function errorResponse(message, status = 400, env = {}) {
   return jsonResponse({ success: false, error: message }, status, env);
 }
 
+let schemaInitialized = false;
+let schemaInitPromise = null;
+async function ensureDatabaseSchema(env) {
+  if (schemaInitialized || !env || !env.DB) return;
+  if (!schemaInitPromise) {
+    schemaInitPromise = (async () => {
+      const execSql = async (sql) => {
+        try {
+          const s = env.DB.prepare(sql);
+          if (typeof s.run === 'function') {
+            await s.run();
+          } else if (typeof s.bind === 'function') {
+            const b = s.bind();
+            if (typeof b?.run === 'function') await b.run();
+          }
+        } catch (e) {}
+      };
+
+      try {
+        // 1. Ensure core tables exist first
+        await Promise.all([
+          execSql(`
+            CREATE TABLE IF NOT EXISTS users (
+              id TEXT PRIMARY KEY,
+              username TEXT NOT NULL UNIQUE,
+              password_hash TEXT NOT NULL,
+              full_name TEXT NOT NULL,
+              email TEXT DEFAULT '',
+              role TEXT NOT NULL DEFAULT 'Sub-Admin',
+              is_super_admin INTEGER NOT NULL DEFAULT 0,
+              permissions_json TEXT NOT NULL DEFAULT '{}',
+              created_at TEXT NOT NULL DEFAULT (datetime('now')),
+              updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+          `),
+          execSql(`
+            CREATE TABLE IF NOT EXISTS company_settings (
+              id TEXT PRIMARY KEY DEFAULT 'primary',
+              company_name TEXT NOT NULL DEFAULT 'Quotation Manager',
+              tagline TEXT DEFAULT '',
+              address TEXT DEFAULT '',
+              phone TEXT DEFAULT '',
+              phone_secondary TEXT DEFAULT '',
+              email TEXT DEFAULT '',
+              website TEXT DEFAULT '',
+              gstin TEXT DEFAULT '',
+              state TEXT DEFAULT 'Gujarat',
+              state_code TEXT DEFAULT '24',
+              bank_name TEXT DEFAULT '',
+              account_name TEXT DEFAULT '',
+              account_number TEXT DEFAULT '',
+              ifsc_code TEXT DEFAULT '',
+              branch TEXT DEFAULT '',
+              terms_json TEXT DEFAULT '[]',
+              banner_url TEXT DEFAULT '',
+              header_logo_url TEXT DEFAULT '',
+              signature_image_url TEXT DEFAULT '',
+              signature_title TEXT DEFAULT 'Authorized Signatory',
+              show_signature_in_pdf INTEGER DEFAULT 1,
+              show_banner_in_pdf INTEGER DEFAULT 1,
+              turnstile_site_key TEXT DEFAULT '',
+              is_default INTEGER DEFAULT 0,
+              created_at TEXT NOT NULL DEFAULT (datetime('now')),
+              updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+          `),
+          execSql(`
+            CREATE TABLE IF NOT EXISTS password_resets (
+              id TEXT PRIMARY KEY,
+              email TEXT NOT NULL,
+              otp_hash TEXT NOT NULL,
+              expires_at INTEGER NOT NULL,
+              used INTEGER NOT NULL DEFAULT 0,
+              attempts INTEGER NOT NULL DEFAULT 0,
+              created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+          `)
+        ]);
+
+        // 2. Concurrently run column migrations
+        await Promise.all([
+          execSql('ALTER TABLE users ADD COLUMN email TEXT DEFAULT ""'),
+          execSql('ALTER TABLE company_settings ADD COLUMN is_default INTEGER DEFAULT 0'),
+          execSql('ALTER TABLE company_settings ADD COLUMN created_at TEXT DEFAULT ""'),
+          execSql('ALTER TABLE company_settings ADD COLUMN updated_at TEXT DEFAULT ""'),
+          execSql('ALTER TABLE company_settings ADD COLUMN phone_secondary TEXT DEFAULT ""'),
+          execSql('ALTER TABLE company_settings ADD COLUMN website TEXT DEFAULT ""'),
+          execSql('ALTER TABLE company_settings ADD COLUMN state TEXT DEFAULT "Gujarat"'),
+          execSql('ALTER TABLE company_settings ADD COLUMN state_code TEXT DEFAULT "24"'),
+          execSql('ALTER TABLE company_settings ADD COLUMN banner_url TEXT DEFAULT ""'),
+          execSql('ALTER TABLE company_settings ADD COLUMN header_logo_url TEXT DEFAULT ""'),
+          execSql('ALTER TABLE company_settings ADD COLUMN signature_image_url TEXT DEFAULT ""'),
+          execSql('ALTER TABLE company_settings ADD COLUMN signature_title TEXT DEFAULT "Authorized Signatory"'),
+          execSql('ALTER TABLE company_settings ADD COLUMN show_signature_in_pdf INTEGER DEFAULT 1'),
+          execSql('ALTER TABLE company_settings ADD COLUMN show_banner_in_pdf INTEGER DEFAULT 1'),
+          execSql('ALTER TABLE quotations ADD COLUMN company_id TEXT DEFAULT "primary"'),
+          execSql('ALTER TABLE quotations ADD COLUMN company_name TEXT DEFAULT ""'),
+          execSql('ALTER TABLE quotations ADD COLUMN created_by_name TEXT DEFAULT ""'),
+          execSql('ALTER TABLE clients ADD COLUMN created_by_name TEXT DEFAULT ""'),
+          execSql('ALTER TABLE items_master ADD COLUMN created_by_name TEXT DEFAULT ""'),
+          execSql('ALTER TABLE password_resets ADD COLUMN attempts INTEGER DEFAULT 0'),
+          execSql('ALTER TABLE password_resets ADD COLUMN created_at TEXT DEFAULT ""')
+        ]);
+
+        schemaInitialized = true;
+      } catch (err) {
+        schemaInitPromise = null;
+        console.warn('[Schema Init Warning]:', err.message);
+      }
+    })();
+  }
+  await schemaInitPromise;
+}
+
 // =====================================================================
 // Cloudflare Worker Handler
 // =====================================================================
@@ -192,6 +340,8 @@ export default {
     if (!env.DB) {
       return errorResponse('D1 database binding "DB" or "Quotation_Manager" not configured.', 500, env);
     }
+
+    await ensureDatabaseSchema(env);
 
     const jwtSecret = env.JWT_SECRET;
     if (!jwtSecret) {
@@ -288,20 +438,25 @@ export default {
           }
         }
 
-        const passHash = await sha256(rawPass);
-
         // 2. Query user from D1 database
         const userRow = await env.DB.prepare(
-          'SELECT id, username, password_hash, full_name, role, is_super_admin, permissions_json FROM users WHERE LOWER(username) = ?'
+          'SELECT id, username, password_hash, full_name, email, role, is_super_admin, permissions_json FROM users WHERE LOWER(username) = ?'
         ).bind(username).first();
 
         let authenticatedUser = null;
 
         if (userRow) {
-          const storedHash = String(userRow.password_hash || '').trim().toLowerCase();
-          const isMatch = (storedHash === passHash.toLowerCase());
+          const isMatch = await verifyPassword(rawPass, userRow.password_hash);
 
           if (isMatch) {
+            // Transparently upgrade legacy un-salted SHA-256 hash to modern salted format
+            if (!String(userRow.password_hash || '').startsWith('s256:')) {
+              try {
+                const upgradedHash = await hashPassword(rawPass);
+                await env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(upgradedHash, userRow.id).run();
+              } catch (e) {}
+            }
+
             let perms = {};
             try {
               perms = JSON.parse(userRow.permissions_json || '{}');
@@ -314,6 +469,7 @@ export default {
               id: userRow.id,
               username: userRow.username,
               fullName: userRow.full_name,
+              email: userRow.email || '',
               role: userRow.role,
               isSuperAdmin: isSuper,
               permissions: isSuper ? {
@@ -336,6 +492,7 @@ export default {
               id: 'user_super_admin_' + username,
               username: username,
               fullName: 'System Administrator',
+              email: 'admin@company.com',
               role: 'Super Admin',
               isSuperAdmin: true,
               permissions: {
@@ -361,6 +518,7 @@ export default {
           userId: authenticatedUser.id,
           username: authenticatedUser.username,
           fullName: authenticatedUser.fullName,
+          email: authenticatedUser.email || '',
           role: authenticatedUser.role,
           isSuperAdmin: authenticatedUser.isSuperAdmin,
           permissions: authenticatedUser.permissions,
@@ -534,17 +692,40 @@ export default {
         const otpHash = await sha256(otp);
         const now = Date.now();
 
-        // 1. Verify OTP in password_resets table
+        // 1. Verify OTP in password_resets table with rate limiting (max 5 attempts)
         const resetRow = await env.DB.prepare(
-          'SELECT id, expires_at, used FROM password_resets WHERE LOWER(email) = ? AND otp_hash = ? AND used = 0 ORDER BY expires_at DESC LIMIT 1'
-        ).bind(email, otpHash).first();
+          'SELECT id, otp_hash, expires_at, used, attempts FROM password_resets WHERE LOWER(email) = ? AND used = 0 ORDER BY expires_at DESC LIMIT 1'
+        ).bind(email).first();
 
         if (!resetRow) {
           return errorResponse('Invalid OTP code or email. Please check the code and try again.', 400, env);
         }
 
+        const attempts = (resetRow.attempts || 0);
+        if (attempts >= 5) {
+          try {
+            await env.DB.prepare('UPDATE password_resets SET used = 1 WHERE id = ?').bind(resetRow.id).run();
+          } catch (e) {}
+          return errorResponse('Too many failed attempts. This OTP code has been invalidated for security. Please request a new code.', 400, env);
+        }
+
         if (resetRow.expires_at < now) {
           return errorResponse('This OTP code has expired (10-minute limit). Please request a new code.', 400, env);
+        }
+
+        if (resetRow.otp_hash !== otpHash) {
+          const newAttempts = attempts + 1;
+          const remaining = Math.max(0, 5 - newAttempts);
+          try {
+            await env.DB.prepare('UPDATE password_resets SET attempts = ? WHERE id = ?').bind(newAttempts, resetRow.id).run();
+            if (remaining <= 0) {
+              await env.DB.prepare('UPDATE password_resets SET used = 1 WHERE id = ?').bind(resetRow.id).run();
+            }
+          } catch (e) {}
+          if (remaining <= 0) {
+            return errorResponse('Too many failed attempts. This OTP code has been invalidated for security. Please request a new code.', 400, env);
+          }
+          return errorResponse(`Invalid OTP code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`, 400, env);
         }
 
         // 2. Find the user account
@@ -573,7 +754,7 @@ export default {
         }
 
         // 3. Update user password in D1
-        const newHash = await sha256(newPassword);
+        const newHash = await hashPassword(newPassword);
         await env.DB.prepare(
           'UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?'
         ).bind(newHash, userRow.id).run();
@@ -631,20 +812,19 @@ export default {
           return errorResponse('New password must be at least 6 characters long', 400, env);
         }
 
-        const oldHash = await sha256(oldPass);
-        const newHash = await sha256(newPass);
-
         const userRow = await env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(currentUser.userId).first();
 
         if (userRow) {
-          const currentStored = String(userRow.password_hash);
-          if (oldPass && currentStored !== oldHash && (await sha256(currentStored)) !== oldHash) {
+          const isOldValid = await verifyPassword(oldPass, userRow.password_hash);
+          if (oldPass && !isOldValid) {
             return errorResponse('Current password is incorrect', 400, env);
           }
+          const newHash = await hashPassword(newPass);
           await env.DB.prepare(
             'UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?'
           ).bind(newHash, currentUser.userId).run();
         } else {
+          const newHash = await hashPassword(newPass);
           await env.DB.prepare(`
             INSERT INTO users (id, username, password_hash, full_name, role, is_super_admin, permissions_json, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))
@@ -676,13 +856,14 @@ export default {
       // GET: List all users
       if (method === 'GET') {
         const rows = await env.DB.prepare(
-          'SELECT id, username, full_name, role, is_super_admin, permissions_json, created_at, updated_at FROM users ORDER BY created_at DESC'
+          'SELECT id, username, full_name, email, role, is_super_admin, permissions_json, created_at, updated_at FROM users ORDER BY created_at DESC'
         ).all();
 
         const usersList = (rows.results || []).map(u => ({
           id: u.id,
           username: u.username,
           fullName: u.full_name,
+          email: u.email || '',
           role: u.role,
           isSuperAdmin: !!u.is_super_admin,
           permissions: JSON.parse(u.permissions_json || '{}'),
@@ -702,6 +883,7 @@ export default {
         const id = body.id || ('user_sub_' + Date.now());
         const username = String(body.username || '').trim().toLowerCase();
         const fullName = String(body.fullName || username).trim();
+        const email = String(body.email || '').trim().toLowerCase();
         const role = String(body.role || 'Sub-Admin');
         const permsJson = JSON.stringify(body.permissions || {});
         const isSuper = (body.isSuperAdmin === true || role === 'Super Admin') ? 1 : 0;
@@ -710,33 +892,36 @@ export default {
           return errorResponse('Username is required', 400, env);
         }
 
-        const existing = await env.DB.prepare('SELECT id, password_hash FROM users WHERE id = ? OR username = ?').bind(id, username).first();
+        const existing = await env.DB.prepare('SELECT id, password_hash, is_super_admin, role FROM users WHERE id = ? OR username = ?').bind(id, username).first();
 
         let passHash = null;
         if (body.password) {
           if (String(body.password).length < 6) {
             return errorResponse('Password must be at least 6 characters long', 400, env);
           }
-          passHash = await sha256(body.password);
+          passHash = await hashPassword(body.password);
         } else if (body.passwordHash) {
           passHash = body.passwordHash;
         }
 
         if (existing) {
+          const isExistingSuper = (existing.is_super_admin === 1 || existing.role === 'Super Admin');
+          const finalIsSuper = isExistingSuper ? 1 : isSuper;
+          const finalRole = isExistingSuper ? 'Super Admin' : role;
           const finalHash = passHash || existing.password_hash;
           await env.DB.prepare(`
             UPDATE users SET 
-              full_name = ?, role = ?, is_super_admin = ?, permissions_json = ?, password_hash = ?, updated_at = datetime("now")
+              full_name = ?, email = ?, role = ?, is_super_admin = ?, permissions_json = ?, password_hash = ?, updated_at = datetime("now")
             WHERE id = ?
-          `).bind(fullName, role, isSuper, permsJson, finalHash, existing.id).run();
+          `).bind(fullName, email, finalRole, finalIsSuper, permsJson, finalHash, existing.id).run();
         } else {
           if (!passHash) {
             return errorResponse('Password is required and must be at least 6 characters long', 400, env);
           }
           await env.DB.prepare(`
-            INSERT INTO users (id, username, password_hash, full_name, role, is_super_admin, permissions_json, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))
-          `).bind(id, username, passHash, fullName, role, isSuper, permsJson).run();
+            INSERT INTO users (id, username, password_hash, full_name, email, role, is_super_admin, permissions_json, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))
+          `).bind(id, username, passHash, fullName, email, role, isSuper, permsJson).run();
         }
 
         return jsonResponse({ success: true, message: 'User saved successfully' }, 200, env);
@@ -774,7 +959,7 @@ export default {
           return errorResponse('Password must be at least 6 characters long', 400, env);
         }
 
-        const newHash = await sha256(newPassword);
+        const newHash = await hashPassword(newPassword);
         const result = await env.DB.prepare(
           'UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?'
         ).bind(newHash, userId).run();
@@ -904,11 +1089,7 @@ export default {
       if (method === 'POST') {
         const body = await request.json();
         const id = body.id || ('qt_' + Date.now());
-        const quoteNumber = String(body.quoteNumber || '').trim();
-
-        if (!quoteNumber) {
-          return errorResponse('Quote number is required', 400, env);
-        }
+        const rawQuoteNumber = String(body.quoteNumber || '').trim();
 
         const isExisting = await env.DB.prepare('SELECT id FROM quotations WHERE id = ?').bind(id).first();
         const canCreate = isSuperAdmin || !!currentUser.permissions?.canCreateQuotations;
@@ -919,6 +1100,37 @@ export default {
         }
         if (!isExisting && !canCreate) {
           return errorResponse('Access denied: You do not have permission to create quotations', 403, env);
+        }
+
+        // Determine unique sequential quote number (atomic collision resolution)
+        let finalQuoteNumber = rawQuoteNumber;
+        if (isExisting) {
+          finalQuoteNumber = rawQuoteNumber || isExisting.quote_number;
+        } else {
+          let isCollision = false;
+          if (finalQuoteNumber) {
+            try {
+              const conflict = await env.DB.prepare('SELECT id FROM quotations WHERE quote_number = ? AND id != ?').bind(finalQuoteNumber, id).first();
+              if (conflict) isCollision = true;
+            } catch (e) {}
+          }
+          if (!finalQuoteNumber || isCollision) {
+            const dateStr = body.date || new Date().toISOString().split('T')[0];
+            const year = dateStr.slice(0, 4);
+            const prefix = `QT-${year}-`;
+            let maxSeq = 0;
+            try {
+              const rows = await env.DB.prepare(
+                'SELECT quote_number FROM quotations WHERE quote_number LIKE ? ORDER BY quote_number DESC LIMIT 100'
+              ).bind(`${prefix}%`).all();
+              for (const r of (rows.results || [])) {
+                const parts = (r.quote_number || '').split('-');
+                const seq = parseInt(parts[2], 10);
+                if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+              }
+            } catch (e) {}
+            finalQuoteNumber = `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
+          }
         }
 
         const date = body.date || new Date().toISOString().split('T')[0];
@@ -1004,14 +1216,14 @@ export default {
             status = excluded.status,
             updated_at = datetime("now")
         `).bind(
-          id, quoteNumber, date, validUntil, clientId, clientName, clientCompany,
+          id, finalQuoteNumber, date, validUntil, clientId, clientName, clientCompany,
           clientPhone, clientEmail, clientGst, clientAddress, companyId, companyName,
           itemsJson, calcsJson, materialTotal, loadingCharges, addChargesJson, chargesTotal,
           gstType, gstRate, gstAmount, roundOff, grandTotal, grandTotalWords,
           notes, status, authorName, authorName
         ).run();
 
-        return jsonResponse({ success: true, message: 'Quotation saved successfully', id, quoteNumber }, 200, env);
+        return jsonResponse({ success: true, message: 'Quotation saved successfully', id, quoteNumber: finalQuoteNumber }, 200, env);
       }
     }
 
@@ -1033,19 +1245,28 @@ export default {
         const queryParams = url.searchParams;
         const search = queryParams.get('search');
         const limit = Math.min(parseInt(queryParams.get('limit') || '500', 10), 1000);
+        const offset = Math.max(parseInt(queryParams.get('offset') || '0', 10), 0);
 
-        let sql = 'SELECT * FROM clients';
+        let whereClause = '';
         let bindings = [];
 
         if (search) {
-          sql += ' WHERE (name LIKE ? OR company_name LIKE ? OR phone LIKE ?)';
+          whereClause = ' WHERE (name LIKE ? OR company_name LIKE ? OR phone LIKE ?)';
           const term = `%${search}%`;
           bindings.push(term, term, term);
         }
-        sql += ' ORDER BY created_at DESC LIMIT ?';
-        bindings.push(limit);
 
-        const rows = await env.DB.prepare(sql).bind(...bindings).all();
+        let total = 0;
+        try {
+          const countSql = `SELECT COUNT(*) as total FROM clients ${whereClause}`;
+          const countRes = bindings.length > 0
+            ? await env.DB.prepare(countSql).bind(...bindings).first()
+            : await env.DB.prepare(countSql).first();
+          total = countRes ? countRes.total : 0;
+        } catch (e) {}
+
+        const sql = `SELECT * FROM clients ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        const rows = await env.DB.prepare(sql).bind(...bindings, limit, offset).all();
         const clients = (rows.results || []).map(c => ({
           id: c.id,
           name: c.name,
@@ -1060,7 +1281,7 @@ export default {
           updatedAt: c.updated_at
         }));
 
-        return jsonResponse({ success: true, clients }, 200, env);
+        return jsonResponse({ success: true, clients, total, limit, offset }, 200, env);
       }
 
       if (method === 'POST') {
@@ -1114,7 +1335,31 @@ export default {
     // =================================================================
     if (path === '/api/items') {
       if (method === 'GET') {
-        const rows = await env.DB.prepare('SELECT * FROM items_master ORDER BY name ASC').all();
+        const queryParams = url.searchParams;
+        const search = queryParams.get('search');
+        const limit = Math.min(parseInt(queryParams.get('limit') || '500', 10), 1000);
+        const offset = Math.max(parseInt(queryParams.get('offset') || '0', 10), 0);
+
+        let whereClause = '';
+        let bindings = [];
+
+        if (search) {
+          whereClause = ' WHERE (name LIKE ? OR description LIKE ?)';
+          const term = `%${search}%`;
+          bindings.push(term, term);
+        }
+
+        let total = 0;
+        try {
+          const countSql = `SELECT COUNT(*) as total FROM items_master ${whereClause}`;
+          const countRes = bindings.length > 0
+            ? await env.DB.prepare(countSql).bind(...bindings).first()
+            : await env.DB.prepare(countSql).first();
+          total = countRes ? countRes.total : 0;
+        } catch (e) {}
+
+        const sql = `SELECT * FROM items_master ${whereClause} ORDER BY name ASC LIMIT ? OFFSET ?`;
+        const rows = await env.DB.prepare(sql).bind(...bindings, limit, offset).all();
         const items = (rows.results || []).map(i => ({
           id: i.id,
           name: i.name,
@@ -1128,7 +1373,7 @@ export default {
           createdAt: i.created_at,
           updatedAt: i.updated_at
         }));
-        return jsonResponse({ success: true, items }, 200, env);
+        return jsonResponse({ success: true, items, total, limit, offset }, 200, env);
       }
 
       if (method === 'POST') {
@@ -1303,12 +1548,20 @@ export default {
           const signatureTitle = body.signatureTitle || 'Authorized Signatory';
           const showSig = body.showSignatureInPdf !== false ? 1 : 0;
           const showBanner = body.showBannerInPdf !== false ? 1 : 0;
-          const isDefault = body.isDefault ? 1 : 0;
+          let isDefault = body.isDefault ? 1 : 0;
 
           // If marked as default, clear default on other profiles
           if (isDefault) {
             try {
               await env.DB.prepare('UPDATE company_settings SET is_default = 0').run();
+            } catch (e) {}
+          } else {
+            // If not marked default, verify at least one other company is default
+            try {
+              const otherDefault = await env.DB.prepare('SELECT id FROM company_settings WHERE is_default = 1 AND id != ?').bind(id).first();
+              if (!otherDefault) {
+                isDefault = 1; // Keep default if no other company is default
+              }
             } catch (e) {}
           }
 
@@ -1347,7 +1600,7 @@ export default {
               signature_title = excluded.signature_title,
               show_signature_in_pdf = excluded.show_signature_in_pdf,
               show_banner_in_pdf = excluded.show_banner_in_pdf,
-              is_default = CASE WHEN excluded.is_default = 1 THEN 1 ELSE company_settings.is_default END,
+              is_default = excluded.is_default,
               updated_at = datetime("now")
           `).bind(
             id, companyName, tagline, address, phone, phoneSecondary, email, website, gstin, state, stateCode,

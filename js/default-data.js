@@ -55,6 +55,7 @@ const DEFAULT_USERS = [
     username: 'admin',
     passwordHash: 'a679cb086580f4949ad453e00bb982d1598f804791522f7c088ef577ef3724ff',
     fullName: 'System Administrator',
+    email: 'admin@company.com',
     role: 'Super Admin',
     isSuperAdmin: true,
     permissions: {

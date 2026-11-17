@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS password_resets (
   otp_hash TEXT NOT NULL,
   expires_at INTEGER NOT NULL,
   used INTEGER NOT NULL DEFAULT 0,
+  attempts INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -159,12 +160,13 @@ CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets(email);
 -- Initial SHA-256 for default 'admin@2026':
 -- a679cb086580f4949ad453e00bb982d1598f804791522f7c088ef577ef3724ff
 INSERT OR IGNORE INTO users (
-  id, username, password_hash, full_name, role, is_super_admin, permissions_json, created_at, updated_at
+  id, username, password_hash, full_name, email, role, is_super_admin, permissions_json, created_at, updated_at
 ) VALUES (
   'user_super_admin_primary',
   'admin',
   'a679cb086580f4949ad453e00bb982d1598f804791522f7c088ef577ef3724ff',
   'System Administrator',
+  'admin@company.com',
   'Super Admin',
   1,
   '{"canManageClients":true,"canCreateQuotations":true,"canEditQuotes":true,"canManageItems":true,"canDeleteQuotes":true,"canManageSettings":true,"canManageUsers":true,"canBackupDatabase":true}',

@@ -249,4 +249,9 @@ const CalculationsEngine = {
   }
 };
 
-window.CalculationsEngine = CalculationsEngine;
+if (typeof window !== 'undefined') {
+  window.CalculationsEngine = CalculationsEngine;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.CalculationsEngine = CalculationsEngine;
+}
