@@ -308,3 +308,251 @@ test('POST /api/auth/login: Rejects unhashed plaintext stored password', async (
   const body = await res.json();
   assert.match(body.error, /invalid username or password/i);
 });
+
+test('POST /api/auth/forgot-password: Generates 6-digit OTP for registered user', async () => {
+  let insertedReset = null;
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                if (sql.includes('SELECT id, username, full_name FROM users')) {
+                  return { id: 'u123', username: 'john_doe', full_name: 'John Doe' };
+                }
+                return null;
+              },
+              async run() {
+                if (sql.includes('INSERT INTO password_resets')) {
+                  insertedReset = { id: args[0], email: args[1], otpHash: args[2], expiresAt: args[3] };
+                }
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/auth/forgot-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'john@example.com' })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.ok(insertedReset, 'password_resets record must be inserted');
+  assert.equal(insertedReset.email, 'john@example.com');
+  assert.ok(insertedReset.expiresAt > Date.now());
+});
+
+test('POST /api/auth/reset-password: Validates OTP and updates user password', async () => {
+  let updatedPasswordHash = null;
+  let otpMarkedUsed = false;
+
+  // Let's compute SHA-256 of OTP '654321'
+  const encoder = new TextEncoder();
+  const hashBuf = await crypto.subtle.digest('SHA-256', encoder.encode('654321'));
+  const otpHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                if (sql.includes('SELECT id, expires_at, used FROM password_resets')) {
+                  return { id: 'reset_1', expires_at: Date.now() + 500000, used: 0 };
+                }
+                if (sql.includes('SELECT id, username FROM users')) {
+                  return { id: 'u123', username: 'john_doe' };
+                }
+                return null;
+              },
+              async run() {
+                if (sql.includes('UPDATE users SET password_hash =')) {
+                  updatedPasswordHash = args[0];
+                }
+                if (sql.includes('UPDATE password_resets SET used = 1')) {
+                  otpMarkedUsed = true;
+                }
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/auth/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'john@example.com',
+      otp: '654321',
+      newPassword: 'newSecretPassword123'
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.ok(updatedPasswordHash, 'Password hash must be updated');
+  assert.equal(otpMarkedUsed, true, 'OTP must be marked as used');
+});
+
+test('POST /api/users/reset-password: Super Admin can directly reset Sub-Admin password without current password', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  let updatedHash = null;
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async run() {
+                if (sql.includes('UPDATE users SET password_hash =')) {
+                  updatedHash = args[0];
+                }
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/users/reset-password', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      userId: 'user_sub_999',
+      newPassword: 'brandNewPassword999'
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.ok(updatedHash, 'Password hash must be updated directly by Super Admin');
+});
+
+test('POST /api/quotations: Saves author full name in created_by and created_by_name', async () => {
+  const token = await createTestToken({
+    userId: 'user_123',
+    username: 'rpatel',
+    fullName: 'Ramesh Patel',
+    isSuperAdmin: true,
+    permissions: { canCreateQuotations: true }
+  });
+
+  let savedCreatedBy = null;
+  let savedCreatedByName = null;
+
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                if (sql.includes('SELECT id FROM quotations')) return null;
+                return null;
+              },
+              async run() {
+                if (sql.includes('INSERT INTO quotations')) {
+                  savedCreatedBy = args[27];
+                  savedCreatedByName = args[28];
+                }
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/quotations', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: 'q_test_1',
+      quoteNumber: 'QT-2026-999',
+      clientCompany: 'ABC Corp',
+      grandTotal: 5000
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  assert.equal(savedCreatedBy, 'Ramesh Patel');
+  assert.equal(savedCreatedByName, 'Ramesh Patel');
+});
+
+test('POST /api/companies: Enforces maximum limit of 3 company profiles (400)', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                if (sql.includes('SELECT id FROM company_settings WHERE id = ?')) return null;
+                if (sql.includes('COUNT')) return { count: 3 };
+                return null;
+              },
+              async run() {
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/companies', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: 'comp_4',
+      companyName: 'Fourth Company'
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.match(body.error, /Maximum.*3 company profiles/i);
+});

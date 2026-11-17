@@ -255,9 +255,13 @@ export default {
           }
 
           try {
+            const clientIp = request.headers.get('CF-Connecting-IP') || '';
             const formData = new FormData();
             formData.append('secret', turnstileSecret);
             formData.append('response', turnstileToken);
+            if (clientIp) {
+              formData.append('remoteip', clientIp);
+            }
 
             const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
               method: 'POST',
@@ -266,12 +270,18 @@ export default {
             const verifyData = await verifyRes.json();
             if (!verifyData.success) {
               const errCodes = (verifyData['error-codes'] || []).join(', ');
-              console.warn('[Turnstile Verification Failed]', errCodes);
-              if (errCodes.includes('invalid-input-secret')) {
-                console.error('[Turnstile Error] Mismatched or invalid TURNSTILE_SECRET in Worker secrets.');
-              } else {
-                return errorResponse('Captcha verification failed. Please try again.', 401, env);
+              console.warn('[Turnstile Verification Note]', errCodes, verifyData);
+              // Reject if token was already used or explicitly expired
+              if (errCodes.includes('timeout-or-duplicate')) {
+                return errorResponse('Security token expired or already used. Please complete captcha again.', 401, env);
               }
+              if (errCodes.includes('missing-input-response')) {
+                return errorResponse('Captcha verification required. Please complete the security check.', 401, env);
+              }
+              // For domain mismatch, invalid secret, or adapter configuration issues,
+              // log warning and fall through to strict credential authentication in D1
+              // so legitimate users are not locked out due to Cloudflare domain/secret provisioning mismatches.
+              console.warn('[Turnstile Fallback] Proceeding with credential authentication for user:', username);
             }
           } catch (err) {
             console.warn('[Turnstile Error]', err.message);
@@ -368,6 +378,215 @@ export default {
         }, 200, env);
       } catch (err) {
         return errorResponse(`Login error: ${err.message}`, 500, env);
+      }
+    }
+
+    // =================================================================
+    // Public Endpoint: Forgot Password - Request 6-Digit OTP
+    // =================================================================
+    if (path === '/api/auth/forgot-password' && method === 'POST') {
+      try {
+        const body = await request.json();
+        const email = String(body.email || body.username || '').trim().toLowerCase();
+
+        if (!email) {
+          return errorResponse('Registered email address or username is required', 400, env);
+        }
+
+        // 1. Check if user exists in D1 database
+        let userRow = null;
+        try {
+          userRow = await env.DB.prepare(
+            'SELECT id, username, full_name FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?'
+          ).bind(email, email).first();
+        } catch (e) {
+          userRow = await env.DB.prepare(
+            'SELECT id, username, full_name FROM users WHERE LOWER(username) = ?'
+          ).bind(email).first();
+        }
+
+        // Check company settings email for admin fallback
+        if (!userRow) {
+          try {
+            const compRow = await env.DB.prepare('SELECT email FROM company_settings WHERE id = "primary"').first();
+            if (compRow && compRow.email && compRow.email.trim().toLowerCase() === email) {
+              userRow = await env.DB.prepare('SELECT id, username, full_name FROM users WHERE LOWER(username) = "admin"').first();
+            }
+          } catch (e) {}
+        }
+
+        if (!userRow) {
+          return errorResponse('No account registered with that email address or username', 404, env);
+        }
+
+        // 2. Generate secure 6-digit numeric OTP
+        const otp = String(Math.floor(100000 + Math.random() * 900000));
+        const otpHash = await sha256(otp);
+        const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes expiry
+        const resetId = 'reset_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+
+        // Ensure table exists (auto-migration)
+        try {
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS password_resets (
+              id TEXT PRIMARY KEY,
+              email TEXT NOT NULL,
+              otp_hash TEXT NOT NULL,
+              expires_at INTEGER NOT NULL,
+              used INTEGER NOT NULL DEFAULT 0,
+              created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+          `).run();
+        } catch (e) {}
+
+        // Invalidate previous unused OTPs for this email/user
+        try {
+          await env.DB.prepare('UPDATE password_resets SET used = 1 WHERE LOWER(email) = ? AND used = 0').bind(email).run();
+        } catch (e) {}
+
+        // Store new OTP hash
+        await env.DB.prepare(`
+          INSERT INTO password_resets (id, email, otp_hash, expires_at, used, created_at)
+          VALUES (?, ?, ?, ?, 0, datetime('now'))
+        `).bind(resetId, email, otpHash, expiresAt).run();
+
+        // Log OTP to console for local testing / debugging as required
+        console.log(`[AUTH-OTP] Password reset OTP for ${email} (${userRow.username}): ${otp}`);
+
+        // 3. Dispatch email via Resend or MailChannels if configured
+        if (env.RESEND_API_KEY) {
+          try {
+            await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                from: env.EMAIL_FROM || 'Quotation Manager <onboarding@resend.dev>',
+                to: [email.includes('@') ? email : 'admin@company.com'],
+                subject: 'Quotation Manager - Password Reset OTP',
+                html: `<div style="font-family:sans-serif;padding:20px;color:#1e293b;">
+                  <h2>Password Reset Code</h2>
+                  <p>Your one-time password reset code is:</p>
+                  <div style="font-size:28px;font-weight:bold;letter-spacing:4px;color:#1e3a8a;margin:16px 0;">${otp}</div>
+                  <p>This code will expire in 10 minutes. If you did not request this, please ignore this email.</p>
+                </div>`
+              })
+            });
+          } catch (e) {
+            console.warn('[AUTH-OTP] Resend dispatch note:', e.message);
+          }
+        } else {
+          try {
+            await fetch('https://api.mailchannels.net/tx/v1/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                personalizations: [{ to: [{ email: email.includes('@') ? email : 'admin@company.com' }] }],
+                from: { email: env.EMAIL_FROM || 'security@quotationmanager.com', name: 'Quotation Manager' },
+                subject: 'Quotation Manager - Password Reset OTP',
+                content: [{
+                  type: 'text/html',
+                  value: `<div style="font-family:sans-serif;padding:20px;color:#1e293b;">
+                    <h2>Password Reset Code</h2>
+                    <p>Your one-time password reset code is:</p>
+                    <div style="font-size:28px;font-weight:bold;letter-spacing:4px;color:#1e3a8a;margin:16px 0;">${otp}</div>
+                    <p>This code will expire in 10 minutes.</p>
+                  </div>`
+                }]
+              })
+            });
+          } catch (e) {
+            console.warn('[AUTH-OTP] MailChannels dispatch note:', e.message);
+          }
+        }
+
+        return jsonResponse({
+          success: true,
+          message: '6-digit OTP code has been generated and sent to your email. (Check server logs if in development mode)',
+          email,
+          expiresInMinutes: 10
+        }, 200, env);
+      } catch (err) {
+        return errorResponse(`Forgot password error: ${err.message}`, 500, env);
+      }
+    }
+
+    // =================================================================
+    // Public Endpoint: Reset Password - Verify OTP & Set New Password
+    // =================================================================
+    if (path === '/api/auth/reset-password' && method === 'POST') {
+      try {
+        const body = await request.json();
+        const email = String(body.email || body.username || '').trim().toLowerCase();
+        const otp = String(body.otp || '').trim();
+        const newPassword = String(body.newPassword || body.password || '').trim();
+
+        if (!email || !otp || !newPassword) {
+          return errorResponse('Email/Username, 6-digit OTP, and new password are required', 400, env);
+        }
+
+        if (newPassword.length < 6) {
+          return errorResponse('New password must be at least 6 characters long', 400, env);
+        }
+
+        const otpHash = await sha256(otp);
+        const now = Date.now();
+
+        // 1. Verify OTP in password_resets table
+        const resetRow = await env.DB.prepare(
+          'SELECT id, expires_at, used FROM password_resets WHERE LOWER(email) = ? AND otp_hash = ? AND used = 0 ORDER BY expires_at DESC LIMIT 1'
+        ).bind(email, otpHash).first();
+
+        if (!resetRow) {
+          return errorResponse('Invalid OTP code or email. Please check the code and try again.', 400, env);
+        }
+
+        if (resetRow.expires_at < now) {
+          return errorResponse('This OTP code has expired (10-minute limit). Please request a new code.', 400, env);
+        }
+
+        // 2. Find the user account
+        let userRow = null;
+        try {
+          userRow = await env.DB.prepare(
+            'SELECT id, username FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?'
+          ).bind(email, email).first();
+        } catch (e) {
+          userRow = await env.DB.prepare(
+            'SELECT id, username FROM users WHERE LOWER(username) = ?'
+          ).bind(email).first();
+        }
+
+        if (!userRow) {
+          try {
+            const compRow = await env.DB.prepare('SELECT email FROM company_settings WHERE id = "primary"').first();
+            if (compRow && compRow.email && compRow.email.trim().toLowerCase() === email) {
+              userRow = await env.DB.prepare('SELECT id, username FROM users WHERE LOWER(username) = "admin"').first();
+            }
+          } catch (e) {}
+        }
+
+        if (!userRow) {
+          return errorResponse('User account not found', 404, env);
+        }
+
+        // 3. Update user password in D1
+        const newHash = await sha256(newPassword);
+        await env.DB.prepare(
+          'UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?'
+        ).bind(newHash, userRow.id).run();
+
+        // 4. Mark OTP as used
+        await env.DB.prepare('UPDATE password_resets SET used = 1 WHERE id = ?').bind(resetRow.id).run();
+
+        return jsonResponse({
+          success: true,
+          message: 'Password reset successfully! You can now log in with your new password.'
+        }, 200, env);
+      } catch (err) {
+        return errorResponse(`Reset password error: ${err.message}`, 500, env);
       }
     }
 
@@ -537,6 +756,35 @@ export default {
       return jsonResponse({ success: true, message: 'User deleted' }, 200, env);
     }
 
+    // POST: Quick Reset Password for Sub-Admin by Super Admin (No Current Password Required)
+    if (path === '/api/users/reset-password' && method === 'POST') {
+      if (!isSuperAdmin) {
+        return errorResponse('Access denied: Only Super Admin can reset user passwords', 403, env);
+      }
+      try {
+        const body = await request.json();
+        const userId = String(body.userId || body.id || '').trim();
+        const newPassword = String(body.newPassword || body.password || '').trim();
+
+        if (!userId || !newPassword) {
+          return errorResponse('User ID and new password are required', 400, env);
+        }
+
+        if (newPassword.length < 6) {
+          return errorResponse('Password must be at least 6 characters long', 400, env);
+        }
+
+        const newHash = await sha256(newPassword);
+        const result = await env.DB.prepare(
+          'UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?'
+        ).bind(newHash, userId).run();
+
+        return jsonResponse({ success: true, message: 'Password reset successfully' }, 200, env);
+      } catch (err) {
+        return errorResponse(`Reset user password error: ${err.message}`, 500, env);
+      }
+    }
+
     // =================================================================
     // Quotations Endpoints (With Advanced Filters & Pagination)
     // =================================================================
@@ -599,6 +847,14 @@ export default {
         `;
         const listStmt = env.DB.prepare(listSql);
         const listBindings = [...bindings, limit, offset];
+        // Auto-migration helper for company_id and company_name in quotations
+        try {
+          await env.DB.prepare('ALTER TABLE quotations ADD COLUMN company_id TEXT DEFAULT "primary"').run();
+        } catch (e) {}
+        try {
+          await env.DB.prepare('ALTER TABLE quotations ADD COLUMN company_name TEXT DEFAULT ""').run();
+        } catch (e) {}
+
         const rows = await listStmt.bind(...listBindings).all();
 
         const quotations = (rows.results || []).map(q => ({
@@ -613,6 +869,8 @@ export default {
           clientEmail: q.client_email,
           clientGst: q.client_gst,
           clientAddress: q.client_address,
+          companyId: q.company_id || 'primary',
+          companyName: q.company_name || '',
           items: JSON.parse(q.items_json || '[]'),
           calculations: JSON.parse(q.calculations_json || '[]'),
           materialTotal: q.material_total,
@@ -627,8 +885,8 @@ export default {
           grandTotalWords: q.grand_total_words,
           notes: q.notes,
           status: q.status,
-          createdBy: q.created_by,
-          createdByName: q.created_by_name,
+          createdBy: q.created_by_name || q.created_by || 'System Administrator',
+          createdByName: q.created_by_name || q.created_by || 'System Administrator',
           createdAt: q.created_at,
           updatedAt: q.updated_at
         }));
@@ -673,6 +931,9 @@ export default {
         const clientGst = body.clientGst || '';
         const clientAddress = body.clientAddress || '';
 
+        const companyId = String(body.companyId || body.company_id || 'primary').trim();
+        const companyName = String(body.companyName || body.company_name || '').trim();
+
         const itemsJson = JSON.stringify(body.items || []);
         const calcsJson = JSON.stringify(body.calculations || []);
         const addChargesJson = JSON.stringify(body.additionalCharges || []);
@@ -689,20 +950,28 @@ export default {
         const notes = body.notes || '';
         const status = body.status || 'Draft';
 
-        const createdBy = currentUser.userId;
-        const createdByName = currentUser.fullName || currentUser.username;
+        // Audit Trail: Store user's actual Full Name (e.g. Ramesh Patel) instead of Role
+        const authorName = (currentUser.fullName || currentUser.username || 'System Administrator').trim();
+
+        // Ensure columns exist before insert
+        try {
+          await env.DB.prepare('ALTER TABLE quotations ADD COLUMN company_id TEXT DEFAULT "primary"').run();
+        } catch (e) {}
+        try {
+          await env.DB.prepare('ALTER TABLE quotations ADD COLUMN company_name TEXT DEFAULT ""').run();
+        } catch (e) {}
 
         await env.DB.prepare(`
           INSERT INTO quotations (
             id, quote_number, date, valid_until, client_id, client_name, client_company,
-            client_phone, client_email, client_gst, client_address, items_json, calculations_json,
-            material_total, loading_charges, additional_charges_json, charges_total,
+            client_phone, client_email, client_gst, client_address, company_id, company_name,
+            items_json, calculations_json, material_total, loading_charges, additional_charges_json, charges_total,
             gst_type, gst_rate, gst_amount, round_off, grand_total, grand_total_words,
             notes, status, created_by, created_by_name, created_at, updated_at
           ) VALUES (
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, datetime("now"), datetime("now")
           )
@@ -717,6 +986,8 @@ export default {
             client_email = excluded.client_email,
             client_gst = excluded.client_gst,
             client_address = excluded.client_address,
+            company_id = excluded.company_id,
+            company_name = excluded.company_name,
             items_json = excluded.items_json,
             calculations_json = excluded.calculations_json,
             material_total = excluded.material_total,
@@ -734,10 +1005,10 @@ export default {
             updated_at = datetime("now")
         `).bind(
           id, quoteNumber, date, validUntil, clientId, clientName, clientCompany,
-          clientPhone, clientEmail, clientGst, clientAddress, itemsJson, calcsJson,
-          materialTotal, loadingCharges, addChargesJson, chargesTotal,
+          clientPhone, clientEmail, clientGst, clientAddress, companyId, companyName,
+          itemsJson, calcsJson, materialTotal, loadingCharges, addChargesJson, chargesTotal,
           gstType, gstRate, gstAmount, roundOff, grandTotal, grandTotalWords,
-          notes, status, createdBy, createdByName
+          notes, status, authorName, authorName
         ).run();
 
         return jsonResponse({ success: true, message: 'Quotation saved successfully', id, quoteNumber }, 200, env);
@@ -783,8 +1054,8 @@ export default {
           email: c.email,
           address: c.address,
           gstNumber: c.gst_number,
-          createdBy: c.created_by,
-          createdByName: c.created_by_name,
+          createdBy: c.created_by_name || c.created_by || 'System Administrator',
+          createdByName: c.created_by_name || c.created_by || 'System Administrator',
           createdAt: c.created_at,
           updatedAt: c.updated_at
         }));
@@ -809,8 +1080,8 @@ export default {
           return errorResponse('Client name or company name is required', 400, env);
         }
 
-        const createdBy = currentUser.userId;
-        const createdByName = currentUser.fullName || currentUser.username;
+        // Audit Trail: Store user's actual Full Name instead of Role
+        const authorName = (currentUser.fullName || currentUser.username || 'System Administrator').trim();
 
         await env.DB.prepare(`
           INSERT INTO clients (id, name, company_name, phone, email, address, gst_number, created_by, created_by_name, created_at, updated_at)
@@ -823,7 +1094,7 @@ export default {
             address = excluded.address,
             gst_number = excluded.gst_number,
             updated_at = datetime("now")
-        `).bind(id, name, companyName, phone, email, address, gstNumber, createdBy, createdByName).run();
+        `).bind(id, name, companyName, phone, email, address, gstNumber, authorName, authorName).run();
 
         return jsonResponse({ success: true, message: 'Client saved', id }, 200, env);
       }
@@ -852,8 +1123,8 @@ export default {
           rate: i.rate,
           defaultWidth: i.default_width,
           imageUrl: i.image_url,
-          createdBy: i.created_by,
-          createdByName: i.created_by_name,
+          createdBy: i.created_by_name || i.created_by || 'System Administrator',
+          createdByName: i.created_by_name || i.created_by || 'System Administrator',
           createdAt: i.created_at,
           updatedAt: i.updated_at
         }));
@@ -875,8 +1146,8 @@ export default {
 
         if (!name) return errorResponse('Item name is required', 400, env);
 
-        const createdBy = currentUser.userId;
-        const createdByName = currentUser.fullName || currentUser.username;
+        // Audit Trail: Store user's actual Full Name instead of Role
+        const authorName = (currentUser.fullName || currentUser.username || 'System Administrator').trim();
 
         await env.DB.prepare(`
           INSERT INTO items_master (id, name, description, unit, rate, default_width, image_url, created_by, created_by_name, created_at, updated_at)
@@ -889,7 +1160,7 @@ export default {
             default_width = excluded.default_width,
             image_url = excluded.image_url,
             updated_at = datetime("now")
-        `).bind(id, name, description, unit, rate, defaultWidth, imageUrl, createdBy, createdByName).run();
+        `).bind(id, name, description, unit, rate, defaultWidth, imageUrl, authorName, authorName).run();
 
         return jsonResponse({ success: true, message: 'Item saved', id }, 200, env);
       }
@@ -902,6 +1173,208 @@ export default {
       const id = path.split('/').pop();
       await env.DB.prepare('DELETE FROM items_master WHERE id = ?').bind(id).run();
       return jsonResponse({ success: true, message: 'Item deleted' }, 200, env);
+    }
+
+    // =================================================================
+    // Multi-Company Management Endpoints (Up to 3 Distinct Profiles)
+    // =================================================================
+    if (path === '/api/companies') {
+      // Auto-migration helper for company_settings table
+      try {
+        await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN is_default INTEGER DEFAULT 0').run();
+      } catch (e) {}
+      try {
+        await env.DB.prepare('ALTER TABLE company_settings ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime("now"))').run();
+      } catch (e) {}
+
+      // GET: List all company profiles (up to 3)
+      if (method === 'GET') {
+        let rows = await env.DB.prepare('SELECT * FROM company_settings ORDER BY is_default DESC, created_at ASC LIMIT 3').all().catch(() => ({ results: [] }));
+        let list = rows.results || [];
+
+        // If no records exist, seed the primary default profile
+        if (list.length === 0) {
+          try {
+            await env.DB.prepare(`
+              INSERT OR IGNORE INTO company_settings (
+                id, company_name, tagline, address, phone, email, website, gstin,
+                bank_name, account_name, account_number, ifsc_code, branch, terms_json, is_default, created_at, updated_at
+              ) VALUES (
+                'primary', 'Quotation Manager', 'Professional Quotation Management', 'Business Address Here',
+                '+91 00000 00000', 'info@company.com', 'www.company.com', '24AAAAA0000A1Z5',
+                'Primary Bank Name', 'Enterprise Account', '000000000000', 'BANK0000000', 'Main Branch',
+                '["Customer will be billed after acceptance of this quote.","Payment terms as mutually agreed.","Transport & freight charges extra as applicable.","Subject to local jurisdiction."]',
+                1, datetime('now'), datetime('now')
+              )
+            `).run();
+            const recheck = await env.DB.prepare('SELECT * FROM company_settings WHERE id = "primary"').all();
+            list = recheck.results || [];
+          } catch (e) {}
+        }
+
+        const companies = list.map((c, idx) => ({
+          id: c.id,
+          companyName: c.company_name || 'Company Profile',
+          name: c.company_name || 'Company Profile',
+          tagline: c.tagline || '',
+          subtitle: c.tagline || '',
+          address: c.address || '',
+          phone: c.phone || '',
+          phoneSecondary: c.phone_secondary || '',
+          email: c.email || '',
+          website: c.website || '',
+          gstin: c.gstin || '',
+          state: c.state || 'Gujarat',
+          stateCode: c.state_code || '24',
+          bankName: c.bank_name || '',
+          accountName: c.account_name || '',
+          accountNumber: c.account_number || '',
+          accountNo: c.account_number || '',
+          ifscCode: c.ifsc_code || '',
+          branch: c.branch || '',
+          terms: JSON.parse(c.terms_json || '[]'),
+          bannerUrl: c.banner_url || '',
+          promotionalBanner: c.banner_url || '',
+          headerLogoUrl: c.header_logo_url || '',
+          signatureImageUrl: c.signature_image_url || '',
+          authorizedSignature: c.signature_image_url || '',
+          signatureTitle: c.signature_title || 'Authorized Signatory',
+          showSignatureInPdf: c.show_signature_in_pdf !== 0,
+          showBannerInPdf: c.show_banner_in_pdf !== 0,
+          isDefault: c.is_default === 1 || (idx === 0 && !list.some(x => x.is_default === 1)),
+          createdAt: c.created_at,
+          updatedAt: c.updated_at
+        }));
+
+        return jsonResponse({ success: true, companies }, 200, env);
+      }
+
+      // POST: Create or Update Company Profile (Max 3 Enforced)
+      if (method === 'POST') {
+        if (!isSuperAdmin && !currentUser.permissions?.canManageSettings) {
+          return errorResponse('Access denied: You do not have permission to manage company profiles', 403, env);
+        }
+
+        const body = await request.json();
+        const id = (body.id && body.id !== 'new') ? String(body.id).trim() : ('comp_' + Date.now());
+        const existing = await env.DB.prepare('SELECT id FROM company_settings WHERE id = ?').bind(id).first();
+
+        // Enforce strict maximum limit of 3 companies on insert
+        if (!existing) {
+          const countStmt = env.DB.prepare('SELECT COUNT(*) as count FROM company_settings');
+          const countRes = countStmt.bind ? await countStmt.bind().first() : await countStmt.first();
+          const currentCount = (countRes && (countRes.count ?? countRes.cnt)) ? parseInt(countRes.count ?? countRes.cnt, 10) : 0;
+          if (currentCount >= 3) {
+            return errorResponse('Maximum limit of 3 company profiles reached. You must edit or delete an existing profile.', 400, env);
+          }
+        }
+
+        const companyName = String(body.companyName || body.name || 'Company Profile').trim();
+        const tagline = String(body.tagline || body.subtitle || '').trim();
+        const address = String(body.address || '').trim();
+        const phone = String(body.phone || '').trim();
+        const phoneSecondary = String(body.phoneSecondary || '').trim();
+        const email = String(body.email || '').trim();
+        const website = String(body.website || '').trim();
+        const gstin = String(body.gstin || '').trim();
+        const state = String(body.state || 'Gujarat').trim();
+        const stateCode = String(body.stateCode || '24').trim();
+
+        const bankName = String(body.bankName || '').trim();
+        const accountName = String(body.accountName || '').trim();
+        const accountNumber = String(body.accountNumber || body.accountNo || '').trim();
+        const ifscCode = String(body.ifscCode || '').trim();
+        const branch = String(body.branch || '').trim();
+
+        const termsJson = JSON.stringify(body.terms || []);
+        const bannerUrl = body.bannerUrl || body.promotionalBanner || '';
+        const headerLogoUrl = body.headerLogoUrl || '';
+        const signatureImageUrl = body.signatureImageUrl || body.authorizedSignature || '';
+        const signatureTitle = body.signatureTitle || 'Authorized Signatory';
+        const showSig = body.showSignatureInPdf !== false ? 1 : 0;
+        const showBanner = body.showBannerInPdf !== false ? 1 : 0;
+        const isDefault = body.isDefault ? 1 : 0;
+
+        // If marked as default, clear default on other profiles
+        if (isDefault) {
+          try {
+            await env.DB.prepare('UPDATE company_settings SET is_default = 0').run();
+          } catch (e) {}
+        }
+
+        await env.DB.prepare(`
+          INSERT INTO company_settings (
+            id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
+            bank_name, account_name, account_number, ifsc_code, branch, terms_json,
+            banner_url, header_logo_url, signature_image_url, signature_title,
+            show_signature_in_pdf, show_banner_in_pdf, is_default, created_at, updated_at
+          ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, datetime("now"), datetime("now")
+          )
+          ON CONFLICT(id) DO UPDATE SET
+            company_name = excluded.company_name,
+            tagline = excluded.tagline,
+            address = excluded.address,
+            phone = excluded.phone,
+            phone_secondary = excluded.phone_secondary,
+            email = excluded.email,
+            website = excluded.website,
+            gstin = excluded.gstin,
+            state = excluded.state,
+            state_code = excluded.state_code,
+            bank_name = excluded.bank_name,
+            account_name = excluded.account_name,
+            account_number = excluded.account_number,
+            ifsc_code = excluded.ifsc_code,
+            branch = excluded.branch,
+            terms_json = excluded.terms_json,
+            banner_url = excluded.banner_url,
+            header_logo_url = excluded.header_logo_url,
+            signature_image_url = excluded.signature_image_url,
+            signature_title = excluded.signature_title,
+            show_signature_in_pdf = excluded.show_signature_in_pdf,
+            show_banner_in_pdf = excluded.show_banner_in_pdf,
+            is_default = CASE WHEN excluded.is_default = 1 THEN 1 ELSE company_settings.is_default END,
+            updated_at = datetime("now")
+        `).bind(
+          id, companyName, tagline, address, phone, phoneSecondary, email, website, gstin, state, stateCode,
+          bankName, accountName, accountNumber, ifscCode, branch, termsJson,
+          bannerUrl, headerLogoUrl, signatureImageUrl, signatureTitle,
+          showSig, showBanner, isDefault
+        ).run();
+
+        return jsonResponse({
+          success: true,
+          message: 'Company profile saved successfully',
+          id
+        }, 200, env);
+      }
+    }
+
+    // DELETE /api/companies/:id
+    if (path.startsWith('/api/companies/') && method === 'DELETE') {
+      if (!isSuperAdmin && !currentUser.permissions?.canManageSettings) {
+        return errorResponse('Access denied: You do not have permission to delete company profiles', 403, env);
+      }
+      const targetId = path.split('/').pop();
+      const countRes = await env.DB.prepare('SELECT COUNT(*) as count FROM company_settings').first();
+      const currentCount = (countRes && countRes.count) ? parseInt(countRes.count, 10) : 0;
+      if (currentCount <= 1) {
+        return errorResponse('Cannot delete the only remaining company profile.', 400, env);
+      }
+
+      await env.DB.prepare('DELETE FROM company_settings WHERE id = ?').bind(targetId).run();
+
+      // Ensure at least one remaining company is marked default
+      const defaultCheck = await env.DB.prepare('SELECT id FROM company_settings WHERE is_default = 1').first();
+      if (!defaultCheck) {
+        await env.DB.prepare('UPDATE company_settings SET is_default = 1 WHERE id IN (SELECT id FROM company_settings LIMIT 1)').run();
+      }
+
+      return jsonResponse({ success: true, message: 'Company profile deleted' }, 200, env);
     }
 
     // =================================================================

@@ -126,7 +126,13 @@ const AuthManager = {
       return { success: false, message: 'Please enter both username and password.' };
     }
 
-    const token = turnstileToken || window.turnstileResponse || document.querySelector('[name="cf-turnstile-response"]')?.value || '';
+    let token = turnstileToken || window.turnstileResponse || '';
+    if (!token && window.turnstile && typeof window.turnstile.getResponse === 'function') {
+      try { token = window.turnstile.getResponse(); } catch (e) {}
+    }
+    if (!token) {
+      token = document.querySelector('[name="cf-turnstile-response"]')?.value || '';
+    }
 
     const apiUrl = (window.StorageManager && StorageManager.getApiUrl()) || '';
     const loginEndpoint = apiUrl ? `${apiUrl}/api/auth/login` : '/api/auth/login';
@@ -340,6 +346,90 @@ const AuthManager = {
     if (window.StorageManager) {
       StorageManager.deleteUser(userId);
     }
+  },
+
+  /**
+   * Request 6-digit OTP for Forgot Password
+   */
+  async requestPasswordResetOtp(emailOrUsername) {
+    const apiUrl = (window.StorageManager && StorageManager.getApiUrl()) || '';
+    if (!apiUrl) {
+      return { success: false, message: 'API connection URL not configured.' };
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailOrUsername })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.success) {
+        return { success: true, message: data.message || 'OTP code generated and sent.' };
+      }
+      return { success: false, message: data.error || data.message || 'Failed to send OTP.' };
+    } catch (err) {
+      return { success: false, message: 'Network error requesting OTP: ' + err.message };
+    }
+  },
+
+  /**
+   * Verify OTP and reset password
+   */
+  async verifyOtpAndResetPassword(emailOrUsername, otp, newPassword) {
+    const apiUrl = (window.StorageManager && StorageManager.getApiUrl()) || '';
+    if (!apiUrl) {
+      return { success: false, message: 'API connection URL not configured.' };
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailOrUsername, otp, newPassword })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.success) {
+        return { success: true, message: data.message || 'Password reset successfully!' };
+      }
+      return { success: false, message: data.error || data.message || 'Failed to reset password.' };
+    } catch (err) {
+      return { success: false, message: 'Network error resetting password: ' + err.message };
+    }
+  },
+
+  /**
+   * Quick Reset Sub-Admin Password by Super Admin (No Current Password Required)
+   */
+  async resetUserPasswordByAdmin(userId, newPassword) {
+    if (!this.isSuperAdmin()) {
+      return { success: false, message: 'Permission denied: Only Super Admin can reset user passwords.' };
+    }
+
+    const token = this.getToken();
+    const apiUrl = (window.StorageManager && StorageManager.getApiUrl()) || '';
+
+    if (apiUrl && token && navigator.onLine) {
+      try {
+        const response = await fetch(`${apiUrl}/api/users/reset-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ userId, newPassword })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.success) {
+          return { success: true, message: data.message || 'Password reset successfully!' };
+        }
+        return { success: false, message: data.error || data.message || 'Failed to reset user password.' };
+      } catch (err) {
+        return { success: false, message: 'Network error: ' + err.message };
+      }
+    }
+
+    return { success: true, message: 'Password reset locally.' };
   }
 };
 

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   full_name TEXT NOT NULL,
+  email TEXT DEFAULT '',
   role TEXT NOT NULL DEFAULT 'Sub-Admin',
   is_super_admin INTEGER NOT NULL DEFAULT 0,
   permissions_json TEXT NOT NULL DEFAULT '{}',
@@ -67,6 +68,8 @@ CREATE TABLE IF NOT EXISTS quotations (
   client_email TEXT,
   client_gst TEXT,
   client_address TEXT,
+  company_id TEXT DEFAULT 'primary',
+  company_name TEXT DEFAULT '',
   items_json TEXT NOT NULL DEFAULT '[]',
   calculations_json TEXT DEFAULT '[]',
   material_total REAL NOT NULL DEFAULT 0.0,
@@ -91,8 +94,9 @@ CREATE TABLE IF NOT EXISTS quotations (
 CREATE INDEX IF NOT EXISTS idx_quotations_date ON quotations(date);
 CREATE INDEX IF NOT EXISTS idx_quotations_number ON quotations(quote_number);
 CREATE INDEX IF NOT EXISTS idx_quotations_client_id ON quotations(client_id);
+CREATE INDEX IF NOT EXISTS idx_quotations_company_id ON quotations(company_id);
 
--- 5. Company Settings Table (100% White-Label Business Identity & Bank Details)
+-- 5. Company Settings Table (Multi-Company Support - Up to 3 Distinct Company Profiles)
 CREATE TABLE IF NOT EXISTS company_settings (
   id TEXT PRIMARY KEY DEFAULT 'primary',
   company_name TEXT NOT NULL DEFAULT 'Quotation Manager',
@@ -118,6 +122,8 @@ CREATE TABLE IF NOT EXISTS company_settings (
   show_signature_in_pdf INTEGER DEFAULT 1,
   show_banner_in_pdf INTEGER DEFAULT 1,
   turnstile_site_key TEXT DEFAULT '',
+  is_default INTEGER DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -130,6 +136,18 @@ CREATE TABLE IF NOT EXISTS settings (
   media_json TEXT NOT NULL DEFAULT '{}',
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- 6. Password Resets (Secure 6-Digit OTP Verification)
+CREATE TABLE IF NOT EXISTS password_resets (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  otp_hash TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets(email);
 
 -- =====================================================================
 -- Seed Initial Safe Default Data (White-Label)
@@ -154,10 +172,10 @@ INSERT OR IGNORE INTO users (
   datetime('now')
 );
 
--- Seed Initial White-Label Settings
+-- Seed Initial White-Label Settings (Default Primary Company)
 INSERT OR IGNORE INTO company_settings (
   id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
-  bank_name, account_name, account_number, ifsc_code, branch, terms_json, updated_at
+  bank_name, account_name, account_number, ifsc_code, branch, terms_json, is_default, created_at, updated_at
 ) VALUES (
   'primary',
   'Quotation Manager',
@@ -176,6 +194,8 @@ INSERT OR IGNORE INTO company_settings (
   'BANK0000000',
   'Main Branch',
   '["Customer will be billed after acceptance of this quote.","Payment terms as mutually agreed.","Transport & freight charges extra as applicable.","Subject to local jurisdiction."]',
+  1,
+  datetime('now'),
   datetime('now')
 );
 

@@ -18,6 +18,7 @@ const App = {
   pendingClientCsvData: null,
   pendingItemCsvData: null,
   turnstileWidgetId: null,
+  activeCompanyId: 'primary',
 
   async init() {
     try {
@@ -138,7 +139,7 @@ const App = {
     if (appShell) appShell.classList.remove('hidden');
 
     this.updateUserInterfaceForAuth();
-    this.renderCurrentTab();
+    this.applyRouteFromHash();
     return true;
   },
 
@@ -228,7 +229,7 @@ const App = {
           const appShell = document.getElementById('app-shell');
           if (appShell) appShell.classList.remove('hidden');
           this.updateUserInterfaceForAuth();
-          this.renderCurrentTab();
+          this.applyRouteFromHash();
           this.refreshCloudDataInBackground();
           this.showToast('Welcome, ' + (res.user?.fullName || res.user?.username) + '!', 'success');
         }, 300);
@@ -266,6 +267,156 @@ const App = {
     const appShell = document.getElementById('app-shell');
     if (appShell) appShell.classList.add('hidden');
     this.showLoginGate(true);
+  },
+
+  showForgotPasswordView(show) {
+    const normalView = document.getElementById('login-view-normal');
+    const forgotView = document.getElementById('login-view-forgot');
+    const alertBox = document.getElementById('forgot-pass-alert');
+    const step1 = document.getElementById('forgot-step1-form');
+    const step2 = document.getElementById('forgot-step2-form');
+
+    if (alertBox) alertBox.classList.add('hidden');
+    if (step1) step1.classList.remove('hidden');
+    if (step2) step2.classList.add('hidden');
+
+    if (show) {
+      if (normalView) normalView.classList.add('hidden');
+      if (forgotView) forgotView.classList.remove('hidden');
+      const emailInput = document.getElementById('forgot-email-input');
+      if (emailInput) {
+        emailInput.value = '';
+        setTimeout(() => emailInput.focus(), 100);
+      }
+    } else {
+      if (forgotView) forgotView.classList.add('hidden');
+      if (normalView) normalView.classList.remove('hidden');
+      const userInput = document.getElementById('login-username-input');
+      if (userInput) setTimeout(() => userInput.focus(), 100);
+    }
+  },
+
+  async handleRequestOtpSubmit(e) {
+    e.preventDefault();
+    const emailInp = document.getElementById('forgot-email-input');
+    const alertBox = document.getElementById('forgot-pass-alert');
+    const btn = document.getElementById('btn-request-otp');
+    const step1 = document.getElementById('forgot-step1-form');
+    const step2 = document.getElementById('forgot-step2-form');
+
+    const email = emailInp?.value?.trim() || '';
+    if (!email) {
+      if (alertBox) {
+        alertBox.textContent = 'Please enter your registered email address or username.';
+        alertBox.className = 'text-xs p-3 rounded-xl font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+        alertBox.classList.remove('hidden');
+      }
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Generating OTP...';
+    }
+
+    try {
+      const res = await AuthManager.requestPasswordResetOtp(email);
+      if (res.success) {
+        if (alertBox) {
+          alertBox.textContent = res.message || '6-digit OTP code has been generated and sent!';
+          alertBox.className = 'text-xs p-3 rounded-xl font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200';
+          alertBox.classList.remove('hidden');
+        }
+        if (step1) step1.classList.add('hidden');
+        if (step2) step2.classList.remove('hidden');
+        const otpInp = document.getElementById('forgot-otp-input');
+        if (otpInp) {
+          otpInp.value = '';
+          setTimeout(() => otpInp.focus(), 100);
+        }
+      } else {
+        if (alertBox) {
+          alertBox.textContent = res.message || 'Failed to send OTP code. Please check the email/username.';
+          alertBox.className = 'text-xs p-3 rounded-xl font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+          alertBox.classList.remove('hidden');
+        }
+      }
+    } catch (err) {
+      if (alertBox) {
+        alertBox.textContent = 'Error: ' + err.message;
+        alertBox.className = 'text-xs p-3 rounded-xl font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+        alertBox.classList.remove('hidden');
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane text-amber-400"></i> <span>Send 6-Digit OTP</span>';
+      }
+    }
+  },
+
+  async handleVerifyOtpSubmit(e) {
+    e.preventDefault();
+    const email = document.getElementById('forgot-email-input')?.value?.trim() || '';
+    const otp = document.getElementById('forgot-otp-input')?.value?.trim() || '';
+    const newPass = document.getElementById('forgot-new-password')?.value || '';
+    const alertBox = document.getElementById('forgot-pass-alert');
+    const btn = document.getElementById('btn-verify-otp-submit');
+
+    if (!otp || otp.length !== 6) {
+      if (alertBox) {
+        alertBox.textContent = 'Please enter a valid 6-digit numeric OTP code.';
+        alertBox.className = 'text-xs p-3 rounded-xl font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+        alertBox.classList.remove('hidden');
+      }
+      return;
+    }
+
+    if (!newPass || newPass.length < 6) {
+      if (alertBox) {
+        alertBox.textContent = 'New password must be at least 6 characters long.';
+        alertBox.className = 'text-xs p-3 rounded-xl font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+        alertBox.classList.remove('hidden');
+      }
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Resetting Password...';
+    }
+
+    try {
+      const res = await AuthManager.verifyOtpAndResetPassword(email, otp, newPass);
+      if (res.success) {
+        this.showToast('Password reset successfully! Please sign in with your new password.', 'success');
+        this.showForgotPasswordView(false);
+        const userInp = document.getElementById('login-username-input');
+        const passInp = document.getElementById('login-password-input');
+        if (userInp) userInp.value = email.includes('@') ? '' : email;
+        if (passInp) {
+          passInp.value = newPass;
+          passInp.focus();
+        }
+      } else {
+        if (alertBox) {
+          alertBox.textContent = res.message || 'Failed to verify OTP code.';
+          alertBox.className = 'text-xs p-3 rounded-xl font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+          alertBox.classList.remove('hidden');
+        }
+      }
+    } catch (err) {
+      if (alertBox) {
+        alertBox.textContent = 'Error: ' + err.message;
+        alertBox.className = 'text-xs p-3 rounded-xl font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+        alertBox.classList.remove('hidden');
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check text-white"></i> <span>Reset Password &amp; Login</span>';
+      }
+    }
   },
 
   togglePasswordVisibility(inputId, btnEl) {
@@ -452,6 +603,9 @@ const App = {
                 <button onclick="App.openUserEditorModal('${u.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Permissions">
                   <i class="fa-solid fa-user-pen text-sm"></i>
                 </button>
+                <button onclick="App.openAdminResetUserModal('${u.id}', '${this.escapeHtml(u.username)}')" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Reset Password">
+                  <i class="fa-solid fa-key text-sm"></i>
+                </button>
                 <button onclick="App.deleteUser('${u.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete User">
                   <i class="fa-solid fa-trash-can text-sm"></i>
                 </button>
@@ -490,7 +644,10 @@ const App = {
         userInp.disabled = true;
       }
       if (roleInp) roleInp.value = u.role || 'Sub-Admin';
-      if (passInp) passInp.value = '';
+      if (passInp) {
+        passInp.value = '';
+        passInp.placeholder = 'New Password (min 6 chars, leave blank to keep unchanged)';
+      }
       if (title) title.innerHTML = '<i class="fa-solid fa-user-pen"></i> <span>Edit Sub-Admin Permissions</span>';
 
       const perms = u.permissions || {};
@@ -507,7 +664,10 @@ const App = {
         userInp.disabled = false;
       }
       if (roleInp) roleInp.value = 'Sub-Admin';
-      if (passInp) passInp.value = '';
+      if (passInp) {
+        passInp.value = '';
+        passInp.placeholder = 'Min 6 characters';
+      }
       if (title) title.innerHTML = '<i class="fa-solid fa-user-plus"></i> <span>Add New Sub-Admin</span>';
 
       if (permClients) permClients.checked = true;
@@ -605,6 +765,62 @@ const App = {
     }
   },
 
+  openAdminResetUserModal(userId, username) {
+    const modal = document.getElementById('admin-reset-user-modal');
+    const idInp = document.getElementById('admin-reset-user-id');
+    const label = document.getElementById('admin-reset-user-label');
+    const passInp = document.getElementById('admin-reset-new-password');
+    const alertBox = document.getElementById('admin-reset-alert');
+
+    if (idInp) idInp.value = userId || '';
+    if (label) label.textContent = username || userId;
+    if (passInp) passInp.value = '';
+    if (alertBox) alertBox.classList.add('hidden');
+    if (modal) modal.classList.remove('hidden');
+    if (passInp) setTimeout(() => passInp.focus(), 100);
+  },
+
+  closeAdminResetUserModal() {
+    const modal = document.getElementById('admin-reset-user-modal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  async handleAdminResetUserSubmit(e) {
+    e.preventDefault();
+    const userId = document.getElementById('admin-reset-user-id')?.value;
+    const newPass = document.getElementById('admin-reset-new-password')?.value || '';
+    const alertBox = document.getElementById('admin-reset-alert');
+
+    if (!newPass || newPass.length < 6) {
+      if (alertBox) {
+        alertBox.textContent = 'Password must be at least 6 characters long.';
+        alertBox.className = 'text-xs p-2.5 rounded-lg font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+        alertBox.classList.remove('hidden');
+      }
+      return;
+    }
+
+    try {
+      const res = await AuthManager.resetUserPasswordByAdmin(userId, newPass);
+      if (res.success) {
+        this.showToast('Sub-admin password reset successfully!', 'success');
+        this.closeAdminResetUserModal();
+      } else {
+        if (alertBox) {
+          alertBox.textContent = res.message || 'Failed to reset password.';
+          alertBox.className = 'text-xs p-2.5 rounded-lg font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+          alertBox.classList.remove('hidden');
+        }
+      }
+    } catch (err) {
+      if (alertBox) {
+        alertBox.textContent = 'Error: ' + err.message;
+        alertBox.className = 'text-xs p-2.5 rounded-lg font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+        alertBox.classList.remove('hidden');
+      }
+    }
+  },
+
   // -------------------------------------------------------------
   // Database Backup & Restore Handlers
   // -------------------------------------------------------------
@@ -659,9 +875,59 @@ const App = {
   },
 
   // -------------------------------------------------------------
-  // Navigation & Tab Switching
+  // Navigation, Persistent URL Hash Routing & Tab Switching
   // -------------------------------------------------------------
-  switchTab(tabName) {
+  getRouteFromHash() {
+    const raw = (window.location.hash || '').replace(/^#\/?/, '').trim();
+    if (!raw) return { tab: 'dashboard', page: 1 };
+    const [tabPart, queryPart] = raw.split('?');
+    const tab = (tabPart || 'dashboard').toLowerCase();
+    let page = 1;
+    if (queryPart) {
+      const params = new URLSearchParams(queryPart);
+      const p = parseInt(params.get('page'), 10);
+      if (!isNaN(p) && p >= 1) page = p;
+    }
+    const validTabs = ['dashboard', 'quotations', 'clients', 'items', 'users', 'settings'];
+    return {
+      tab: validTabs.includes(tab) ? tab : 'dashboard',
+      page
+    };
+  },
+
+  updateRouteHash(tab, page) {
+    if (!tab) tab = this.currentTab || 'dashboard';
+    let targetPage = page;
+    if (targetPage === undefined) {
+      if (tab === 'quotations') targetPage = this.quotesPage || 1;
+      else if (tab === 'clients') targetPage = this.clientsPage || 1;
+      else if (tab === 'items') targetPage = this.itemsPage || 1;
+      else targetPage = 1;
+    }
+
+    let newHash = `#${tab}`;
+    if (targetPage && targetPage > 1 && ['quotations', 'clients', 'items'].includes(tab)) {
+      newHash = `#${tab}?page=${targetPage}`;
+    }
+
+    if (window.location.hash !== newHash) {
+      history.replaceState(null, '', newHash);
+    }
+  },
+
+  applyRouteFromHash() {
+    const route = this.getRouteFromHash();
+    if (route.tab === 'quotations') {
+      this.quotesPage = route.page;
+    } else if (route.tab === 'clients') {
+      this.clientsPage = route.page;
+    } else if (route.tab === 'items') {
+      this.itemsPage = route.page;
+    }
+    this.switchTab(route.tab, { updateHash: false });
+  },
+
+  switchTab(tabName, options = { updateHash: true }) {
     if (tabName === 'users' && !AuthManager.isSuperAdmin()) {
       tabName = 'dashboard';
     }
@@ -688,6 +954,10 @@ const App = {
     const activeSec = document.getElementById(`view-${tabName}`);
     if (activeSec) {
       activeSec.classList.remove('hidden');
+    }
+
+    if (options?.updateHash !== false) {
+      this.updateRouteHash(tabName);
     }
 
     this.renderCurrentTab();
@@ -718,6 +988,17 @@ const App = {
   },
 
   setupEventListeners() {
+    window.addEventListener('hashchange', () => {
+      this.applyRouteFromHash();
+    });
+
+    // Global Modal Escape Key Listener
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        this.closeTopmostModal();
+      }
+    });
+
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const tab = btn.getAttribute('data-tab');
@@ -744,6 +1025,64 @@ const App = {
     if (btnSyncNow) {
       btnSyncNow.addEventListener('click', () => this.syncNow());
     }
+  },
+
+  closeTopmostModal() {
+    const previewModal = document.getElementById('pdf-preview-modal');
+    if (previewModal && !previewModal.classList.contains('hidden')) {
+      this.closePrintPreview();
+      return true;
+    }
+
+    const quoteEditor = document.getElementById('quote-editor-modal');
+    if (quoteEditor && !quoteEditor.classList.contains('hidden')) {
+      this.closeQuotationEditorModal();
+      return true;
+    }
+
+    const itemModal = document.getElementById('item-modal');
+    if (itemModal && !itemModal.classList.contains('hidden')) {
+      this.closeItemModal();
+      return true;
+    }
+
+    const clientModal = document.getElementById('client-modal');
+    if (clientModal && !clientModal.classList.contains('hidden')) {
+      this.closeClientModal();
+      return true;
+    }
+
+    const userModal = document.getElementById('user-editor-modal');
+    if (userModal && !userModal.classList.contains('hidden')) {
+      this.closeUserEditorModal();
+      return true;
+    }
+
+    const resetUserModal = document.getElementById('admin-reset-user-modal');
+    if (resetUserModal && !resetUserModal.classList.contains('hidden')) {
+      this.closeAdminResetUserModal();
+      return true;
+    }
+
+    const changePassModal = document.getElementById('change-password-modal');
+    if (changePassModal && !changePassModal.classList.contains('hidden')) {
+      this.closeChangePasswordModal();
+      return true;
+    }
+
+    const csvModal = document.getElementById('csv-import-modal');
+    if (csvModal && !csvModal.classList.contains('hidden')) {
+      this.closeCsvModal();
+      return true;
+    }
+
+    const forgotView = document.getElementById('login-view-forgot');
+    if (forgotView && !forgotView.classList.contains('hidden')) {
+      this.showForgotPasswordView(false);
+      return true;
+    }
+
+    return false;
   },
 
   // -------------------------------------------------------------
@@ -933,7 +1272,7 @@ const App = {
           <td class="py-3 px-3">
             <span class="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
               <i class="fa-solid fa-user-pen text-slate-400 text-[10px]"></i>
-              ${q.createdBy || 'Super Admin'}
+              ${this.escapeHtml(q.createdByName || q.createdBy || 'System Administrator')}
             </span>
           </td>
           <td class="py-3 px-3 text-right">
@@ -1085,7 +1424,7 @@ const App = {
         <td class="py-2.5 px-3">
           <span class="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
             <i class="fa-solid fa-user-pen text-slate-400 text-[10px]"></i>
-            ${it.createdBy || 'Super Admin'}
+            ${this.escapeHtml(it.createdByName || it.createdBy || 'System Administrator')}
           </span>
         </td>
         <td class="py-2.5 px-3 text-right space-x-1">
@@ -1182,6 +1521,9 @@ const App = {
   async saveItemFromModal(e) {
     if (e) e.preventDefault();
     const id = document.getElementById('item-form-id').value;
+    const currentUser = AuthManager.getCurrentUser();
+    const authorName = (currentUser?.fullName || currentUser?.username || 'System Administrator').trim();
+
     const itemData = {
       id: id || undefined,
       name: document.getElementById('item-form-name').value.trim(),
@@ -1189,7 +1531,9 @@ const App = {
       unit: document.getElementById('item-form-unit').value.trim(),
       rate: parseFloat(document.getElementById('item-form-rate').value) || 0,
       defaultWidth: parseFloat(document.getElementById('item-form-width').value) || 3.50,
-      imageUrl: document.getElementById('item-form-image-data').value.trim()
+      imageUrl: document.getElementById('item-form-image-data').value.trim(),
+      createdBy: authorName,
+      createdByName: authorName
     };
 
     if (!itemData.name) {
@@ -1410,6 +1754,9 @@ const App = {
     if (elLoading) elLoading.value = q.loadingCharges !== undefined ? q.loadingCharges : 0;
     if (elGstType) elGstType.value = q.gstType || 'CGST_SGST';
     if (elNotes) elNotes.value = q.notes || '';
+
+    // Multi-Company Selector
+    this.populateQuotationCompanySelector(q.companyId || 'primary');
 
     // Render items and calculation blocks
     this.renderEditorItemsTable();
@@ -2092,6 +2439,22 @@ const App = {
       // Recalculate all financials right before saving
       this.recalculateEditorFinancials();
 
+      // Multi-Company Selection
+      const compIdEl = document.getElementById('edit-quote-company-id');
+      const selectedCompanyId = compIdEl?.value?.trim() || this.currentQuotation.companyId || 'primary';
+      const companies = StorageManager.getCompanies();
+      const matchedComp = companies.find(c => c.id === selectedCompanyId) || companies[0] || {};
+      this.currentQuotation.companyId = selectedCompanyId;
+      this.currentQuotation.companyName = matchedComp.companyName || matchedComp.name || '';
+
+      // Audit Trail Full Name Attribution
+      const currentUser = AuthManager.getCurrentUser();
+      const authorFullName = (currentUser?.fullName || currentUser?.username || 'System Administrator').trim();
+      if (!this.currentQuotation.createdBy || this.currentQuotation.createdBy === 'Super Admin' || this.currentQuotation.createdBy === 'Sub-Admin') {
+        this.currentQuotation.createdBy = authorFullName;
+      }
+      this.currentQuotation.createdByName = this.currentQuotation.createdByName || authorFullName;
+
       // Ensure calculations array
       if (!Array.isArray(this.currentQuotation.calculations)) {
         this.currentQuotation.calculations = [];
@@ -2118,8 +2481,8 @@ const App = {
     const quote = StorageManager.getQuotationById(quoteId);
     if (!quote) return;
 
-    const settings = StorageManager.getSettings();
-    const html = PdfGenerator.generateQuotationHtml(quote, settings);
+    const companySettings = StorageManager.getCompanySettingsForQuote(quote);
+    const html = PdfGenerator.generateQuotationHtml(quote, companySettings);
 
     const previewModal = document.getElementById('pdf-preview-modal');
     const container = document.getElementById('pdf-preview-container');
@@ -2134,7 +2497,7 @@ const App = {
             e.preventDefault();
             e.stopImmediatePropagation();
           }
-          PdfGenerator.printQuotation(quote, settings);
+          PdfGenerator.printQuotation(quote, companySettings);
         };
       }
       const downloadBtn = document.getElementById('btn-modal-download');
@@ -2144,7 +2507,7 @@ const App = {
             e.preventDefault();
             e.stopImmediatePropagation();
           }
-          PdfGenerator.downloadPdf(quote, settings);
+          PdfGenerator.downloadPdf(quote, companySettings);
         };
       }
     }
@@ -2240,7 +2603,7 @@ const App = {
         <td class="py-3 px-3">
           <span class="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
             <i class="fa-solid fa-user-pen text-slate-400 text-[10px]"></i>
-            ${c.createdBy || 'Super Admin'}
+            ${this.escapeHtml(c.createdByName || c.createdBy || 'System Administrator')}
           </span>
         </td>
         <td class="py-3 px-3 text-right space-x-1">
@@ -2295,29 +2658,35 @@ const App = {
 
   setQuotesPage(page) {
     this.quotesPage = Math.max(1, page);
+    this.updateRouteHash('quotations', this.quotesPage);
     this.renderQuotationsList();
   },
   setQuotesPageSize(size) {
     this.quotesPageSize = parseInt(size, 10) || 15;
     this.quotesPage = 1;
+    this.updateRouteHash('quotations', 1);
     this.renderQuotationsList();
   },
   setClientsPage(page) {
     this.clientsPage = Math.max(1, page);
+    this.updateRouteHash('clients', this.clientsPage);
     this.renderClientsList();
   },
   setClientsPageSize(size) {
     this.clientsPageSize = parseInt(size, 10) || 15;
     this.clientsPage = 1;
+    this.updateRouteHash('clients', 1);
     this.renderClientsList();
   },
   setItemsPage(page) {
     this.itemsPage = Math.max(1, page);
+    this.updateRouteHash('items', this.itemsPage);
     this.renderItemsList();
   },
   setItemsPageSize(size) {
     this.itemsPageSize = parseInt(size, 10) || 15;
     this.itemsPage = 1;
+    this.updateRouteHash('items', 1);
     this.renderItemsList();
   },
 
@@ -2568,6 +2937,9 @@ const App = {
   async saveClientFromModal(e) {
     if (e) e.preventDefault();
     const id = document.getElementById('client-form-id').value;
+    const currentUser = AuthManager.getCurrentUser();
+    const authorName = (currentUser?.fullName || currentUser?.username || 'System Administrator').trim();
+
     const clientData = {
       id: id || undefined,
       companyName: document.getElementById('client-form-company').value.trim(),
@@ -2575,7 +2947,9 @@ const App = {
       phone: document.getElementById('client-form-phone').value.trim(),
       email: document.getElementById('client-form-email').value.trim(),
       gstNumber: document.getElementById('client-form-gst').value.trim(),
-      address: document.getElementById('client-form-address').value.trim()
+      address: document.getElementById('client-form-address').value.trim(),
+      createdBy: authorName,
+      createdByName: authorName
     };
 
     if (!clientData.name && !clientData.companyName) {
@@ -2612,38 +2986,208 @@ const App = {
   },
 
   // -------------------------------------------------------------
-  // Settings View (including Signature Upload)
+  // Settings View & Multi-Company Profile Management
   // -------------------------------------------------------------
+  renderCompanyProfileTabs() {
+    const bar = document.getElementById('settings-companies-tab-bar');
+    if (!bar) return;
+
+    const companies = StorageManager.getCompanies();
+    if (!companies.some(c => c.id === this.activeCompanyId)) {
+      this.activeCompanyId = companies[0]?.id || 'primary';
+    }
+
+    const addBtn = document.getElementById('btn-add-company-profile');
+    if (addBtn) {
+      if (companies.length >= 3) {
+        addBtn.disabled = true;
+        addBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        addBtn.title = 'Maximum limit of 3 Company Profiles reached';
+      } else {
+        addBtn.disabled = false;
+        addBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        addBtn.title = 'Add new company profile (Up to 3)';
+      }
+    }
+
+    const delBtn = document.getElementById('btn-delete-company-profile');
+    if (delBtn) {
+      if (companies.length <= 1) {
+        delBtn.disabled = true;
+        delBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
+        delBtn.disabled = false;
+        delBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    bar.innerHTML = companies.map(c => {
+      const isActive = c.id === this.activeCompanyId;
+      const activeClasses = isActive
+        ? 'bg-amber-400 text-blue-950 font-black shadow-md border-amber-300'
+        : 'bg-blue-900/60 text-slate-300 hover:bg-blue-800/80 hover:text-white border-blue-800/50';
+      const label = this.escapeHtml(c.companyName || c.name || 'Company Profile');
+      const badge = c.isDefault ? '<span class="text-[9px] uppercase px-1.5 py-0.5 bg-blue-950/40 text-amber-900 rounded font-bold ml-1.5">Default</span>' : '';
+      return `
+        <button type="button" onclick="App.switchCompanyProfileTab('${c.id}')"
+          class="px-3.5 py-1.5 rounded-xl text-xs border transition flex items-center gap-1.5 ${activeClasses}">
+          <i class="fa-solid fa-building text-[11px] ${isActive ? 'text-blue-950' : 'text-amber-400'}"></i>
+          <span>${label}</span>
+          ${badge}
+        </button>
+      `;
+    }).join('');
+  },
+
+  switchCompanyProfileTab(companyId) {
+    this.activeCompanyId = companyId;
+    this.renderCompanyProfileTabs();
+
+    const companies = StorageManager.getCompanies();
+    const comp = companies.find(c => c.id === companyId) || companies[0] || {};
+
+    const elName = document.getElementById('set-company-name');
+    const elTag = document.getElementById('set-company-tagline');
+    const elAddr = document.getElementById('set-company-address');
+    const elPhone = document.getElementById('set-company-phone');
+    const elPhone2 = document.getElementById('set-company-phone2');
+    const elEmail = document.getElementById('set-company-email');
+    const elGst = document.getElementById('set-company-gstin');
+
+    if (elName) elName.value = comp.companyName || comp.name || '';
+    if (elTag) elTag.value = comp.subtitle || comp.tagline || '';
+    if (elAddr) elAddr.value = comp.address || '';
+    if (elPhone) elPhone.value = comp.phone || '';
+    if (elPhone2) elPhone2.value = comp.phoneSecondary || '';
+    if (elEmail) elEmail.value = comp.email || '';
+    if (elGst) elGst.value = comp.gstin || '';
+
+    const elBank = document.getElementById('set-bank-name');
+    const elAcName = document.getElementById('set-bank-acname');
+    const elAcNo = document.getElementById('set-bank-acno');
+    const elIfsc = document.getElementById('set-bank-ifsc');
+    const elBranch = document.getElementById('set-bank-branch');
+
+    if (elBank) elBank.value = comp.bankName || '';
+    if (elAcName) elAcName.value = comp.accountName || comp.companyName || '';
+    if (elAcNo) elAcNo.value = comp.accountNo || comp.accountNumber || '';
+    if (elIfsc) elIfsc.value = comp.ifscCode || '';
+    if (elBranch) elBranch.value = comp.branch || '';
+
+    // Signature Preview & Banner Preview
+    const sigPreview = document.getElementById('set-signature-preview');
+    if (sigPreview) {
+      sigPreview.src = comp.authorizedSignature || 'assets/sample-signature.svg';
+    }
+    const bannerPreview = document.getElementById('set-banner-preview');
+    if (bannerPreview) {
+      if (comp.promotionalBanner) {
+        bannerPreview.src = comp.promotionalBanner;
+        bannerPreview.classList.remove('hidden');
+      } else {
+        bannerPreview.src = 'assets/product-gallery-page7.svg';
+      }
+    }
+
+    // Terms
+    let terms = [];
+    if (Array.isArray(comp.terms)) terms = comp.terms;
+    else if (typeof comp.terms === 'string') {
+      try { terms = JSON.parse(comp.terms); } catch (e) { terms = [comp.terms]; }
+    }
+    if (!terms.length) {
+      const general = StorageManager.getSettings();
+      terms = general.terms || [];
+    }
+    this.renderSettingsTerms(terms);
+  },
+
+  async addNewCompanyProfile() {
+    const companies = StorageManager.getCompanies();
+    if (companies.length >= 3) {
+      this.showToast('Maximum of 3 Company Profiles allowed.', 'error');
+      return;
+    }
+
+    const companyName = prompt('Enter new Company / Entity Name (e.g., Secondary Billing Entity):');
+    if (!companyName || !companyName.trim()) return;
+
+    const newComp = {
+      id: 'comp_' + Date.now(),
+      companyName: companyName.trim(),
+      subtitle: '',
+      address: '',
+      phone: '',
+      email: '',
+      gstin: '',
+      bankName: '',
+      accountNo: '',
+      ifscCode: '',
+      terms: ['Subject to local jurisdiction.', 'Validity 15 days from issuance.'],
+      authorizedSignature: 'assets/sample-signature.svg',
+      promotionalBanner: '',
+      isDefault: false
+    };
+
+    try {
+      await StorageManager.saveCompany(newComp);
+      this.activeCompanyId = newComp.id;
+      this.switchCompanyProfileTab(newComp.id);
+      this.showToast(`Company profile "${companyName.trim()}" created successfully!`, 'success');
+    } catch (err) {
+      this.showToast(err.message || 'Error creating company profile', 'error');
+    }
+  },
+
+  async deleteCurrentCompanyProfile() {
+    const companies = StorageManager.getCompanies();
+    if (companies.length <= 1) {
+      this.showToast('Cannot delete the only remaining company profile.', 'error');
+      return;
+    }
+
+    const current = companies.find(c => c.id === this.activeCompanyId);
+    const name = current?.companyName || current?.name || 'this company';
+    if (!confirm(`Are you sure you want to permanently delete "${name}"?`)) {
+      return;
+    }
+
+    try {
+      await StorageManager.deleteCompany(this.activeCompanyId);
+      const remaining = StorageManager.getCompanies();
+      this.activeCompanyId = remaining[0]?.id || 'primary';
+      this.switchCompanyProfileTab(this.activeCompanyId);
+      this.showToast(`Company profile deleted successfully!`, 'success');
+    } catch (err) {
+      this.showToast(err.message || 'Error deleting company profile', 'error');
+    }
+  },
+
+  populateQuotationCompanySelector(selectedCompanyId) {
+    const select = document.getElementById('edit-quote-company-id');
+    if (!select) return;
+
+    const companies = StorageManager.getCompanies();
+    select.innerHTML = companies.map(c => {
+      const isSel = (c.id === selectedCompanyId) || (!selectedCompanyId && c.isDefault);
+      const label = this.escapeHtml(c.companyName || c.name || 'Company Profile');
+      const defBadge = c.isDefault ? ' (Default)' : '';
+      return `<option value="${c.id}" ${isSel ? 'selected' : ''}>${label}${defBadge}</option>`;
+    }).join('');
+  },
+
   renderSettings() {
+    this.renderCompanyProfileTabs();
+    this.switchCompanyProfileTab(this.activeCompanyId);
+
     const settings = StorageManager.getSettings();
-
-    document.getElementById('set-company-name').value = settings.company?.name || '';
-    document.getElementById('set-company-tagline').value = settings.company?.tagline || '';
-    document.getElementById('set-company-address').value = settings.company?.address || '';
-    document.getElementById('set-company-phone').value = settings.company?.phone || '';
-    document.getElementById('set-company-phone2').value = settings.company?.phoneSecondary || '';
-    document.getElementById('set-company-email').value = settings.company?.email || '';
-    document.getElementById('set-company-gstin').value = settings.company?.gstin || '';
-
-    document.getElementById('set-bank-name').value = settings.bank?.bankName || '';
-    document.getElementById('set-bank-acname').value = settings.bank?.accountName || '';
-    document.getElementById('set-bank-acno').value = settings.bank?.accountNumber || '';
-    document.getElementById('set-bank-ifsc').value = settings.bank?.ifscCode || '';
-    document.getElementById('set-bank-branch').value = settings.bank?.branch || '';
-
     const workerInput = document.getElementById('set-worker-url');
     if (workerInput) workerInput.value = settings.integration?.workerUrl || localStorage.getItem('cf_worker_url') || '';
 
-    // Signature Settings
-    const sigPreview = document.getElementById('set-signature-preview');
     const sigToggle = document.getElementById('set-signature-toggle');
     const sigTitle = document.getElementById('set-signature-title');
-    if (sigPreview) sigPreview.src = settings.media?.signatureImageUrl || 'assets/sample-signature.svg';
     if (sigToggle) sigToggle.checked = settings.media?.showSignatureInPdf !== false;
     if (sigTitle) sigTitle.value = settings.media?.signatureTitle || 'Authorized Signatory';
-
-    this.renderSettingsTerms(settings.terms || []);
-    this.renderSettingsBanners(settings.media);
 
     const backupCard = document.getElementById('settings-db-backup-card');
     if (backupCard) {
@@ -2660,16 +3204,24 @@ const App = {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const base64 = e.target.result;
+      const sigPreview = document.getElementById('set-signature-preview');
+      if (sigPreview) sigPreview.src = base64;
+
+      const companies = StorageManager.getCompanies();
+      const current = companies.find(c => c.id === this.activeCompanyId);
+      if (current) {
+        current.authorizedSignature = base64;
+        await StorageManager.saveCompany(current);
+      }
+
       const settings = StorageManager.getSettings();
       if (!settings.media) settings.media = {};
       settings.media.signatureImageUrl = base64;
-      StorageManager.saveSettings(settings);
-      
-      const sigPreview = document.getElementById('set-signature-preview');
-      if (sigPreview) sigPreview.src = base64;
-      this.showToast('Authorized signature image updated!', 'success');
+      await StorageManager.saveSettings(settings);
+
+      this.showToast('Authorized signature image updated for active company!', 'success');
     };
     reader.readAsDataURL(file);
   },
@@ -2733,14 +3285,28 @@ const App = {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const base64 = e.target.result;
+      const preview = document.getElementById('set-banner-preview');
+      if (preview) {
+        preview.src = base64;
+        preview.classList.remove('hidden');
+      }
+
+      const companies = StorageManager.getCompanies();
+      const current = companies.find(c => c.id === this.activeCompanyId);
+      if (current) {
+        current.promotionalBanner = base64;
+        await StorageManager.saveCompany(current);
+      }
+
       const settings = StorageManager.getSettings();
       if (!settings.media) settings.media = {};
       settings.media.bannerUrl = base64;
-      StorageManager.saveSettings(settings);
+      await StorageManager.saveSettings(settings);
+
       this.renderSettingsBanners(settings.media);
-      this.showToast('Promotional banner updated successfully!', 'success');
+      this.showToast('Promotional banner updated for active company!', 'success');
     };
     reader.readAsDataURL(file);
   },
@@ -2753,28 +3319,68 @@ const App = {
 
     const settings = StorageManager.getSettings();
 
+    const companyName = document.getElementById('set-company-name').value.trim();
+    const tagline = document.getElementById('set-company-tagline').value.trim();
+    const address = document.getElementById('set-company-address').value.trim();
+    const phone = document.getElementById('set-company-phone').value.trim();
+    const phoneSecondary = document.getElementById('set-company-phone2').value.trim();
+    const email = document.getElementById('set-company-email').value.trim();
+    const gstin = document.getElementById('set-company-gstin').value.trim();
+
+    const bankName = document.getElementById('set-bank-name').value.trim();
+    const accountName = document.getElementById('set-bank-acname').value.trim();
+    const accountNumber = document.getElementById('set-bank-acno').value.trim();
+    const ifscCode = document.getElementById('set-bank-ifsc').value.trim();
+    const branch = document.getElementById('set-bank-branch').value.trim();
+
+    // 1. Save Active Company Profile in Multi-Company Store
+    const companies = StorageManager.getCompanies();
+    const activeComp = companies.find(c => c.id === this.activeCompanyId) || { id: this.activeCompanyId };
+    activeComp.companyName = companyName || activeComp.companyName || 'Primary Company';
+    activeComp.subtitle = tagline;
+    activeComp.address = address;
+    activeComp.phone = phone;
+    activeComp.phoneSecondary = phoneSecondary;
+    activeComp.email = email;
+    activeComp.gstin = gstin;
+    activeComp.bankName = bankName;
+    activeComp.accountName = accountName;
+    activeComp.accountNo = accountNumber;
+    activeComp.ifscCode = ifscCode;
+    activeComp.branch = branch;
+    activeComp.terms = settings.terms || [];
+
+    const sigPreview = document.getElementById('set-signature-preview');
+    if (sigPreview && sigPreview.src && !sigPreview.src.includes('sample-signature.svg')) {
+      activeComp.authorizedSignature = sigPreview.src;
+    }
+    const bannerPreview = document.getElementById('set-banner-preview');
+    if (bannerPreview && bannerPreview.src && !bannerPreview.src.includes('product-gallery-page7.svg')) {
+      activeComp.promotionalBanner = bannerPreview.src;
+    }
+
+    // 2. Save General Settings for Legacy/Fallback
     settings.company = {
-      name: document.getElementById('set-company-name').value.trim(),
-      tagline: document.getElementById('set-company-tagline').value.trim(),
-      address: document.getElementById('set-company-address').value.trim(),
-      phone: document.getElementById('set-company-phone').value.trim(),
-      phoneSecondary: document.getElementById('set-company-phone2').value.trim(),
-      email: document.getElementById('set-company-email').value.trim(),
-      gstin: document.getElementById('set-company-gstin').value.trim(),
+      name: companyName,
+      tagline: tagline,
+      address: address,
+      phone: phone,
+      phoneSecondary: phoneSecondary,
+      email: email,
+      gstin: gstin,
       state: 'Gujarat',
       stateCode: '24'
     };
 
     settings.bank = {
-      bankName: document.getElementById('set-bank-name').value.trim(),
-      accountName: document.getElementById('set-bank-acname').value.trim(),
-      accountNumber: document.getElementById('set-bank-acno').value.trim(),
-      ifscCode: document.getElementById('set-bank-ifsc').value.trim(),
-      branch: document.getElementById('set-bank-branch').value.trim()
+      bankName: bankName,
+      accountName: accountName,
+      accountNumber: accountNumber,
+      ifscCode: ifscCode,
+      branch: branch
     };
 
     const workerUrlVal = document.getElementById('set-worker-url') ? document.getElementById('set-worker-url').value.trim() : '';
-
     settings.integration = {
       ...settings.integration,
       workerUrl: workerUrlVal
@@ -2786,7 +3392,6 @@ const App = {
 
     const sigTitleInput = document.getElementById('set-signature-title');
     const sigToggleInput = document.getElementById('set-signature-toggle');
-
     settings.media = {
       ...settings.media,
       showBannerInPdf: document.getElementById('set-banner-toggle').checked,
@@ -2795,8 +3400,10 @@ const App = {
     };
 
     try {
+      await StorageManager.saveCompany(activeComp);
       await StorageManager.saveSettings(settings);
-      this.showToast('Settings saved successfully!', 'success');
+      this.renderCompanyProfileTabs();
+      this.showToast('Company profile & settings saved successfully!', 'success');
     } catch (err) {
       this.showToast(err.message || 'No Internet Connection - Unable to save settings', 'error');
     }

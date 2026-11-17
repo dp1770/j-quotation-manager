@@ -9,6 +9,9 @@ const PdfGenerator = {
    * Builds the complete HTML string for the printable quotation
    */
   generateQuotationHtml(quote, settings) {
+    if ((!settings || !settings.company) && window.StorageManager) {
+      settings = StorageManager.getCompanySettingsForQuote(quote);
+    }
     const comp = settings?.company || DEFAULT_SETTINGS.company;
     const bank = settings?.bank || DEFAULT_SETTINGS.bank;
     const terms = settings?.terms || DEFAULT_SETTINGS.terms;

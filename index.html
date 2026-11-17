@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; connect-src 'self' https: data: blob: wss:; frame-src 'self' https: data: blob:; img-src 'self' https: data: blob:; font-src 'self' https: data:;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; connect-src 'self' https: data: blob: wss: https://*.cloudflare.com https://challenges.cloudflare.com; frame-src 'self' https: data: blob: https://challenges.cloudflare.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob: https://challenges.cloudflare.com https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; img-src 'self' https: data: blob:; font-src 'self' https: data:;" />
   <title>Quotation Manager - Professional Quotation System</title>
   
   <!-- PWA & Mobile Web Meta -->
@@ -57,6 +57,15 @@
   <!-- Cloudflare Turnstile Captcha (Free Bot Protection) -->
   <script>
     window.turnstileResponse = '';
+    window.onTurnstileSuccess = function(token) {
+      window.turnstileResponse = token || '';
+    };
+    window.onTurnstileExpired = function() {
+      window.turnstileResponse = '';
+    };
+    window.onTurnstileError = function() {
+      window.turnstileResponse = '';
+    };
     window.onloadTurnstileCallback = function() {
       if (window.App && typeof App.renderTurnstileWidget === 'function') {
         const modal = document.getElementById('login-gate-modal');
@@ -69,7 +78,7 @@
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" async defer></script>
 
   <!-- Custom Styles & Print Stylesheet -->
-  <link rel="stylesheet" href="css/custom.css?v=3.5.9" />
+  <link rel="stylesheet" href="css/custom.css?v=3.6.0" />
 </head>
 <body class="bg-slate-100 text-slate-900 font-sans min-h-screen flex flex-col antialiased selection:bg-blue-900 selection:text-white">
 
@@ -95,14 +104,9 @@
         </div>
       </div>
 
-      <!-- Right Header Actions (User Badge, Setup Pill, Sync Badge) -->
+      <!-- Right Header Actions (User Badge, Sync Badge) -->
       <div class="flex items-center gap-2 sm:gap-3">
         
-        <!-- Multi-Tenant Setup Pill (Interactive) -->
-        <button id="btn-db-setup-status" onclick="App.showSetupGate(true)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer border bg-blue-900/60 text-blue-200 border-blue-700/60 hover:bg-blue-800">
-          <i class="fa-solid fa-database text-amber-400 text-xs"></i> <span id="db-setup-label">Connecting...</span>
-        </button>
-
         <!-- Logged-in User Profile Chip & Actions -->
         <div id="header-user-wrapper" class="flex items-center gap-1.5 bg-blue-900/70 border border-blue-700/70 px-2.5 py-1 rounded-xl text-xs">
           <i class="fa-solid fa-user-circle text-amber-400 text-sm"></i>
@@ -549,12 +553,33 @@
       
       <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div>
-          <h2 class="text-lg font-black text-slate-900">Company Profile &amp; Settings</h2>
-          <p class="text-xs text-slate-500">Configure business profile, banking details, quotation terms, and branding</p>
+          <h2 class="text-lg font-black text-slate-900">Company Profiles &amp; Settings</h2>
+          <p class="text-xs text-slate-500">Configure up to 3 distinct business profiles, banking details, terms, and branding</p>
         </div>
-        <button onclick="App.saveAllSettings()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-2">
-          <i class="fa-solid fa-floppy-disk"></i> Save Settings
+        <button onclick="App.saveAllSettings()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs shadow transition-all flex items-center gap-2 cursor-pointer">
+          <i class="fa-solid fa-floppy-disk"></i> Save Current Company Profile
         </button>
+      </div>
+
+      <!-- Multi-Company Profile Selector & Management Bar (Up to 3 Companies) -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 font-black text-[10px] uppercase tracking-wider">ENTITIES</span>
+            <span class="text-xs font-black text-blue-950 uppercase">Company Profiles (Max 3):</span>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap" id="settings-companies-tab-bar">
+            <!-- Populated dynamically by App.renderCompanyProfileTabs() -->
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button type="button" id="btn-add-company-profile" onclick="App.addNewCompanyProfile()" class="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-plus text-amber-400"></i> <span>Add Company (Max 3)</span>
+          </button>
+          <button type="button" id="btn-delete-company-profile" onclick="App.deleteCurrentCompanyProfile()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-trash-can text-xs"></i> <span>Delete Profile</span>
+          </button>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -690,27 +715,56 @@
         </div>
 
         <!-- Database Backup & Restore System (Super Admin Only) -->
-        <div id="settings-db-backup-card" class="lg:col-span-2 bg-gradient-to-r from-slate-900 to-blue-950 p-6 rounded-2xl border border-slate-800 shadow-md text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div class="space-y-1">
-            <div class="flex items-center gap-2">
-              <span class="px-2.5 py-0.5 rounded-full bg-emerald-400 text-blue-950 font-black text-[10px] uppercase tracking-wider">DATABASE BACKUP</span>
-              <h4 class="text-sm sm:text-base font-black text-white uppercase tracking-wide">Database Backup &amp; Restore</h4>
+        <div id="settings-db-backup-card" class="lg:col-span-2 bg-gradient-to-r from-slate-900 to-blue-950 p-6 rounded-2xl border border-slate-800 shadow-md text-white space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full bg-emerald-400 text-blue-950 font-black text-[10px] uppercase tracking-wider">DATABASE BACKUP</span>
+                <h4 class="text-sm sm:text-base font-black text-white uppercase tracking-wide">Database Backup &amp; Restore</h4>
+              </div>
+              <p class="text-xs text-blue-200">
+                Manage your enterprise cloud database backups and snapshots.
+              </p>
             </div>
-            <p class="text-xs text-blue-200">
-              Export all Quotations, Clients, Item Master catalog, and business settings into a secure <code class="bg-blue-900/80 px-2 py-0.5 rounded font-mono text-amber-300 font-bold">quotation_backup.json</code> file.
-            </p>
-            <p class="text-[11px] text-slate-400">
-              Direct cloud sync: Restores and merges data securely into your database (Super Admin only).
-            </p>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <button type="button" onclick="App.handleDatabaseBackupExport()" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-blue-950 rounded-xl text-xs font-black shadow-md transition-all flex items-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-cloud-arrow-down text-sm"></i> <span>Export Database (JSON)</span>
+              </button>
+              <label class="px-4 py-2.5 bg-blue-800/80 hover:bg-blue-700 text-white rounded-xl text-xs font-bold border border-blue-600/50 shadow-md transition-all flex items-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-cloud-arrow-up text-sm text-sky-300"></i> <span>Import Database (JSON)</span>
+                <input type="file" id="db-restore-file-input" accept=".json" class="hidden" onchange="App.handleDatabaseBackupImport(event)" />
+              </label>
+            </div>
           </div>
-          <div class="flex flex-wrap items-center gap-2.5">
-            <button type="button" onclick="App.handleDatabaseBackupExport()" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-blue-950 rounded-xl text-xs font-black shadow-md transition-all flex items-center gap-2 cursor-pointer">
-              <i class="fa-solid fa-cloud-arrow-down text-sm"></i> <span>Export Database (JSON)</span>
-            </button>
-            <label class="px-4 py-2.5 bg-blue-800/80 hover:bg-blue-700 text-white rounded-xl text-xs font-bold border border-blue-600/50 shadow-md transition-all flex items-center gap-2 cursor-pointer">
-              <i class="fa-solid fa-cloud-arrow-up text-sm text-sky-300"></i> <span>Import Database (JSON)</span>
-              <input type="file" id="db-restore-file-input" accept=".json" class="hidden" onchange="App.handleDatabaseBackupImport(event)" />
-            </label>
+
+          <!-- Informational Documentation Box for Backup Limits & Operations -->
+          <div class="bg-blue-950/70 border border-blue-800/60 rounded-xl p-4 text-xs space-y-2.5">
+            <div class="flex items-center gap-2 text-amber-400 font-bold uppercase tracking-wider text-[11px]">
+              <i class="fa-solid fa-circle-info text-xs"></i>
+              <span>Backup Specifications &amp; Payload Limits</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-slate-300">
+              <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800/80">
+                <div class="font-bold text-white flex items-center gap-1.5 mb-1">
+                  <i class="fa-solid fa-cloud-arrow-down text-emerald-400"></i> Export Specifications:
+                </div>
+                <p class="text-[11px] leading-relaxed text-slate-300">
+                  Downloads a complete <code class="text-amber-300 font-mono">.json</code> snapshot of all Quotations, Clients, Items Master, Users, and Company Settings directly from the cloud database. <span class="text-emerald-300 font-semibold">(No download size limit)</span>.
+                </p>
+              </div>
+              <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800/80">
+                <div class="font-bold text-white flex items-center gap-1.5 mb-1">
+                  <i class="fa-solid fa-cloud-arrow-up text-sky-400"></i> Import Specifications &amp; Limits:
+                </div>
+                <p class="text-[11px] leading-relaxed text-slate-300">
+                  Accepts valid <code class="text-amber-300 font-mono">.json</code> backup files up to <span class="text-amber-300 font-bold">10 MB</span> (safe limit for Cloudflare Worker request payloads). Performs an intelligent, non-destructive upsert/merge into your database.
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg">
+              <i class="fa-solid fa-lightbulb text-amber-400 shrink-0"></i>
+              <span><strong>Best Practice Tip:</strong> Always generate a quick Export snapshot before importing new data to ensure you have a rollback point.</span>
+            </div>
           </div>
         </div>
 
@@ -810,48 +864,128 @@
         <p class="text-xs text-slate-500">Sign in to your account to access quotations and industrial catalog</p>
       </div>
 
-      <!-- Alert Message Box -->
-      <div id="login-gate-alert" class="hidden text-xs p-3 rounded-xl mb-4 font-semibold"></div>
+      <!-- Normal Sign-In View -->
+      <div id="login-view-normal">
+        <!-- Alert Message Box -->
+        <div id="login-gate-alert" class="hidden text-xs p-3 rounded-xl mb-4 font-semibold"></div>
 
-      <!-- Login Form -->
-      <form onsubmit="App.handleLoginSubmit(event)" class="space-y-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-800 mb-1">
-            Username <span class="text-rose-500">*</span>
-          </label>
-          <div class="relative">
-            <i class="fa-solid fa-user absolute left-3 top-3 text-slate-400 text-xs"></i>
-            <input type="text" id="login-username-input" required autocomplete="username"
-                   placeholder="Enter username (e.g. admin)"
-                   class="w-full pl-8 pr-3 py-2.5 text-xs font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none bg-slate-50 focus:bg-white text-slate-900" />
+        <!-- Login Form -->
+        <form onsubmit="App.handleLoginSubmit(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-800 mb-1">
+              Username <span class="text-rose-500">*</span>
+            </label>
+            <div class="relative">
+              <i class="fa-solid fa-user absolute left-3 top-3 text-slate-400 text-xs"></i>
+              <input type="text" id="login-username-input" required autocomplete="username"
+                     placeholder="Enter username (e.g. admin)"
+                     class="w-full pl-8 pr-3 py-2.5 text-xs font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none bg-slate-50 focus:bg-white text-slate-900" />
+            </div>
           </div>
-        </div>
 
-        <div>
-          <label class="block text-xs font-bold text-slate-800 mb-1">
-            Password <span class="text-rose-500">*</span>
-          </label>
-          <div class="relative">
-            <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400 text-xs"></i>
-            <input type="password" id="login-password-input" required autocomplete="current-password"
-                   placeholder="Enter password"
-                   class="w-full pl-8 pr-10 py-2.5 text-xs font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none bg-slate-50 focus:bg-white text-slate-900" />
-            <button type="button" onclick="App.togglePasswordVisibility('login-password-input', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 p-0.5">
-              <i class="fa-solid fa-eye text-xs"></i>
-            </button>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-bold text-slate-800">
+                Password <span class="text-rose-500">*</span>
+              </label>
+              <button type="button" onclick="App.showForgotPasswordView(true)" class="text-blue-700 hover:text-blue-900 font-bold hover:underline cursor-pointer text-[11px]">
+                Forgot Password?
+              </button>
+            </div>
+            <div class="relative">
+              <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400 text-xs"></i>
+              <input type="password" id="login-password-input" required autocomplete="current-password"
+                     placeholder="Enter password"
+                     class="w-full pl-8 pr-10 py-2.5 text-xs font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none bg-slate-50 focus:bg-white text-slate-900" />
+              <button type="button" onclick="App.togglePasswordVisibility('login-password-input', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 p-0.5">
+                <i class="fa-solid fa-eye text-xs"></i>
+              </button>
+            </div>
           </div>
+
+          <!-- Cloudflare Turnstile Captcha Widget Container -->
+          <div id="login-turnstile-wrapper" class="my-2 flex flex-col items-center justify-center min-h-[65px]">
+            <div class="cf-turnstile" data-sitekey="0x4AAAAAAF_JrYnpZJeO07cJ" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileError" data-theme="light"></div>
+          </div>
+
+          <button type="submit" id="btn-login-submit" class="w-full py-3 bg-blue-900 hover:bg-blue-800 text-white font-black rounded-xl text-xs sm:text-sm shadow-lg hover:shadow-xl transition-all uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-2">
+            <i class="fa-solid fa-right-to-bracket text-amber-400"></i>
+            <span>Sign In to Dashboard</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Forgot Password View (Email / OTP Verification) -->
+      <div id="login-view-forgot" class="hidden space-y-4">
+        <div class="border-b border-slate-200 pb-2">
+          <h3 class="text-sm font-black text-blue-950 uppercase">Reset Your Password</h3>
+          <p class="text-xs text-slate-500">Enter your registered email address or username to receive a 6-digit OTP code.</p>
         </div>
 
-        <!-- Cloudflare Turnstile Captcha Widget Container -->
-        <div id="login-turnstile-wrapper" class="my-2 flex flex-col items-center justify-center min-h-[65px]">
-          <div class="cf-turnstile" data-sitekey="0x4AAAAAAF_JrYnpZJeO07cJ" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileError" data-theme="light"></div>
-        </div>
+        <div id="forgot-pass-alert" class="hidden text-xs p-3 rounded-xl font-semibold"></div>
 
-        <button type="submit" id="btn-login-submit" class="w-full py-3 bg-blue-900 hover:bg-blue-800 text-white font-black rounded-xl text-xs sm:text-sm shadow-lg hover:shadow-xl transition-all uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-2">
-          <i class="fa-solid fa-right-to-bracket text-amber-400"></i>
-          <span>Sign In to Dashboard</span>
-        </button>
-      </form>
+        <!-- Step 1: Request OTP -->
+        <form id="forgot-step1-form" onsubmit="App.handleRequestOtpSubmit(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-800 mb-1">
+              Registered Email or Username <span class="text-rose-500">*</span>
+            </label>
+            <div class="relative">
+              <i class="fa-solid fa-envelope absolute left-3 top-3 text-slate-400 text-xs"></i>
+              <input type="text" id="forgot-email-input" required placeholder="name@company.com or username"
+                     class="w-full pl-8 pr-3 py-2.5 text-xs font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none bg-slate-50 focus:bg-white text-slate-900" />
+            </div>
+          </div>
+          <button type="submit" id="btn-request-otp" class="w-full py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-black rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow">
+            <i class="fa-solid fa-paper-plane text-amber-400"></i>
+            <span>Send 6-Digit OTP</span>
+          </button>
+        </form>
+
+        <!-- Step 2: Verify OTP & New Password (Hidden until OTP sent) -->
+        <form id="forgot-step2-form" onsubmit="App.handleVerifyOtpSubmit(event)" class="space-y-3 hidden">
+          <div class="bg-blue-50 border border-blue-200 text-blue-900 p-2.5 rounded-xl text-xs flex items-center gap-2">
+            <i class="fa-solid fa-circle-check text-blue-600"></i>
+            <span>OTP sent! Enter the code and your new password below.</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-800 mb-1">
+              6-Digit OTP Code <span class="text-rose-500">*</span>
+            </label>
+            <div class="relative">
+              <i class="fa-solid fa-shield-halved absolute left-3 top-3 text-slate-400 text-xs"></i>
+              <input type="text" id="forgot-otp-input" required maxlength="6" pattern="[0-9]{6}" placeholder="123456"
+                     class="w-full pl-8 pr-3 py-2.5 text-xs font-bold tracking-widest text-center font-mono border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none bg-slate-50 focus:bg-white text-slate-900" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-800 mb-1">
+              New Password (Min 6 Characters) <span class="text-rose-500">*</span>
+            </label>
+            <div class="relative">
+              <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400 text-xs"></i>
+              <input type="password" id="forgot-new-password" required minlength="6" placeholder="At least 6 characters"
+                     class="w-full pl-8 pr-10 py-2.5 text-xs font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none bg-slate-50 focus:bg-white text-slate-900" />
+              <button type="button" onclick="App.togglePasswordVisibility('forgot-new-password', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 p-0.5">
+                <i class="fa-solid fa-eye text-xs"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="btn-verify-otp-submit" class="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow">
+            <i class="fa-solid fa-check text-white"></i>
+            <span>Reset Password &amp; Login</span>
+          </button>
+        </form>
+
+        <div class="text-center pt-2 border-t border-slate-100">
+          <button type="button" onclick="App.showForgotPasswordView(false)" class="text-xs text-slate-600 hover:text-slate-900 font-bold flex items-center justify-center gap-1.5 mx-auto cursor-pointer">
+            <i class="fa-solid fa-arrow-left text-xs"></i> <span>Back to Sign In</span>
+          </button>
+        </div>
+      </div>
 
     </div>
   </div>
@@ -973,6 +1107,41 @@
   </div>
 
   <!-- ========================================================= -->
+  <!-- MODAL: QUICK RESET SUB-ADMIN PASSWORD (SUPER ADMIN)       -->
+  <!-- ========================================================= -->
+  <div id="admin-reset-user-modal" class="fixed inset-0 bg-slate-900/70 z-50 overflow-y-auto hidden">
+    <div class="min-h-screen p-4 flex items-center justify-center">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full border border-slate-300 overflow-hidden animate-fade-in">
+        <div class="bg-gradient-to-r from-amber-600 to-amber-700 text-white px-5 py-4 flex justify-between items-center">
+          <h3 class="text-sm font-black tracking-tight uppercase flex items-center gap-2">
+            <i class="fa-solid fa-key"></i> <span>Reset Sub-Admin Password</span>
+          </h3>
+          <button type="button" onclick="App.closeAdminResetUserModal()" class="text-amber-100 hover:text-white p-1.5 cursor-pointer">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+        <form onsubmit="App.handleAdminResetUserSubmit(event)" class="p-6 space-y-4">
+          <input type="hidden" id="admin-reset-user-id" />
+          <div id="admin-reset-alert" class="hidden text-xs p-2.5 rounded-lg font-semibold"></div>
+          <div>
+            <span class="block text-xs text-slate-500 font-semibold mb-1">Sub-Admin User:</span>
+            <div id="admin-reset-user-label" class="text-xs font-bold text-slate-900 bg-slate-100 px-3 py-2 rounded-lg font-mono"></div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">New Password <span class="text-rose-500">*</span></label>
+            <input type="password" id="admin-reset-new-password" required minlength="6" placeholder="Min 6 characters" class="w-full text-xs font-bold border border-slate-300 rounded-lg px-3 py-2 focus:border-amber-600 focus:outline-none" />
+            <p class="text-[10px] text-slate-500 mt-1">Directly overrides password without requiring current password.</p>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="App.closeAdminResetUserModal()" class="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-50 cursor-pointer">Cancel</button>
+            <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-lg shadow-md cursor-pointer">Update Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
   <!-- MODAL: QUOTATION EDITOR (Full Screen / Spacious) -->
   <!-- ========================================================= -->
   <div id="quote-editor-modal" class="fixed inset-0 bg-slate-900/70 z-50 overflow-y-auto hidden">
@@ -997,6 +1166,21 @@
 
         <div class="p-5 sm:p-6 space-y-6 max-h-[85vh] overflow-y-auto">
           
+          <!-- COMPANY / BILLING ENTITY SELECTION (Up to 3 Companies) -->
+          <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            <div>
+              <label class="block text-xs font-black uppercase text-blue-950 tracking-wider">
+                <i class="fa-solid fa-building text-blue-700 mr-1.5"></i> Select Company / Billing Entity <span class="text-rose-500">*</span>
+              </label>
+              <p class="text-[11px] text-slate-500">The selected company's letterhead, bank details, authorized signature, and promotional banner will be printed on this quotation.</p>
+            </div>
+            <div class="sm:w-80">
+              <select id="edit-quote-company-id" required onchange="App.handleQuotationCompanyChange(this.value)" class="w-full text-xs font-bold border-2 border-blue-300 rounded-lg px-3 py-2 bg-white text-blue-950 focus:border-blue-600 focus:outline-none shadow-xs">
+                <!-- Populated dynamically by App.populateQuotationCompanySelector() -->
+              </select>
+            </div>
+          </div>
+
           <!-- PART 1 BADGE -->
           <div class="flex items-center gap-2 border-b-2 border-cyan-500 pb-1.5">
             <span class="bg-cyan-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded uppercase">PART 1</span>
@@ -1530,13 +1714,13 @@
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
 
   <!-- Application Core Scripts -->
-  <script src="js/default-data.js?v=3.5.9"></script>
-  <script src="js/calculations.js?v=3.5.9"></script>
-  <script src="js/storage.js?v=3.5.9"></script>
-  <script src="js/auth.js?v=3.5.9"></script>
-  <script src="js/csv-helper.js?v=3.5.9"></script>
-  <script src="js/pdf-generator.js?v=3.5.9"></script>
-  <script src="js/app.js?v=3.5.9"></script>
+  <script src="js/default-data.js?v=3.6.0"></script>
+  <script src="js/calculations.js?v=3.6.0"></script>
+  <script src="js/storage.js?v=3.6.0"></script>
+  <script src="js/auth.js?v=3.6.0"></script>
+  <script src="js/csv-helper.js?v=3.6.0"></script>
+  <script src="js/pdf-generator.js?v=3.6.0"></script>
+  <script src="js/app.js?v=3.6.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {

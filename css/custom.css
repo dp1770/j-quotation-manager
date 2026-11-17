@@ -181,16 +181,7 @@
     display: none !important;
   }
 
-  /* 2. Connection Status Pill: Hide text, show ONLY database/status icon */
-  #db-setup-label {
-    display: none !important;
-  }
-
-  #btn-db-setup-status {
-    padding: 6px 10px !important;
-  }
-
-  /* 3. User Profile & Logout Area: Hide username & role badge, show ONLY avatar & logout icons */
+  /* 2. User Profile & Logout Area: Hide username & role badge, show ONLY avatar & logout icons */
   #header-user-wrapper {
     display: flex !important;
     align-items: center !important;

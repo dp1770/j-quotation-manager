@@ -10,6 +10,7 @@ const StorageManager = {
   _clients: [],
   _items: [],
   _users: [],
+  _companies: [],
   _settings: null,
   _isOffline: false,
   _lastError: null,
@@ -195,6 +196,133 @@ const StorageManager = {
   },
 
   // -------------------------------------------------------------
+  // Multi-Company Management (Up to 3 Distinct Company Profiles)
+  // -------------------------------------------------------------
+  async fetchCompaniesFromCloud() {
+    try {
+      const res = await this.fetchWithAuth('/api/companies', { method: 'GET' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.companies)) {
+          this._companies = data.companies;
+          return { success: true, companies: this._companies };
+        }
+      }
+      return { success: false, companies: [] };
+    } catch (err) {
+      console.warn('[StorageManager] fetchCompanies error:', err.message);
+      return { success: false, error: err.message, companies: [] };
+    }
+  },
+
+  getCompanies() {
+    if (this._companies && this._companies.length > 0) {
+      return this._companies;
+    }
+    // Fallback: Build default company profile from primary settings
+    const settings = this.getSettings();
+    const defaultComp = {
+      id: 'primary',
+      companyName: settings.company?.name || 'Quotation Manager',
+      name: settings.company?.name || 'Quotation Manager',
+      tagline: settings.company?.tagline || 'Professional Quotation Management',
+      subtitle: settings.company?.tagline || 'Professional Quotation Management',
+      address: settings.company?.address || '',
+      phone: settings.company?.phone || '',
+      phoneSecondary: settings.company?.phoneSecondary || '',
+      email: settings.company?.email || '',
+      website: settings.company?.website || '',
+      gstin: settings.company?.gstin || '',
+      state: settings.company?.state || 'Gujarat',
+      stateCode: settings.company?.stateCode || '24',
+      bankName: settings.bank?.bankName || '',
+      accountName: settings.bank?.accountName || '',
+      accountNumber: settings.bank?.accountNumber || '',
+      ifscCode: settings.bank?.ifscCode || '',
+      branch: settings.bank?.branch || '',
+      terms: settings.terms || [],
+      bannerUrl: settings.media?.bannerUrl || '',
+      promotionalBanner: settings.media?.bannerUrl || '',
+      headerLogoUrl: settings.media?.headerLogoUrl || '',
+      signatureImageUrl: settings.media?.signatureImageUrl || '',
+      authorizedSignature: settings.media?.signatureImageUrl || '',
+      signatureTitle: settings.media?.signatureTitle || 'Authorized Signatory',
+      showSignatureInPdf: settings.media?.showSignatureInPdf !== false,
+      showBannerInPdf: settings.media?.showBannerInPdf !== false,
+      isDefault: true
+    };
+    return [defaultComp];
+  },
+
+  getCompanyById(id) {
+    const list = this.getCompanies();
+    if (!id) return list[0] || null;
+    return list.find(c => c.id === id) || list[0] || null;
+  },
+
+  async saveCompany(companyData) {
+    const res = await this.fetchWithAuth('/api/companies', {
+      method: 'POST',
+      body: JSON.stringify(companyData)
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Failed to save company profile (HTTP ${res.status})`);
+    }
+    const data = await res.json();
+    await this.fetchCompaniesFromCloud();
+    this.notifySyncStatus('online', 'Company profile saved');
+    return data;
+  },
+
+  async deleteCompany(id) {
+    const res = await this.fetchWithAuth(`/api/companies/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Failed to delete company profile (HTTP ${res.status})`);
+    }
+    await this.fetchCompaniesFromCloud();
+    this.notifySyncStatus('online', 'Company profile deleted');
+    return { success: true };
+  },
+
+  getCompanySettingsForQuote(quote) {
+    const targetComp = this.getCompanyById(quote?.companyId) || this.getCompanies()[0];
+    if (!targetComp) return this.getSettings();
+
+    return {
+      company: {
+        name: targetComp.companyName || targetComp.name || 'Quotation Manager',
+        tagline: targetComp.tagline || targetComp.subtitle || 'Professional Quotation Management',
+        address: targetComp.address || '',
+        phone: targetComp.phone || '',
+        phoneSecondary: targetComp.phoneSecondary || '',
+        email: targetComp.email || '',
+        website: targetComp.website || '',
+        gstin: targetComp.gstin || '',
+        state: targetComp.state || 'Gujarat',
+        stateCode: targetComp.stateCode || '24'
+      },
+      bank: {
+        bankName: targetComp.bankName || '',
+        accountName: targetComp.accountName || '',
+        accountNumber: targetComp.accountNumber || targetComp.accountNo || '',
+        ifscCode: targetComp.ifscCode || '',
+        branch: targetComp.branch || ''
+      },
+      terms: Array.isArray(targetComp.terms) && targetComp.terms.length > 0 ? targetComp.terms : (this.getSettings().terms || []),
+      media: {
+        bannerUrl: targetComp.bannerUrl || targetComp.promotionalBanner || '',
+        headerLogoUrl: targetComp.headerLogoUrl || '',
+        signatureImageUrl: targetComp.signatureImageUrl || targetComp.authorizedSignature || '',
+        signatureTitle: targetComp.signatureTitle || 'Authorized Signatory',
+        showSignatureInPdf: targetComp.showSignatureInPdf !== false,
+        showBannerInPdf: targetComp.showBannerInPdf !== false
+      }
+    };
+  },
+
+  // -------------------------------------------------------------
   // Quotations Operations (Strict Cloudflare D1)
   // -------------------------------------------------------------
   normalizeQuotation(q) {
@@ -226,6 +354,10 @@ const StorageManager = {
         q.additionalCharges = [];
       }
     }
+    q.companyId = q.companyId || q.company_id || 'primary';
+    q.companyName = q.companyName || q.company_name || '';
+    q.createdBy = q.createdByName || q.createdBy || 'System Administrator';
+    q.createdByName = q.createdByName || q.createdBy || 'System Administrator';
     return q;
   },
 
@@ -577,6 +709,7 @@ const StorageManager = {
     try {
       await Promise.all([
         this.fetchSettingsFromCloud(),
+        this.fetchCompaniesFromCloud(),
         this.fetchQuotationsFromCloud({ limit: 500 }),
         this.fetchClientsFromCloud(),
         this.fetchItemsFromCloud()
