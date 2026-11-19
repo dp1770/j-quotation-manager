@@ -1372,27 +1372,7 @@
             </div>
           </div>
 
-          <!-- Multi-Block Sheet Calculation Tables Card (Full Width Stacked Below Items Table) -->
-          <div class="w-full bg-white border border-stone-200 rounded-2xl p-5 flex flex-col gap-4">
-            <div class="border-b border-stone-100 pb-3 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 class="font-display text-lg font-semibold text-stone-900 flex items-center gap-2">
-                  <i class="fa-solid fa-ruler-combined text-orange-700"></i>
-                  <span>Sheet Measurements &amp; Cut-Length Calculations</span>
-                </h3>
-                <p class="text-xs text-stone-600 mt-0.5">Full-width stacked measurement breakdown (Feet, Inch, Nos, Sq. Meter, Sq.Feet)</p>
-              </div>
-              <button type="button" onclick="App.addCalculationBlock()" class="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer">
-                <i class="fa-solid fa-plus text-orange-400"></i>
-                <span>Add Calculator Block</span>
-              </button>
-            </div>
-            <div id="editor-calculations-container" class="space-y-6">
-              <!-- Populated by App.renderEditorCalculations() -->
-            </div>
-          </div>
-
-          <!-- Bottom Section: Remarks (Left) & Overall Financial Summary (Right) -->
+          <!-- Section: Remarks (Left) & Overall Financial Summary (Right) -->
           <div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
             <!-- Remarks & Banner Options Card (lg:col-span-7) -->
@@ -1477,6 +1457,26 @@
               </button>
             </div>
 
+          </div>
+
+          <!-- Multi-Block Sheet Calculation Tables Card (Full Width Below Financial Summary) -->
+          <div class="w-full bg-white border border-stone-200 rounded-2xl p-5 flex flex-col gap-4">
+            <div class="border-b border-stone-100 pb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="font-display text-lg font-semibold text-stone-900 flex items-center gap-2">
+                  <i class="fa-solid fa-ruler-combined text-orange-700"></i>
+                  <span>Sheet Measurements &amp; Cut-Length Calculations</span>
+                </h3>
+                <p class="text-xs text-stone-600 mt-0.5">Full-width stacked measurement breakdown (Feet, Inch, Nos, Sq. Meter, Sq.Feet)</p>
+              </div>
+              <button type="button" onclick="App.addCalculationBlock()" class="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer">
+                <i class="fa-solid fa-plus text-orange-400"></i>
+                <span>Add Calculator Block</span>
+              </button>
+            </div>
+            <div id="editor-calculations-container" class="space-y-6">
+              <!-- Populated by App.renderEditorCalculations() -->
+            </div>
           </div>
 
         </div>
