@@ -73,8 +73,8 @@ const PdfGenerator = {
       const rateStr = (parseFloat(it.rate) || 0).toFixed(2);
       const amtStr = ((parseFloat(it.quantity) || 0) * (parseFloat(it.rate) || 0)).toFixed(2);
 
-      // Collect product profile / item image for 3-Column Horizontal Grid (Requirement 3)
-      const itImg = (it.imageUrl || '').trim() ||
+      // Collect product profile / item image
+      const itImg = (it.imageUrl || it.image_url || it.image || '').trim() ||
         (it.description && it.description.toUpperCase().includes('POLY CARBONATE EMBOSSED CLEAR DOUBLE WALLY') ? 'assets/profile-polycarbonate.svg' : '');
       if (itImg) {
         imageCards.push({
@@ -83,12 +83,6 @@ const PdfGenerator = {
           subText: it.subRemarks || '',
           url: itImg
         });
-      }
-
-      // Compact inline badge (keeps table rows slim and prevents vertical page gaps)
-      let photoBadge = '';
-      if (itImg) {
-        photoBadge = `<div class="mt-0.5"><span class="inline-flex items-center text-[9px] font-bold text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200"><i class="fa-solid fa-camera text-[8px] mr-1 text-blue-700"></i>Photo Ref #${idx + 1}</span></div>`;
       }
 
       // Check if item has sub-table breakdown (e.g. accessories Item 9 in PDF)
@@ -130,7 +124,11 @@ const PdfGenerator = {
           <td class="py-1.5 px-2.5 text-slate-900 font-bold align-top">
             <div class="text-[12px] leading-snug">${this.escapeHtml(it.description)}</div>
             ${it.subRemarks ? `<div class="text-[10px] text-slate-600 font-semibold italic mt-0.5">${this.escapeHtml(it.subRemarks)}</div>` : ''}
-            ${photoBadge}
+            ${itImg ? `
+              <div class="mt-1.5 mb-1">
+                <img src="${itImg}" alt="${this.escapeHtml(it.description || 'Product Profile')}" style="max-height: 52px; max-width: 150px; object-fit: contain; display: block; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px; background-color: #ffffff;" />
+              </div>
+            ` : ''}
             ${subTableHtml}
           </td>
           <td class="py-1.5 px-2 text-center align-top">
@@ -630,6 +628,16 @@ const PdfGenerator = {
       }
     };
 
+    // Ensure all images are fully loaded and decoded before rendering PDF canvas
+    const imgs = Array.from(container.querySelectorAll('img'));
+    await Promise.all(imgs.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    }));
+
     try {
       const pdfBlob = await window.html2pdf().set(opt).from(container.querySelector('#print-quotation-root')).outputPdf('datauristring');
       return pdfBlob;
@@ -667,6 +675,16 @@ const PdfGenerator = {
         avoid: ['tr', '.avoid-break', '.bank-details-box', '.financial-summary-box', '.calc-block', '.quotation-terms-signature-block', '.quotation-image-card', '.quotation-banner-card', '.quotation-final-footer']
       }
     };
+
+    // Ensure all images are fully loaded and decoded before rendering PDF canvas
+    const imgs = Array.from(container.querySelectorAll('img'));
+    await Promise.all(imgs.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    }));
 
     try {
       if (window.html2pdf) {
