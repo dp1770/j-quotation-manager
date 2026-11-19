@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS company_settings (
   branch TEXT DEFAULT '',
   terms_json TEXT DEFAULT '["Customer will be billed after acceptance of this quote.","Payment terms as mutually agreed.","Transport & freight charges extra as applicable.","Subject to local jurisdiction."]',
   banner_url TEXT DEFAULT '',
+  promotional_banners TEXT DEFAULT '[]',
   header_logo_url TEXT DEFAULT '',
   signature_image_url TEXT DEFAULT '',
   signature_title TEXT DEFAULT 'Authorized Signatory',

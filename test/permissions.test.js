@@ -625,6 +625,78 @@ test('POST /api/companies: Successfully saves company profile with banner prefer
   assert.equal(savedIsDefault, 1);
 });
 
+test('POST /api/companies: Saves and parses multiple promotional banner images as JSON array', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  let savedBannersJson = null;
+
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          first() {
+            if (sql.includes('COUNT')) return { count: 1 };
+            return null;
+          },
+          bind(...args) {
+            return {
+              async first() {
+                if (sql.includes('SELECT id FROM company_settings WHERE id = ?')) return null;
+                if (sql.includes('COUNT')) return { count: 1 };
+                if (sql.includes('WHERE is_default = 1')) return { id: 'primary' };
+                return null;
+              },
+              async run() {
+                if (sql.includes('INSERT INTO company_settings')) {
+                  savedBannersJson = args[17];
+                }
+                return { success: true };
+              }
+            };
+          },
+          async run() {
+            return { success: true };
+          }
+        };
+      }
+    }
+  });
+
+  const testBanners = [
+    'data:image/jpeg;base64,IMAGE_ONE_DATA',
+    'data:image/jpeg;base64,IMAGE_TWO_DATA',
+    'data:image/jpeg;base64,IMAGE_THREE_DATA'
+  ];
+
+  const req = new Request('https://example.com/api/companies', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: 'comp_test_banners',
+      companyName: 'Multi Banner Test Corp',
+      promotionalBanners: testBanners,
+      showBannerInPdf: true,
+      isDefault: false
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  assert.ok(savedBannersJson, 'savedBannersJson should not be null');
+  const parsedSaved = JSON.parse(savedBannersJson);
+  assert.equal(Array.isArray(parsedSaved), true);
+  assert.equal(parsedSaved.length, 3);
+  assert.equal(parsedSaved[0], testBanners[0]);
+  assert.equal(parsedSaved[2], testBanners[2]);
+});
+
 test('POST /api/users: Saves user email and preserves Super Admin role on edit', async () => {
   const token = await createTestToken({
     userId: 'admin_1',

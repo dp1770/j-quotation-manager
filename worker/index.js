@@ -241,6 +241,7 @@ async function ensureDatabaseSchema(env) {
               branch TEXT DEFAULT '',
               terms_json TEXT DEFAULT '[]',
               banner_url TEXT DEFAULT '',
+              promotional_banners TEXT DEFAULT '[]',
               header_logo_url TEXT DEFAULT '',
               signature_image_url TEXT DEFAULT '',
               signature_title TEXT DEFAULT 'Authorized Signatory',
@@ -276,6 +277,7 @@ async function ensureDatabaseSchema(env) {
           execSql('ALTER TABLE company_settings ADD COLUMN state TEXT DEFAULT "Gujarat"'),
           execSql('ALTER TABLE company_settings ADD COLUMN state_code TEXT DEFAULT "24"'),
           execSql('ALTER TABLE company_settings ADD COLUMN banner_url TEXT DEFAULT ""'),
+          execSql('ALTER TABLE company_settings ADD COLUMN promotional_banners TEXT DEFAULT "[]"'),
           execSql('ALTER TABLE company_settings ADD COLUMN header_logo_url TEXT DEFAULT ""'),
           execSql('ALTER TABLE company_settings ADD COLUMN signature_image_url TEXT DEFAULT ""'),
           execSql('ALTER TABLE company_settings ADD COLUMN signature_title TEXT DEFAULT "Authorized Signatory"'),
@@ -1521,39 +1523,64 @@ export default {
           } catch (e) {}
         }
 
-        const companies = list.map((c, idx) => ({
-          id: c.id,
-          companyName: c.company_name || 'Company Profile',
-          name: c.company_name || 'Company Profile',
-          tagline: c.tagline || '',
-          subtitle: c.tagline || '',
-          address: c.address || '',
-          phone: c.phone || '',
-          phoneSecondary: c.phone_secondary || '',
-          email: c.email || '',
-          website: c.website || '',
-          gstin: c.gstin || '',
-          state: c.state || 'Gujarat',
-          stateCode: c.state_code || '24',
-          bankName: c.bank_name || '',
-          accountName: c.account_name || '',
-          accountNumber: c.account_number || '',
-          accountNo: c.account_number || '',
-          ifscCode: c.ifsc_code || '',
-          branch: c.branch || '',
-          terms: JSON.parse(c.terms_json || '[]'),
-          bannerUrl: c.banner_url || '',
-          promotionalBanner: c.banner_url || '',
-          headerLogoUrl: c.header_logo_url || '',
-          signatureImageUrl: c.signature_image_url || '',
-          authorizedSignature: c.signature_image_url || '',
-          signatureTitle: c.signature_title || 'Authorized Signatory',
-          showSignatureInPdf: c.show_signature_in_pdf !== 0,
-          showBannerInPdf: c.show_banner_in_pdf !== 0,
-          isDefault: c.is_default === 1 || (idx === 0 && !list.some(x => x.is_default === 1)),
-          createdAt: c.created_at,
-          updatedAt: c.updated_at
-        }));
+        const companies = list.map((c, idx) => {
+          let banners = [];
+          if (c.promotional_banners) {
+            try {
+              const p = JSON.parse(c.promotional_banners);
+              if (Array.isArray(p)) banners = p;
+            } catch (e) {}
+          }
+          if (banners.length === 0 && c.banner_url) {
+            try {
+              const p = JSON.parse(c.banner_url);
+              if (Array.isArray(p)) {
+                banners = p;
+              } else if (typeof p === 'string' && p.trim()) {
+                banners = [p.trim()];
+              }
+            } catch (e) {
+              banners = [c.banner_url.trim()];
+            }
+          }
+          banners = banners.filter(b => typeof b === 'string' && b.trim());
+
+          return {
+            id: c.id,
+            companyName: c.company_name || 'Company Profile',
+            name: c.company_name || 'Company Profile',
+            tagline: c.tagline || '',
+            subtitle: c.tagline || '',
+            address: c.address || '',
+            phone: c.phone || '',
+            phoneSecondary: c.phone_secondary || '',
+            email: c.email || '',
+            website: c.website || '',
+            gstin: c.gstin || '',
+            state: c.state || 'Gujarat',
+            stateCode: c.state_code || '24',
+            bankName: c.bank_name || '',
+            accountName: c.account_name || '',
+            accountNumber: c.account_number || '',
+            accountNo: c.account_number || '',
+            ifscCode: c.ifsc_code || '',
+            branch: c.branch || '',
+            terms: JSON.parse(c.terms_json || '[]'),
+            bannerUrl: banners[0] || c.banner_url || '',
+            promotionalBanner: banners[0] || c.banner_url || '',
+            bannerUrls: banners,
+            promotionalBanners: banners,
+            headerLogoUrl: c.header_logo_url || '',
+            signatureImageUrl: c.signature_image_url || '',
+            authorizedSignature: c.signature_image_url || '',
+            signatureTitle: c.signature_title || 'Authorized Signatory',
+            showSignatureInPdf: c.show_signature_in_pdf !== 0,
+            showBannerInPdf: c.show_banner_in_pdf !== 0,
+            isDefault: c.is_default === 1 || (idx === 0 && !list.some(x => x.is_default === 1)),
+            createdAt: c.created_at,
+            updatedAt: c.updated_at
+          };
+        });
 
         return jsonResponse({ success: true, companies }, 200, env);
       }
@@ -1597,7 +1624,34 @@ export default {
           const branch = String(body.branch || '').trim();
 
           const termsJson = JSON.stringify(body.terms || []);
-          const bannerUrl = body.bannerUrl || body.promotionalBanner || '';
+
+          // Parse and sanitize multiple promotional banners (up to 6)
+          let banners = [];
+          if (Array.isArray(body.promotionalBanners)) {
+            banners = body.promotionalBanners.filter(b => typeof b === 'string' && b.trim());
+          } else if (Array.isArray(body.bannerUrls)) {
+            banners = body.bannerUrls.filter(b => typeof b === 'string' && b.trim());
+          } else if (typeof body.promotionalBanner === 'string' && body.promotionalBanner.trim()) {
+            try {
+              const p = JSON.parse(body.promotionalBanner);
+              banners = Array.isArray(p) ? p.filter(b => typeof b === 'string' && b.trim()) : [body.promotionalBanner.trim()];
+            } catch (e) {
+              banners = [body.promotionalBanner.trim()];
+            }
+          } else if (typeof body.bannerUrl === 'string' && body.bannerUrl.trim()) {
+            try {
+              const p = JSON.parse(body.bannerUrl);
+              banners = Array.isArray(p) ? p.filter(b => typeof b === 'string' && b.trim()) : [body.bannerUrl.trim()];
+            } catch (e) {
+              banners = [body.bannerUrl.trim()];
+            }
+          }
+          if (banners.length > 6) banners = banners.slice(0, 6);
+
+          // Store as JSON array string for multi-image, or fallback if empty
+          const bannerUrl = banners.length > 0 ? JSON.stringify(banners) : '';
+          const promotionalBannersJson = JSON.stringify(banners);
+
           const headerLogoUrl = body.headerLogoUrl || '';
           const signatureImageUrl = body.signatureImageUrl || body.authorizedSignature || '';
           const signatureTitle = body.signatureTitle || 'Authorized Signatory';
@@ -1663,6 +1717,11 @@ export default {
             bannerUrl, headerLogoUrl, signatureImageUrl, signatureTitle,
             showSig, showBanner, isDefault
           ).run();
+
+          // Sync promotional_banners column if migrated
+          try {
+            await env.DB.prepare('UPDATE company_settings SET promotional_banners = ? WHERE id = ?').bind(promotionalBannersJson, id).run();
+          } catch (e) {}
 
           return jsonResponse({
             success: true,

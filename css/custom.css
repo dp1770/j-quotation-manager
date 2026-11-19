@@ -100,22 +100,43 @@
     margin: 6mm 8mm 6mm 8mm;
   }
 
-  .pdf-page-container {
-    page-break-inside: avoid;
-    break-inside: avoid;
-    page-break-after: always;
-    break-after: page;
-    min-height: 275mm;
+  table {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
-  .pdf-page-container:last-child {
-    page-break-after: auto;
-    break-after: auto;
+  thead {
+    display: table-header-group !important;
   }
 
-  tr, .avoid-break, .pdf-section, .calc-block {
+  tfoot {
+    display: table-row-group !important;
+  }
+
+  tr, .avoid-break, .calc-block, .financial-summary-box, .quotation-image-card, .quotation-banner-card, .quotation-final-footer {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  .quotation-images-grid,
+  .quotation-banners-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .quotation-image-card img,
+  .quotation-banner-card img {
+    height: 130px !important;
+    max-height: 130px !important;
+    width: 100% !important;
+    object-fit: contain !important;
+  }
+
+  .quotation-final-footer {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    position: static !important;
   }
 }
 

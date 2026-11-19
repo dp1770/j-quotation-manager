@@ -3354,20 +3354,14 @@ const App = {
     const elDefault = document.getElementById('set-company-is-default');
     if (elDefault) elDefault.checked = !!comp.isDefault;
 
-    // Signature Preview & Banner Preview
+    // Signature Preview
     const sigPreview = document.getElementById('set-signature-preview');
     if (sigPreview) {
       sigPreview.src = comp.authorizedSignature || 'assets/sample-signature.svg';
     }
-    const bannerPreview = document.getElementById('set-banner-preview');
-    if (bannerPreview) {
-      if (comp.promotionalBanner) {
-        bannerPreview.src = comp.promotionalBanner;
-        bannerPreview.classList.remove('hidden');
-      } else {
-        bannerPreview.src = 'assets/product-gallery-page7.svg';
-      }
-    }
+
+    // Render active company's 3-column promotional banners grid
+    this.renderSettingsBannersGrid();
 
     const elBannerToggle = document.getElementById('set-banner-toggle');
     if (elBannerToggle) {
@@ -3457,6 +3451,8 @@ const App = {
       terms: ['Customer will be billed after acceptance of this quote.', 'Subject to local jurisdiction.'],
       authorizedSignature: 'assets/sample-signature.svg',
       promotionalBanner: '',
+      promotionalBanners: [],
+      bannerUrls: [],
       isDefault: !!isDefaultInp?.checked
     };
 
@@ -3636,46 +3632,221 @@ const App = {
     }
   },
 
-  renderSettingsBanners(media = {}) {
-    const preview = document.getElementById('set-banner-preview');
-    const toggle = document.getElementById('set-banner-toggle');
-    if (preview) {
-      preview.src = media.bannerUrl || 'assets/product-gallery-page7.svg';
+  /**
+   * Compresses image using HTML5 canvas to max width & JPEG quality
+   */
+  compressImage(file, maxWidth = 800, quality = 0.75) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedBase64);
+        };
+        img.onerror = () => reject(new Error('Failed to load image for compression'));
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  },
+
+  /**
+   * Retrieves array of promotional/gallery banner images for the currently active company
+   */
+  getActiveCompanyBanners() {
+    const companies = StorageManager.getCompanies();
+    const current = companies.find(c => c.id === this.activeCompanyId) || companies[0];
+    if (!current) return [];
+
+    let banners = [];
+    if (Array.isArray(current.promotionalBanners) && current.promotionalBanners.length > 0) {
+      banners = current.promotionalBanners;
+    } else if (Array.isArray(current.bannerUrls) && current.bannerUrls.length > 0) {
+      banners = current.bannerUrls;
+    } else if (typeof current.promotionalBanner === 'string' && current.promotionalBanner.trim()) {
+      try {
+        const parsed = JSON.parse(current.promotionalBanner);
+        if (Array.isArray(parsed)) banners = parsed;
+        else banners = [current.promotionalBanner.trim()];
+      } catch (e) {
+        banners = [current.promotionalBanner.trim()];
+      }
+    } else if (typeof current.bannerUrl === 'string' && current.bannerUrl.trim()) {
+      try {
+        const parsed = JSON.parse(current.bannerUrl);
+        if (Array.isArray(parsed)) banners = parsed;
+        else banners = [current.bannerUrl.trim()];
+      } catch (e) {
+        banners = [current.bannerUrl.trim()];
+      }
     }
-    if (toggle) {
-      toggle.checked = media.showBannerInPdf !== false;
+
+    return banners.filter(b => typeof b === 'string' && b.trim() && !b.includes('sample-banner.svg'));
+  },
+
+  /**
+   * Renders the 3-column thumbnail grid of promotional images in Settings for active company
+   */
+  renderSettingsBannersGrid() {
+    const grid = document.getElementById('set-banners-grid');
+    const emptyBox = document.getElementById('set-banners-empty');
+    const badge = document.getElementById('set-banners-count-badge');
+    const toggle = document.getElementById('set-banner-toggle');
+    if (!grid) return;
+
+    const companies = StorageManager.getCompanies();
+    const current = companies.find(c => c.id === this.activeCompanyId);
+    const banners = this.getActiveCompanyBanners();
+
+    if (badge) {
+      badge.textContent = `${banners.length} / 6 Images`;
+      badge.className = banners.length >= 6
+        ? 'text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 w-fit'
+        : 'text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 w-fit';
+    }
+
+    if (toggle && current) {
+      toggle.checked = (current.showBannerInPdf !== undefined ? Boolean(current.showBannerInPdf) : (current.show_banner_in_pdf !== undefined ? Boolean(Number(current.show_banner_in_pdf)) : true));
+    }
+
+    if (!banners || banners.length === 0) {
+      grid.innerHTML = '';
+      if (emptyBox) emptyBox.classList.remove('hidden');
+      return;
+    }
+
+    if (emptyBox) emptyBox.classList.add('hidden');
+
+    grid.innerHTML = banners.map((bUrl, idx) => `
+      <div class="relative group bg-slate-50 border border-slate-200 rounded-xl p-2 flex flex-col justify-between shadow-2xs hover:border-blue-400 transition">
+        <div class="h-28 w-full flex items-center justify-center bg-white rounded-lg overflow-hidden border border-slate-100">
+          <img src="${bUrl}" alt="Banner ${idx + 1}" class="max-h-28 w-full object-contain p-1" />
+        </div>
+        <div class="mt-2 pt-1 border-t border-slate-200 flex items-center justify-between text-[11px]">
+          <span class="font-bold text-slate-700">Image #${idx + 1}</span>
+          <button type="button" onclick="App.removeBannerImage(${idx})"
+            title="Remove Image"
+            class="text-rose-600 hover:text-white hover:bg-rose-600 p-1 px-2 rounded font-bold text-[10px] border border-rose-200 hover:border-rose-600 transition flex items-center gap-1 cursor-pointer">
+            <i class="fa-solid fa-trash-can text-[9px]"></i>
+            <span>Remove</span>
+          </button>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  renderSettingsBanners(media = {}) {
+    this.renderSettingsBannersGrid();
+  },
+
+  /**
+   * Handles multi-image upload with client-side canvas compression (max 800px, 0.75 JPEG)
+   */
+  async handleBannerUpload(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const companies = StorageManager.getCompanies();
+    const current = companies.find(c => c.id === this.activeCompanyId) || { id: this.activeCompanyId };
+    let currentBanners = [...this.getActiveCompanyBanners()];
+
+    if (currentBanners.length >= 6) {
+      this.showToast('Maximum of 6 promotional images per company reached. Delete existing ones to add more.', 'warning');
+      event.target.value = '';
+      return;
+    }
+
+    const availableSlots = 6 - currentBanners.length;
+    const filesToProcess = Array.from(files).filter(f => f.type.startsWith('image/')).slice(0, availableSlots);
+
+    if (filesToProcess.length === 0) {
+      this.showToast('Please select valid image files.', 'warning');
+      event.target.value = '';
+      return;
+    }
+
+    this.showToast(`Compressing & uploading ${filesToProcess.length} image(s)...`, 'info');
+
+    try {
+      for (const file of filesToProcess) {
+        const compressedBase64 = await this.compressImage(file, 800, 0.75);
+        currentBanners.push(compressedBase64);
+      }
+
+      current.promotionalBanners = currentBanners;
+      current.bannerUrls = currentBanners;
+      current.promotionalBanner = currentBanners.length > 0 ? JSON.stringify(currentBanners) : '';
+      current.bannerUrl = current.promotionalBanner;
+
+      await StorageManager.saveCompany(current);
+
+      // Also update general settings if active company is primary or default
+      if (this.activeCompanyId === 'primary' || current.isDefault) {
+        const settings = StorageManager.getSettings();
+        if (!settings.media) settings.media = {};
+        settings.media.bannerUrl = current.bannerUrl;
+        settings.media.bannerUrls = currentBanners;
+        settings.media.promotionalBanners = currentBanners;
+        await StorageManager.saveSettings(settings);
+      }
+
+      this.renderSettingsBannersGrid();
+      this.showToast(`Successfully added ${filesToProcess.length} promotional image(s)!`, 'success');
+    } catch (err) {
+      console.error('Banner upload error:', err);
+      this.showToast('Failed to process uploaded images: ' + err.message, 'error');
+    } finally {
+      event.target.value = '';
     }
   },
 
-  handleBannerUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+  /**
+   * Deletes an individual promotional image by index and saves updated company profile
+   */
+  async removeBannerImage(index) {
+    const companies = StorageManager.getCompanies();
+    const current = companies.find(c => c.id === this.activeCompanyId);
+    if (!current) return;
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target.result;
-      const preview = document.getElementById('set-banner-preview');
-      if (preview) {
-        preview.src = base64;
-        preview.classList.remove('hidden');
-      }
+    let banners = [...this.getActiveCompanyBanners()];
+    if (index >= 0 && index < banners.length) {
+      banners.splice(index, 1);
+      current.promotionalBanners = banners;
+      current.bannerUrls = banners;
+      current.promotionalBanner = banners.length > 0 ? JSON.stringify(banners) : '';
+      current.bannerUrl = current.promotionalBanner;
 
-      const companies = StorageManager.getCompanies();
-      const current = companies.find(c => c.id === this.activeCompanyId);
-      if (current) {
-        current.promotionalBanner = base64;
+      try {
         await StorageManager.saveCompany(current);
+
+        if (this.activeCompanyId === 'primary' || current.isDefault) {
+          const settings = StorageManager.getSettings();
+          if (!settings.media) settings.media = {};
+          settings.media.bannerUrl = current.bannerUrl;
+          settings.media.bannerUrls = banners;
+          settings.media.promotionalBanners = banners;
+          await StorageManager.saveSettings(settings);
+        }
+
+        this.renderSettingsBannersGrid();
+        this.showToast('Promotional image removed.', 'info');
+      } catch (err) {
+        this.showToast('Failed to update company banners: ' + err.message, 'error');
       }
-
-      const settings = StorageManager.getSettings();
-      if (!settings.media) settings.media = {};
-      settings.media.bannerUrl = base64;
-      await StorageManager.saveSettings(settings);
-
-      this.renderSettingsBanners(settings.media);
-      this.showToast('Promotional banner updated for active company!', 'success');
-    };
-    reader.readAsDataURL(file);
+    }
   },
 
   async saveAllSettings() {
@@ -3733,10 +3904,11 @@ const App = {
     if (sigPreview && sigPreview.src && !sigPreview.src.includes('sample-signature.svg')) {
       activeComp.authorizedSignature = sigPreview.src;
     }
-    const bannerPreview = document.getElementById('set-banner-preview');
-    if (bannerPreview && bannerPreview.src && !bannerPreview.src.includes('product-gallery-page7.svg')) {
-      activeComp.promotionalBanner = bannerPreview.src;
-    }
+    const banners = this.getActiveCompanyBanners();
+    activeComp.promotionalBanners = banners;
+    activeComp.bannerUrls = banners;
+    activeComp.promotionalBanner = banners.length > 0 ? JSON.stringify(banners) : '';
+    activeComp.bannerUrl = activeComp.promotionalBanner;
 
     // 2. Only save general settings fallback if editing primary or default entity
     if (this.activeCompanyId === 'primary' || activeComp.isDefault) {
@@ -3759,6 +3931,11 @@ const App = {
         ifscCode: ifscCode,
         branch: branch
       };
+
+      if (!settings.media) settings.media = {};
+      settings.media.bannerUrl = activeComp.bannerUrl;
+      settings.media.bannerUrls = banners;
+      settings.media.promotionalBanners = banners;
     }
 
     const workerUrlVal = document.getElementById('set-worker-url') ? document.getElementById('set-worker-url').value.trim() : '';

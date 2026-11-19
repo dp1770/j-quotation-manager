@@ -326,6 +326,28 @@ const StorageManager = {
     const targetComp = this.getCompanyById(quote?.companyId) || this.getCompanies()[0];
     if (!targetComp) return this.getSettings();
 
+    let banners = [];
+    if (Array.isArray(targetComp.promotionalBanners) && targetComp.promotionalBanners.length > 0) {
+      banners = targetComp.promotionalBanners;
+    } else if (Array.isArray(targetComp.bannerUrls) && targetComp.bannerUrls.length > 0) {
+      banners = targetComp.bannerUrls;
+    } else if (targetComp.promotionalBanner) {
+      try {
+        const p = JSON.parse(targetComp.promotionalBanner);
+        banners = Array.isArray(p) ? p : [targetComp.promotionalBanner];
+      } catch (e) {
+        banners = [targetComp.promotionalBanner];
+      }
+    } else if (targetComp.bannerUrl) {
+      try {
+        const p = JSON.parse(targetComp.bannerUrl);
+        banners = Array.isArray(p) ? p : [targetComp.bannerUrl];
+      } catch (e) {
+        banners = [targetComp.bannerUrl];
+      }
+    }
+    banners = banners.filter(b => typeof b === 'string' && b.trim());
+
     return {
       company: {
         name: targetComp.companyName || targetComp.name || 'Quotation Manager',
@@ -348,7 +370,9 @@ const StorageManager = {
       },
       terms: Array.isArray(targetComp.terms) && targetComp.terms.length > 0 ? targetComp.terms : (this.getSettings().terms || []),
       media: {
-        bannerUrl: targetComp.bannerUrl || targetComp.promotionalBanner || '',
+        bannerUrl: banners[0] || targetComp.bannerUrl || targetComp.promotionalBanner || '',
+        bannerUrls: banners,
+        promotionalBanners: banners,
         headerLogoUrl: targetComp.headerLogoUrl || '',
         signatureImageUrl: targetComp.signatureImageUrl || targetComp.authorizedSignature || '',
         signatureTitle: targetComp.signatureTitle || 'Authorized Signatory',
