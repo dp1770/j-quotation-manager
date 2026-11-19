@@ -319,6 +319,15 @@ test('GET /api/backup/export: Skips and strips all image fields so exported JSON
             if (sql.includes('company_settings WHERE id = "primary"')) {
               return { id: 'primary', company_name: 'Test Co', banner_url: 'data:image/jpeg;base64,CCC...' };
             }
+            if (sql.includes('settings WHERE id = "global"')) {
+              return {
+                id: 'global',
+                company_json: '{"name":"Test"}',
+                bank_json: '{}',
+                terms_json: '[]',
+                media_json: '{"bannerUrl":"[\\"data:image/jpeg;base64,EEE...\\"]"}'
+              };
+            }
             return null;
           }
         };
@@ -342,6 +351,10 @@ test('GET /api/backup/export: Skips and strips all image fields so exported JSON
   // Company settings must have empty image fields
   assert.equal(data.companies[0].banner_url, '');
   assert.equal(data.companies[0].signature_image_url, '');
+  // Legacy settings media_json must be stripped to empty object
+  assert.equal(data.settings.media_json, '{}');
+  // Entire exported payload must have zero data:image occurrences
+  assert.ok(!JSON.stringify(data).includes('data:image/'));
 });
 
 test('POST /api/auth/login: Rejects unhashed plaintext stored password', async () => {

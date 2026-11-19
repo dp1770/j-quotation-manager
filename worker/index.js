@@ -2125,6 +2125,11 @@ export default {
         const sanitizedCompanies = (companiesRes.results || []).map(sanitizeCompany);
         const sanitizedCompanySettings = sanitizeCompany(csRow);
 
+        let sanitizedSettings = null;
+        if (sRow) {
+          sanitizedSettings = { ...sRow, media_json: '{}' };
+        }
+
         const backupData = {
           version: '2.0.0',
           exportedAt: new Date().toISOString(),
@@ -2139,14 +2144,18 @@ export default {
           },
           companySettings: sanitizedCompanySettings,
           companies: sanitizedCompanies,
-          settings: sRow || null,
+          settings: sanitizedSettings,
           quotations: sanitizedQuotes,
           clients: clientsRes.results || [],
           items: sanitizedItems,
           users: usersRes.results || []
         };
 
-        return new Response(JSON.stringify(backupData, null, 2), {
+        // Guarantee 100% pure data: strip any surviving data:image Base64 strings from entire export
+        const cleanJsonString = JSON.stringify(backupData, null, 2)
+          .replace(/"data:image\/[^;]+;base64,[^"\\]*"/g, '""');
+
+        return new Response(cleanJsonString, {
           status: 200,
           headers: {
             ...corsHeaders(env),
