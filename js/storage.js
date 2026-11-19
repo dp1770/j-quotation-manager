@@ -152,40 +152,21 @@ const StorageManager = {
   },
 
   // -------------------------------------------------------------
-  // Direct Server Image Upload (Cloudflare R2 Storage)
+  // Image Data Handler (Base64 for 100% Free Cloudflare D1)
   // -------------------------------------------------------------
   async uploadMedia(fileOrBase64, filename = 'image.jpg') {
-    if (!navigator.onLine) {
-      throw new Error('Cannot upload image while offline. Please check your network connection.');
-    }
-
-    const formData = new FormData();
-
     if (typeof fileOrBase64 === 'string' && fileOrBase64.startsWith('data:')) {
-      // Convert base64 data URL to Blob natively
-      const blob = await (await fetch(fileOrBase64)).blob();
-      formData.append('file', blob, filename);
-    } else if (fileOrBase64 instanceof Blob || fileOrBase64 instanceof File) {
-      formData.append('file', fileOrBase64, filename || fileOrBase64.name || 'image.jpg');
-    } else {
-      throw new Error('Invalid image format provided for upload.');
+      return fileOrBase64;
     }
-
-    const response = await this.fetchWithAuth('/api/upload', {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || `Upload failed with status ${response.status}`);
+    if (fileOrBase64 instanceof Blob || fileOrBase64 instanceof File) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => reject(new Error('Failed to read image file'));
+        reader.readAsDataURL(fileOrBase64);
+      });
     }
-
-    const data = await response.json();
-    if (!data.url) {
-      throw new Error('Upload succeeded but no media URL was returned by server.');
-    }
-    return data.url;
+    return '';
   },
 
   // -------------------------------------------------------------

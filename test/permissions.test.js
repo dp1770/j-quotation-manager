@@ -291,6 +291,59 @@ test('POST /api/backup/import: Executes batch import of quotations, clients, and
   assert.ok(batchCalls >= 1, 'env.DB.batch must be called');
 });
 
+test('GET /api/backup/export: Skips and strips all image fields so exported JSON is pure data', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind() { return this; },
+          async all() {
+            if (sql.includes('FROM items_master')) {
+              return { results: [{ id: 'i1', name: 'Sheet', image_url: 'data:image/jpeg;base64,AAA...' }] };
+            }
+            if (sql.includes('FROM quotations')) {
+              return { results: [{ id: 'q1', quote_number: 'QT-1', items_json: JSON.stringify([{ name: 'Sheet', imageUrl: 'data:image/jpeg;base64,BBB...' }]) }] };
+            }
+            if (sql.includes('FROM company_settings')) {
+              return { results: [{ id: 'primary', company_name: 'Test Co', banner_url: 'data:image/jpeg;base64,CCC...', signature_image_url: 'data:image/png;base64,DDD...' }] };
+            }
+            return { results: [] };
+          },
+          async first() {
+            if (sql.includes('company_settings WHERE id = "primary"')) {
+              return { id: 'primary', company_name: 'Test Co', banner_url: 'data:image/jpeg;base64,CCC...' };
+            }
+            return null;
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/backup/export', {
+    method: 'GET',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  // Items must not contain image_url
+  assert.equal(data.items[0].image_url, undefined);
+  // Quotation line items must not contain imageUrl
+  const quoteItems = JSON.parse(data.quotations[0].items_json);
+  assert.equal(quoteItems[0].imageUrl, undefined);
+  // Company settings must have empty image fields
+  assert.equal(data.companies[0].banner_url, '');
+  assert.equal(data.companies[0].signature_image_url, '');
+});
+
 test('POST /api/auth/login: Rejects unhashed plaintext stored password', async () => {
   const customEnv = createMockEnv({
     DB: {

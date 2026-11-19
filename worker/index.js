@@ -2080,24 +2080,69 @@ export default {
         const sRow = await env.DB.prepare('SELECT * FROM settings WHERE id = "global"').first().catch(() => null);
         const usersRes = await env.DB.prepare('SELECT id, username, full_name, role, is_super_admin, permissions_json, created_at, updated_at FROM users').all().catch(() => ({ results: [] }));
 
+        // Data-Only Export: Strip heavy image data so the backup .json is 100% lightweight data (no images)
+        const sanitizedItems = (itemsRes.results || []).map(it => {
+          const clean = { ...it };
+          delete clean.image_url;
+          delete clean.imageUrl;
+          return clean;
+        });
+
+        const sanitizedQuotes = (quotesRes.results || []).map(q => {
+          const clean = { ...q };
+          if (clean.items_json) {
+            try {
+              const parsed = JSON.parse(clean.items_json);
+              if (Array.isArray(parsed)) {
+                clean.items_json = JSON.stringify(parsed.map(item => {
+                  const itCopy = { ...item };
+                  delete itCopy.imageUrl;
+                  delete itCopy.image_url;
+                  return itCopy;
+                }));
+              }
+            } catch (e) {}
+          }
+          return clean;
+        });
+
+        const sanitizeCompany = (c) => {
+          if (!c) return null;
+          const clean = { ...c };
+          clean.banner_url = '';
+          clean.promotional_banners = '[]';
+          clean.header_logo_url = '';
+          clean.signature_image_url = '';
+          delete clean.bannerUrl;
+          delete clean.promotionalBanners;
+          delete clean.bannerUrls;
+          delete clean.headerLogoUrl;
+          delete clean.signatureImageUrl;
+          delete clean.authorizedSignature;
+          return clean;
+        };
+
+        const sanitizedCompanies = (companiesRes.results || []).map(sanitizeCompany);
+        const sanitizedCompanySettings = sanitizeCompany(csRow);
+
         const backupData = {
           version: '2.0.0',
           exportedAt: new Date().toISOString(),
           exportedBy: currentUser.username,
           service: 'Database Export',
           counts: {
-            quotations: quotesRes.results ? quotesRes.results.length : 0,
+            quotations: sanitizedQuotes.length,
             clients: clientsRes.results ? clientsRes.results.length : 0,
-            items: itemsRes.results ? itemsRes.results.length : 0,
-            companies: companiesRes.results ? companiesRes.results.length : 0,
+            items: sanitizedItems.length,
+            companies: sanitizedCompanies.length,
             users: usersRes.results ? usersRes.results.length : 0
           },
-          companySettings: csRow || null,
-          companies: companiesRes.results || [],
+          companySettings: sanitizedCompanySettings,
+          companies: sanitizedCompanies,
           settings: sRow || null,
-          quotations: quotesRes.results || [],
+          quotations: sanitizedQuotes,
           clients: clientsRes.results || [],
-          items: itemsRes.results || [],
+          items: sanitizedItems,
           users: usersRes.results || []
         };
 
@@ -2182,7 +2227,7 @@ export default {
               unit = excluded.unit,
               rate = excluded.rate,
               default_width = excluded.default_width,
-              image_url = excluded.image_url,
+              image_url = COALESCE(NULLIF(excluded.image_url, ''), items_master.image_url),
               updated_at = datetime("now")
           `).bind(id, name, desc, unit, rate, String(defaultWidth), imageUrl, createdBy, createdByName, createdAt));
           importedItems++;
@@ -2313,10 +2358,10 @@ export default {
               ifsc_code = excluded.ifsc_code,
               branch = excluded.branch,
               terms_json = excluded.terms_json,
-              banner_url = excluded.banner_url,
-              promotional_banners = excluded.promotional_banners,
-              header_logo_url = excluded.header_logo_url,
-              signature_image_url = excluded.signature_image_url,
+              banner_url = COALESCE(NULLIF(excluded.banner_url, ''), company_settings.banner_url),
+              promotional_banners = CASE WHEN excluded.promotional_banners != '[]' AND excluded.promotional_banners != '' THEN excluded.promotional_banners ELSE company_settings.promotional_banners END,
+              header_logo_url = COALESCE(NULLIF(excluded.header_logo_url, ''), company_settings.header_logo_url),
+              signature_image_url = COALESCE(NULLIF(excluded.signature_image_url, ''), company_settings.signature_image_url),
               signature_title = excluded.signature_title,
               show_signature_in_pdf = excluded.show_signature_in_pdf,
               show_banner_in_pdf = excluded.show_banner_in_pdf,

@@ -33,15 +33,6 @@ database_name = "quotation-manager-db"
 database_id = "4b39a659-5317-452d-8fbd-afc639faccc8"
 
 # ---------------------------------------------------------------------
-# Cloudflare R2 Bucket Binding (Direct Image Storage)
-# NOTE: Requires R2 enabled in Cloudflare Dashboard (Dashboard -> R2 -> Get Started).
-# Uncomment the block below once R2 is activated on your Cloudflare account:
-# ---------------------------------------------------------------------
-# [[r2_buckets]]
-# binding = "MEDIA_BUCKET"
-# bucket_name = "quotation-media"
-
-# ---------------------------------------------------------------------
 # Public Non-Sensitive Variables (NO SECRETS HERE)
 # ---------------------------------------------------------------------
 [vars]
