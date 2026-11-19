@@ -277,3 +277,65 @@ test('PdfGenerator.generateQuotationHtml: Line item product images rendered in t
   assert.match(html, /\/api\/media\/custom_product\.png/);
   assert.match(html, /\/api\/media\/master_sheet\.png/);
 });
+
+test('PdfGenerator.generateQuotationHtml: Strict vertical section order (Financial Box -> Calculations -> Bank Details -> Terms)', () => {
+  const pdfGenCode = fs.readFileSync(path.join(__dirname, '../js/pdf-generator.js'), 'utf8');
+  const defaultDataCode = fs.readFileSync(path.join(__dirname, '../js/default-data.js'), 'utf8');
+  const pdfContext = {
+    window: { CalculationsEngine },
+    globalThis: { CalculationsEngine },
+    CalculationsEngine,
+    console
+  };
+  vm.createContext(pdfContext);
+  vm.runInContext(defaultDataCode, pdfContext);
+  vm.runInContext(pdfGenCode, pdfContext);
+  const PdfGenerator = pdfContext.PdfGenerator || pdfContext.window.PdfGenerator;
+
+  const quote = {
+    quoteNumber: 'QT-2026-0004',
+    date: '2026-11-19',
+    gstType: 'CGST_SGST',
+    items: [{ name: 'PPGL Sheet', quantity: 10, rate: 1000 }],
+    calculations: [
+      {
+        title: 'Roofing Measurement Details',
+        sheetWidth: 3.5,
+        rows: [{ feet: 10, inch: 0, nos: 5 }]
+      }
+    ]
+  };
+
+  const settings = {
+    company: { name: 'Balaji Industries', gstin: '24ABCDE1234F1Z5' },
+    bank: { bankName: 'SBI', accountNumber: '123456789', ifscCode: 'SBIN0001', branch: 'Main' },
+    terms: ['Payment 100% advance'],
+    media: { showSignatureInPdf: true, showBannerInPdf: true, promotionalBanners: ['/banner1.jpg'] }
+  };
+
+  const html = PdfGenerator.generateQuotationHtml(quote, settings);
+
+  const idxHeader = html.indexOf('class="quotation-header-block');
+  const idxItems = html.indexOf('class="quotation-items-table');
+  const idxFinancial = html.indexOf('class="financial-summary-box');
+  const idxCalc = html.indexOf('class="calculations-section');
+  const idxBank = html.indexOf('class="bank-details-box');
+  const idxTerms = html.indexOf('class="quotation-terms-signature-block');
+  const idxPromo = html.indexOf('class="quotation-promotional-section');
+
+  assert.ok(idxHeader !== -1, 'Header block must exist');
+  assert.ok(idxItems !== -1, 'Items table must exist');
+  assert.ok(idxFinancial !== -1, 'Financial summary box must exist');
+  assert.ok(idxCalc !== -1, 'Calculations section must exist');
+  assert.ok(idxBank !== -1, 'Bank details box must exist');
+  assert.ok(idxTerms !== -1, 'Terms and signature block must exist');
+  assert.ok(idxPromo !== -1, 'Promotional gallery must exist');
+
+  // Verify strict vertical order
+  assert.ok(idxHeader < idxItems, 'Header (1) must precede Items (2)');
+  assert.ok(idxItems < idxFinancial, 'Items (2) must precede Financial Summary (3)');
+  assert.ok(idxFinancial < idxCalc, 'Financial Summary (3) must precede Measurement Table (4)');
+  assert.ok(idxCalc < idxBank, 'Measurement Table (4) must precede Bank Details (5)');
+  assert.ok(idxBank < idxTerms, 'Bank Details (5) must precede Terms & Signature (6)');
+  assert.ok(idxTerms < idxPromo, 'Terms & Signature (6) must precede Products Gallery (7)');
+});

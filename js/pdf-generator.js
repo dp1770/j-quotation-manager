@@ -319,7 +319,7 @@ const PdfGenerator = {
     }
 
     // -------------------------------------------------------------
-    // PART 4: BANK PAYMENT DETAILS BLOCK (Directly ABOVE Calculation)
+    // PART 4: BANK PAYMENT DETAILS BLOCK (Directly ABOVE Terms & Conditions)
     // -------------------------------------------------------------
     const bankDetailsHtml = `
       <div class="bank-details-box avoid-break mb-3 border border-slate-300 rounded-lg p-3 bg-slate-50/80 shadow-2xs" style="page-break-inside: avoid; break-inside: avoid;">
@@ -572,12 +572,7 @@ const PdfGenerator = {
         </div>
 
         <!-- ======================================================= -->
-        <!-- 2. BANK PAYMENT DETAILS (Directly ABOVE Calculation)   -->
-        <!-- ======================================================= -->
-        ${bankDetailsHtml}
-
-        <!-- ======================================================= -->
-        <!-- 3. CALCULATION DETAILS (Subtotal, Loading, GST, Grand)  -->
+        <!-- 3. FINANCIAL SUMMARY BOX (Subtotal, Loading, GST, Grand)-->
         <!-- ======================================================= -->
         <div class="financial-summary-box avoid-break w-full max-w-sm ml-auto space-y-1 text-xs text-right font-bold text-slate-900 pt-1.5 mb-3 border border-slate-300 rounded-lg p-2.5 bg-slate-50/80 shadow-2xs" style="page-break-inside: avoid; break-inside: avoid;">
           <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
@@ -614,21 +609,26 @@ const PdfGenerator = {
         </div>
 
         <!-- ======================================================= -->
-        <!-- 4. TERMS & CONDITIONS + AUTHORIZED SIGNATURE            -->
-        <!-- ======================================================= -->
-        ${termsAndSignatureHtml}
-
-        <!-- ======================================================= -->
-        <!-- 5. SHEET CALCULATION DETAILS (Below Terms & Signature)  -->
+        <!-- 4. MEASUREMENT / CALCULATION DETAILS TABLE              -->
         <!-- ======================================================= -->
         ${quote.calculations && quote.calculations.length > 0 ? `
-          <div class="calculations-section pt-1">
+          <div class="calculations-section pt-1 mb-3">
             ${calculationsHtml}
           </div>
         ` : ''}
 
         <!-- ======================================================= -->
-        <!-- 6. "OUR PRODUCTS" 3-COLUMN BORDERLESS IMAGE GALLERY     -->
+        <!-- 5. BANK PAYMENT DETAILS (Directly ABOVE Terms & Cond.)  -->
+        <!-- ======================================================= -->
+        ${bankDetailsHtml}
+
+        <!-- ======================================================= -->
+        <!-- 6. TERMS AND CONDITIONS & AUTHORIZED SIGNATORY BOX      -->
+        <!-- ======================================================= -->
+        ${termsAndSignatureHtml}
+
+        <!-- ======================================================= -->
+        <!-- 7. "OUR PRODUCTS" 3-COLUMN BORDERLESS IMAGE GALLERY     -->
         <!-- ======================================================= -->
         ${imagesGridHtml}
         ${promotionalBannersHtml}
