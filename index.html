@@ -700,6 +700,35 @@
               <input type="text" id="set-company-gstin" class="h-11 w-full px-3.5 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 text-sm font-code uppercase focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20" />
             </div>
           </div>
+
+          <!-- Company Logo (Top-Right Header) -->
+          <div class="flex flex-col gap-2 pt-3 border-t border-stone-100">
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-semibold text-stone-700">Company Logo (Top-Right Header)</label>
+              <span class="text-xs text-stone-500 font-medium">Shown on Quotation PDF</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3 items-center">
+              <div class="h-24 rounded-xl border border-stone-200 bg-stone-50 flex items-center justify-center overflow-hidden p-2 relative">
+                <img id="set-company-logo-preview" src="" alt="Company Logo Preview" class="max-h-20 max-w-full object-contain hidden" />
+                <div id="set-company-logo-placeholder" class="text-stone-400 text-xs flex flex-col items-center gap-1 text-center font-medium">
+                  <i class="fa-regular fa-image text-lg text-stone-300"></i>
+                  <span>No logo</span>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <label class="border border-dashed border-stone-400 hover:border-orange-700 hover:bg-orange-50/50 bg-stone-50 rounded-xl h-11 px-4 inline-flex items-center justify-center gap-2 text-stone-800 text-sm font-semibold cursor-pointer transition-colors">
+                  <i class="fa-solid fa-cloud-arrow-up text-stone-500"></i>
+                  <span>Upload Logo</span>
+                  <input type="file" id="set-company-logo-input" accept="image/*" onchange="App.handleCompanyLogoUpload(event)" class="hidden" />
+                </label>
+                <button type="button" id="btn-remove-company-logo" onclick="App.removeCompanyLogo()" class="h-11 px-4 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-sm font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer hidden">
+                  <i class="fa-regular fa-trash-can text-xs"></i>
+                  <span>Remove</span>
+                </button>
+              </div>
+            </div>
+            <input type="hidden" id="set-company-logo-url" value="" />
+          </div>
         </div>
 
         <!-- Bank Payment Details Card -->

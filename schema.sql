@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS company_settings (
   banner_url TEXT DEFAULT '',
   promotional_banners TEXT DEFAULT '[]',
   header_logo_url TEXT DEFAULT '',
+  company_logo TEXT DEFAULT '',
   signature_image_url TEXT DEFAULT '',
   signature_title TEXT DEFAULT 'Authorized Signatory',
   show_signature_in_pdf INTEGER DEFAULT 1,
@@ -212,6 +213,10 @@ INSERT OR IGNORE INTO settings (
   '{"name":"Quotation Manager","tagline":"Professional Industrial & Commercial Quotation Management","address":"Business Address Here","phone":"+91 00000 00000","phoneSecondary":"","email":"info@company.com","website":"www.company.com","gstin":"24AAAAA0000A1Z5","state":"Gujarat","stateCode":"24"}',
   '{"bankName":"Primary Bank Name","accountName":"Enterprise Account","accountNumber":"000000000000","ifscCode":"BANK0000000","branch":"Main Branch"}',
   '["Customer will be billed after acceptance of this quote.","Payment terms as mutually agreed.","Transport & freight charges extra as applicable.","Subject to local jurisdiction."]',
-  '{"bannerUrl":"assets/sample-banner.svg","headerLogoUrl":"assets/header-roof-logo.svg","signatureImageUrl":"assets/sample-signature.svg","signatureTitle":"Authorized Signatory","showSignatureInPdf":true,"showBannerInPdf":true}',
+  '{"bannerUrl":"assets/sample-banner.svg","headerLogoUrl":"","companyLogo":"","signatureImageUrl":"assets/sample-signature.svg","signatureTitle":"Authorized Signatory","showSignatureInPdf":true,"showBannerInPdf":true}',
   datetime('now')
 );
+
+-- Schema Migration: Dynamic Company Logo (Top-Right Header) per Company Profile
+ALTER TABLE company_settings ADD COLUMN company_logo TEXT DEFAULT '';
+

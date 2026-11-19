@@ -100,3 +100,72 @@ test('numberToIndianWords: converts amounts to Indian Rupee word format', () => 
   assert.equal(CalculationsEngine.numberToIndianWords(5500), 'Rupees Five Thousand Five Hundred Only');
   assert.equal(CalculationsEngine.numberToIndianWords(100500), 'Rupees One Lakh Five Hundred Only');
 });
+
+test('PdfGenerator.generateQuotationHtml: Dynamic company logo rendering in header', () => {
+  const pdfGenCode = fs.readFileSync(path.join(__dirname, '../js/pdf-generator.js'), 'utf8');
+  const defaultDataCode = fs.readFileSync(path.join(__dirname, '../js/default-data.js'), 'utf8');
+
+  const pdfContext = {
+    window: { CalculationsEngine },
+    globalThis: { CalculationsEngine },
+    CalculationsEngine
+  };
+  vm.createContext(pdfContext);
+  vm.runInContext(defaultDataCode, pdfContext);
+  vm.runInContext(pdfGenCode, pdfContext);
+  const PdfGenerator = pdfContext.PdfGenerator || pdfContext.window.PdfGenerator;
+
+  const quote = {
+    quoteNumber: 'QT-2026-0001',
+    companyId: 'comp_balaji',
+    items: [{ name: 'PPGL Sheet', quantity: 2, rate: 500 }]
+  };
+
+  // Case 1: Company HAS a company logo uploaded
+  const settingsWithLogo = {
+    company: {
+      name: 'Balaji Industries',
+      address: 'Industrial Area',
+      email: 'balaji@example.com',
+      phone: '9876543210',
+      gstin: '24ABCDE1234F1Z5',
+      companyLogo: 'https://cdn.example.com/balaji-logo.png'
+    },
+    bank: {},
+    terms: [],
+    media: {
+      companyLogo: 'https://cdn.example.com/balaji-logo.png',
+      showSignatureInPdf: false,
+      showBannerInPdf: false
+    }
+  };
+
+  const htmlWithLogo = PdfGenerator.generateQuotationHtml(quote, settingsWithLogo);
+  assert.match(htmlWithLogo, /https:\/\/cdn\.example\.com\/balaji-logo\.png/);
+  assert.match(htmlWithLogo, /Balaji Industries Logo/);
+  assert.doesNotMatch(htmlWithLogo, /header-roof-logo\.svg/);
+
+  // Case 2: Company has NO logo uploaded (must remain completely clean, no placeholder)
+  const settingsWithoutLogo = {
+    company: {
+      name: 'Balaji Industries',
+      address: 'Industrial Area',
+      email: 'balaji@example.com',
+      phone: '9876543210',
+      gstin: '24ABCDE1234F1Z5',
+      companyLogo: ''
+    },
+    bank: {},
+    terms: [],
+    media: {
+      companyLogo: '',
+      headerLogoUrl: '',
+      showSignatureInPdf: false,
+      showBannerInPdf: false
+    }
+  };
+
+  const htmlWithoutLogo = PdfGenerator.generateQuotationHtml(quote, settingsWithoutLogo);
+  assert.doesNotMatch(htmlWithoutLogo, /header-roof-logo\.svg/);
+  assert.doesNotMatch(htmlWithoutLogo, /Balaji Industries Logo/);
+});

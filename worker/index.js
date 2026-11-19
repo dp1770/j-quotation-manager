@@ -235,6 +235,7 @@ async function ensureDatabaseSchema(env) {
               banner_url TEXT DEFAULT '',
               promotional_banners TEXT DEFAULT '[]',
               header_logo_url TEXT DEFAULT '',
+              company_logo TEXT DEFAULT '',
               signature_image_url TEXT DEFAULT '',
               signature_title TEXT DEFAULT 'Authorized Signatory',
               show_signature_in_pdf INTEGER DEFAULT 1,
@@ -271,6 +272,7 @@ async function ensureDatabaseSchema(env) {
           execSql('ALTER TABLE company_settings ADD COLUMN banner_url TEXT DEFAULT ""'),
           execSql('ALTER TABLE company_settings ADD COLUMN promotional_banners TEXT DEFAULT "[]"'),
           execSql('ALTER TABLE company_settings ADD COLUMN header_logo_url TEXT DEFAULT ""'),
+          execSql('ALTER TABLE company_settings ADD COLUMN company_logo TEXT DEFAULT ""'),
           execSql('ALTER TABLE company_settings ADD COLUMN signature_image_url TEXT DEFAULT ""'),
           execSql('ALTER TABLE company_settings ADD COLUMN signature_title TEXT DEFAULT "Authorized Signatory"'),
           execSql('ALTER TABLE company_settings ADD COLUMN show_signature_in_pdf INTEGER DEFAULT 1'),
@@ -1727,7 +1729,9 @@ export default {
             promotionalBanner: banners[0] || c.banner_url || '',
             bannerUrls: banners,
             promotionalBanners: banners,
-            headerLogoUrl: c.header_logo_url || '',
+            headerLogoUrl: c.company_logo || c.header_logo_url || '',
+            companyLogo: c.company_logo || c.header_logo_url || '',
+            company_logo: c.company_logo || c.header_logo_url || '',
             signatureImageUrl: c.signature_image_url || '',
             authorizedSignature: c.signature_image_url || '',
             signatureTitle: c.signature_title || 'Authorized Signatory',
@@ -1742,8 +1746,8 @@ export default {
         return jsonResponse({ success: true, companies }, 200, env);
       }
 
-      // POST: Create or Update Company Profile (Max 3 Enforced)
-      if (method === 'POST') {
+      // POST or PUT: Create or Update Company Profile (Max 3 Enforced)
+      if (method === 'POST' || method === 'PUT') {
         if (!isSuperAdmin && !currentUser.permissions?.canManageSettings) {
           return errorResponse('Access denied: You do not have permission to manage company profiles', 403, env);
         }
@@ -1809,7 +1813,8 @@ export default {
           const bannerUrl = banners.length > 0 ? JSON.stringify(banners) : '';
           const promotionalBannersJson = JSON.stringify(banners);
 
-          const headerLogoUrl = body.headerLogoUrl || '';
+          const companyLogo = String(body.companyLogo || body.company_logo || body.headerLogoUrl || body.header_logo_url || '').trim();
+          const headerLogoUrl = companyLogo;
           const signatureImageUrl = body.signatureImageUrl || body.authorizedSignature || '';
           const signatureTitle = body.signatureTitle || 'Authorized Signatory';
           const showSig = body.showSignatureInPdf !== false ? 1 : 0;
@@ -1836,12 +1841,12 @@ export default {
               id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
               bank_name, account_name, account_number, ifsc_code, branch, terms_json,
               banner_url, header_logo_url, signature_image_url, signature_title,
-              show_signature_in_pdf, show_banner_in_pdf, is_default, created_at, updated_at
+              show_signature_in_pdf, show_banner_in_pdf, is_default, company_logo, created_at, updated_at
             ) VALUES (
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?,
-              ?, ?, ?, datetime("now"), datetime("now")
+              ?, ?, ?, ?, datetime("now"), datetime("now")
             )
             ON CONFLICT(id) DO UPDATE SET
               company_name = excluded.company_name,
@@ -1867,12 +1872,13 @@ export default {
               show_signature_in_pdf = excluded.show_signature_in_pdf,
               show_banner_in_pdf = excluded.show_banner_in_pdf,
               is_default = excluded.is_default,
+              company_logo = excluded.company_logo,
               updated_at = datetime("now")
           `).bind(
             id, companyName, tagline, address, phone, phoneSecondary, email, website, gstin, state, stateCode,
             bankName, accountName, accountNumber, ifscCode, branch, termsJson,
             bannerUrl, headerLogoUrl, signatureImageUrl, signatureTitle,
-            showSig, showBanner, isDefault
+            showSig, showBanner, isDefault, companyLogo
           ).run();
 
           // Sync promotional_banners column if migrated
@@ -1883,7 +1889,9 @@ export default {
           return jsonResponse({
             success: true,
             message: 'Company profile saved successfully',
-            id
+            id,
+            company_logo: companyLogo,
+            companyLogo
           }, 200, env);
         } catch (postErr) {
           console.error('[API /api/companies POST Error]:', postErr);
@@ -1947,8 +1955,10 @@ export default {
                 },
                 terms: JSON.parse(csRow.terms_json || '[]'),
                 media: {
+                  companyLogo: csRow.company_logo || csRow.header_logo_url || '',
+                  company_logo: csRow.company_logo || csRow.header_logo_url || '',
                   bannerUrl: csRow.banner_url,
-                  headerLogoUrl: csRow.header_logo_url,
+                  headerLogoUrl: csRow.company_logo || csRow.header_logo_url || '',
                   signatureImageUrl: csRow.signature_image_url,
                   signatureTitle: csRow.signature_title,
                   showSignatureInPdf: csRow.show_signature_in_pdf === 1,
@@ -1994,6 +2004,8 @@ export default {
         const termsJson = JSON.stringify(terms);
         const mediaJson = JSON.stringify(media);
 
+        const compLogo = (comp.companyLogo || comp.company_logo || media.companyLogo || media.company_logo || media.headerLogoUrl || '').trim();
+
         // Try updating company_settings structured table
         try {
           await env.DB.prepare(`
@@ -2001,12 +2013,12 @@ export default {
               id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
               bank_name, account_name, account_number, ifsc_code, branch, terms_json,
               banner_url, header_logo_url, signature_image_url, signature_title,
-              show_signature_in_pdf, show_banner_in_pdf, turnstile_site_key, updated_at
+              show_signature_in_pdf, show_banner_in_pdf, turnstile_site_key, company_logo, updated_at
             ) VALUES (
               'primary', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?,
-              ?, ?, ?, datetime("now")
+              ?, ?, ?, ?, datetime("now")
             )
             ON CONFLICT(id) DO UPDATE SET
               company_name = excluded.company_name,
@@ -2032,14 +2044,15 @@ export default {
               show_signature_in_pdf = excluded.show_signature_in_pdf,
               show_banner_in_pdf = excluded.show_banner_in_pdf,
               turnstile_site_key = excluded.turnstile_site_key,
+              company_logo = excluded.company_logo,
               updated_at = datetime("now")
           `).bind(
             comp.name || 'Quotation Manager', comp.tagline || '', comp.address || '', comp.phone || '', comp.phoneSecondary || '',
             comp.email || '', comp.website || '', comp.gstin || '', comp.state || '', comp.stateCode || '',
             bank.bankName || '', bank.accountName || '', bank.accountNumber || '', bank.ifscCode || '', bank.branch || '',
             termsJson,
-            media.bannerUrl || '', media.headerLogoUrl || '', media.signatureImageUrl || '', media.signatureTitle || 'Authorized Signatory',
-            media.showSignatureInPdf !== false ? 1 : 0, media.showBannerInPdf !== false ? 1 : 0, media.turnstileSiteKey || ''
+            media.bannerUrl || '', compLogo, media.signatureImageUrl || '', media.signatureTitle || 'Authorized Signatory',
+            media.showSignatureInPdf !== false ? 1 : 0, media.showBannerInPdf !== false ? 1 : 0, media.turnstileSiteKey || '', compLogo
           ).run();
         } catch (e) {
           // If company_settings doesn't exist yet, silently continue to legacy table
@@ -2112,11 +2125,13 @@ export default {
           clean.banner_url = '';
           clean.promotional_banners = '[]';
           clean.header_logo_url = '';
+          clean.company_logo = '';
           clean.signature_image_url = '';
           delete clean.bannerUrl;
           delete clean.promotionalBanners;
           delete clean.bannerUrls;
           delete clean.headerLogoUrl;
+          delete clean.companyLogo;
           delete clean.signatureImageUrl;
           delete clean.authorizedSignature;
           return clean;
@@ -2343,12 +2358,12 @@ export default {
               id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
               bank_name, account_name, account_number, ifsc_code, branch, terms_json,
               banner_url, promotional_banners, header_logo_url, signature_image_url, signature_title,
-              show_signature_in_pdf, show_banner_in_pdf, turnstile_site_key, is_default, updated_at
+              show_signature_in_pdf, show_banner_in_pdf, turnstile_site_key, is_default, company_logo, updated_at
             ) VALUES (
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, datetime("now")
+              ?, ?, ?, ?, ?, datetime("now")
             )
             ON CONFLICT(id) DO UPDATE SET
               company_name = excluded.company_name,
@@ -2370,6 +2385,7 @@ export default {
               banner_url = COALESCE(NULLIF(excluded.banner_url, ''), company_settings.banner_url),
               promotional_banners = CASE WHEN excluded.promotional_banners != '[]' AND excluded.promotional_banners != '' THEN excluded.promotional_banners ELSE company_settings.promotional_banners END,
               header_logo_url = COALESCE(NULLIF(excluded.header_logo_url, ''), company_settings.header_logo_url),
+              company_logo = COALESCE(NULLIF(excluded.company_logo, ''), company_settings.company_logo),
               signature_image_url = COALESCE(NULLIF(excluded.signature_image_url, ''), company_settings.signature_image_url),
               signature_title = excluded.signature_title,
               show_signature_in_pdf = excluded.show_signature_in_pdf,
@@ -2403,7 +2419,8 @@ export default {
             cs.show_signature_in_pdf !== undefined ? (cs.show_signature_in_pdf ? 1 : 0) : 1,
             cs.show_banner_in_pdf !== undefined ? (cs.show_banner_in_pdf ? 1 : 0) : 1,
             cs.turnstile_site_key || cs.turnstileSiteKey || '',
-            cs.is_default ? 1 : 0
+            cs.is_default ? 1 : 0,
+            cs.company_logo || cs.companyLogo || cs.header_logo_url || cs.headerLogoUrl || ''
           ));
         }
 

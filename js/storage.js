@@ -275,7 +275,9 @@ const StorageManager = {
       terms: settings.terms || [],
       bannerUrl: settings.media?.bannerUrl || '',
       promotionalBanner: settings.media?.bannerUrl || '',
-      headerLogoUrl: settings.media?.headerLogoUrl || '',
+      headerLogoUrl: settings.company?.companyLogo || settings.media?.companyLogo || settings.media?.headerLogoUrl || '',
+      companyLogo: settings.company?.companyLogo || settings.media?.companyLogo || settings.media?.headerLogoUrl || '',
+      company_logo: settings.company?.companyLogo || settings.media?.companyLogo || settings.media?.headerLogoUrl || '',
       signatureImageUrl: settings.media?.signatureImageUrl || '',
       authorizedSignature: settings.media?.signatureImageUrl || '',
       signatureTitle: settings.media?.signatureTitle || 'Authorized Signatory',
@@ -342,7 +344,7 @@ const StorageManager = {
   },
 
   getCompanySettingsForQuote(quote) {
-    const targetComp = this.getCompanyById(quote?.companyId) || this.getCompanies()[0];
+    const targetComp = this.getCompanyById(quote?.companyId || quote?.company_id) || this.getCompanies()[0];
     if (!targetComp) return this.getSettings();
 
     let banners = [];
@@ -367,6 +369,8 @@ const StorageManager = {
     }
     banners = banners.filter(b => typeof b === 'string' && b.trim());
 
+    const companyLogo = targetComp.companyLogo || targetComp.company_logo || targetComp.headerLogoUrl || targetComp.header_logo_url || '';
+
     return {
       company: {
         name: targetComp.companyName || targetComp.name || 'Quotation Manager',
@@ -378,7 +382,9 @@ const StorageManager = {
         website: targetComp.website || '',
         gstin: targetComp.gstin || '',
         state: targetComp.state || 'Gujarat',
-        stateCode: targetComp.stateCode || '24'
+        stateCode: targetComp.stateCode || '24',
+        companyLogo: companyLogo,
+        company_logo: companyLogo
       },
       bank: {
         bankName: targetComp.bankName || '',
@@ -392,7 +398,9 @@ const StorageManager = {
         bannerUrl: banners[0] || targetComp.bannerUrl || targetComp.promotionalBanner || '',
         bannerUrls: banners,
         promotionalBanners: banners,
-        headerLogoUrl: targetComp.headerLogoUrl || '',
+        headerLogoUrl: companyLogo,
+        companyLogo: companyLogo,
+        company_logo: companyLogo,
         signatureImageUrl: targetComp.signatureImageUrl || targetComp.authorizedSignature || '',
         signatureTitle: targetComp.signatureTitle || 'Authorized Signatory',
         showSignatureInPdf: targetComp.showSignatureInPdf !== false,

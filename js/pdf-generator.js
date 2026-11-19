@@ -57,7 +57,7 @@ const PdfGenerator = {
       bannersList = ['assets/product-gallery-page7.svg'];
     }
 
-    const headerLogo = media.headerLogoUrl || 'assets/header-roof-logo.svg';
+    const headerLogo = (comp.companyLogo || comp.company_logo || comp.headerLogoUrl || media.companyLogo || media.company_logo || media.headerLogoUrl || '').trim();
     const signatureImg = media.signatureImageUrl || 'assets/sample-signature.svg';
     const showSignature = media.showSignatureInPdf !== false;
     const shouldIncludeBanner = (quote.includeBanner !== undefined ? Boolean(quote.includeBanner) : (quote.include_banner !== undefined ? (quote.include_banner === 1 || quote.include_banner === '1' || quote.include_banner === true) : true)) && (media.showBannerInPdf !== false);
@@ -497,10 +497,12 @@ const PdfGenerator = {
               </div>
             </div>
 
-            <!-- Top Right 3D Roofing Sheets Illustration -->
+            <!-- Top Right Dynamic Company Logo -->
+            ${headerLogo ? `
             <div class="w-44 sm:w-52 flex-shrink-0 text-right">
               <img src="${headerLogo}" alt="${this.escapeHtml(comp.name)} Logo" class="w-full max-h-20 object-contain ml-auto" />
             </div>
+            ` : ''}
           </div>
 
           <!-- Divider Line -->

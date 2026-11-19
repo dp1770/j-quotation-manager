@@ -32,7 +32,8 @@ const DEFAULT_SETTINGS = {
   ],
   media: {
     bannerUrl: 'assets/sample-banner.svg',
-    headerLogoUrl: 'assets/header-roof-logo.svg',
+    headerLogoUrl: '',
+    companyLogo: '',
     signatureImageUrl: 'assets/sample-signature.svg',
     signatureTitle: 'Authorized Signatory',
     showSignatureInPdf: true,

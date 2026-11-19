@@ -3464,6 +3464,10 @@ const App = {
     const elDefault = document.getElementById('set-company-is-default');
     if (elDefault) elDefault.checked = !!comp.isDefault;
 
+    // Company Logo Preview
+    const compLogo = comp.companyLogo || comp.company_logo || comp.headerLogoUrl || comp.header_logo_url || '';
+    this.updateCompanyLogoPreview(compLogo);
+
     // Signature Preview
     const sigPreview = document.getElementById('set-signature-preview');
     if (sigPreview) {
@@ -3559,6 +3563,9 @@ const App = {
       ifscCode: '',
       branch: '',
       terms: ['Customer will be billed after acceptance of this quote.', 'Subject to local jurisdiction.'],
+      companyLogo: '',
+      company_logo: '',
+      headerLogoUrl: '',
       authorizedSignature: 'assets/sample-signature.svg',
       promotionalBanner: '',
       promotionalBanners: [],
@@ -3669,6 +3676,101 @@ const App = {
       } else {
         backupCard.classList.add('hidden');
       }
+    }
+  },
+
+  updateCompanyLogoPreview(url) {
+    const preview = document.getElementById('set-company-logo-preview');
+    const placeholder = document.getElementById('set-company-logo-placeholder');
+    const removeBtn = document.getElementById('btn-remove-company-logo');
+    const hiddenUrl = document.getElementById('set-company-logo-url');
+
+    const cleanUrl = (url && typeof url === 'string') ? url.trim() : '';
+    if (hiddenUrl) hiddenUrl.value = cleanUrl;
+
+    if (cleanUrl) {
+      if (preview) {
+        preview.src = cleanUrl;
+        preview.classList.remove('hidden');
+      }
+      if (placeholder) placeholder.classList.add('hidden');
+      if (removeBtn) removeBtn.classList.remove('hidden');
+    } else {
+      if (preview) {
+        preview.src = '';
+        preview.classList.add('hidden');
+      }
+      if (placeholder) placeholder.classList.remove('hidden');
+      if (removeBtn) removeBtn.classList.add('hidden');
+    }
+  },
+
+  async handleCompanyLogoUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    this.showToast('Uploading company logo to cloud storage...', 'info');
+
+    try {
+      const compressedBase64 = await this.compressImage(file, 800, 0.8);
+      const mediaUrl = await StorageManager.uploadMedia(compressedBase64, file.name || 'company-logo.png');
+      this.updateCompanyLogoPreview(mediaUrl);
+
+      const companies = StorageManager.getCompanies();
+      const current = companies.find(c => c.id === this.activeCompanyId);
+      if (current) {
+        current.companyLogo = mediaUrl;
+        current.company_logo = mediaUrl;
+        current.headerLogoUrl = mediaUrl;
+        await StorageManager.saveCompany(current);
+      }
+
+      const settings = StorageManager.getSettings();
+      if (this.activeCompanyId === 'primary' || (current && current.isDefault)) {
+        if (!settings.company) settings.company = {};
+        settings.company.companyLogo = mediaUrl;
+        if (!settings.media) settings.media = {};
+        settings.media.headerLogoUrl = mediaUrl;
+        settings.media.companyLogo = mediaUrl;
+        await StorageManager.saveSettings(settings);
+      }
+
+      this.showToast('Company logo uploaded and saved successfully!', 'success');
+    } catch (err) {
+      console.error('Company logo upload error:', err);
+      this.showToast('Failed to upload logo: ' + err.message, 'error');
+    } finally {
+      event.target.value = '';
+    }
+  },
+
+  async removeCompanyLogo() {
+    this.updateCompanyLogoPreview('');
+
+    const companies = StorageManager.getCompanies();
+    const current = companies.find(c => c.id === this.activeCompanyId);
+    if (current) {
+      current.companyLogo = '';
+      current.company_logo = '';
+      current.headerLogoUrl = '';
+      try {
+        await StorageManager.saveCompany(current);
+        this.showToast('Company logo removed', 'info');
+      } catch (e) {
+        console.warn('Could not auto-save company after removing logo:', e);
+      }
+    }
+
+    const settings = StorageManager.getSettings();
+    if (this.activeCompanyId === 'primary' || (current && current.isDefault)) {
+      if (settings.company) settings.company.companyLogo = '';
+      if (settings.media) {
+        settings.media.headerLogoUrl = '';
+        settings.media.companyLogo = '';
+      }
+      try {
+        await StorageManager.saveSettings(settings);
+      } catch (e) {}
     }
   },
 
@@ -4025,6 +4127,12 @@ const App = {
     activeComp.terms = settings.terms || [];
     activeComp.isDefault = isDefault;
 
+    const logoUrlInput = document.getElementById('set-company-logo-url');
+    const compLogo = logoUrlInput ? logoUrlInput.value.trim() : (activeComp.companyLogo || '');
+    activeComp.companyLogo = compLogo;
+    activeComp.company_logo = compLogo;
+    activeComp.headerLogoUrl = compLogo;
+
     const sigPreview = document.getElementById('set-signature-preview');
     if (sigPreview && sigPreview.src && !sigPreview.src.includes('sample-signature.svg')) {
       activeComp.authorizedSignature = sigPreview.src;
@@ -4046,7 +4154,9 @@ const App = {
         email: email,
         gstin: gstin,
         state: 'Gujarat',
-        stateCode: '24'
+        stateCode: '24',
+        companyLogo: compLogo,
+        company_logo: compLogo
       };
 
       settings.bank = {
@@ -4061,6 +4171,9 @@ const App = {
       settings.media.bannerUrl = activeComp.bannerUrl;
       settings.media.bannerUrls = banners;
       settings.media.promotionalBanners = banners;
+      settings.media.headerLogoUrl = compLogo;
+      settings.media.companyLogo = compLogo;
+      settings.media.company_logo = compLogo;
     }
 
     const workerUrlVal = document.getElementById('set-worker-url') ? document.getElementById('set-worker-url').value.trim() : '';

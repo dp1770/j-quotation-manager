@@ -1073,3 +1073,116 @@ test('GET /api/media/:filename: Returns 404 for missing image and 400 for invali
   const invalidRes = await worker.fetch(invalidReq, mockEnv);
   assert.equal(invalidRes.status, 400);
 });
+
+test('POST /api/companies: Saves and returns dynamic company_logo', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  let savedLogo = null;
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          first() {
+            if (sql.includes('COUNT')) return { count: 1 };
+            return null;
+          },
+          bind(...args) {
+            return {
+              async first() {
+                if (sql.includes('SELECT id FROM company_settings WHERE id = ?')) return { id: 'primary' };
+                if (sql.includes('COUNT')) return { count: 1 };
+                return null;
+              },
+              async run() {
+                if (sql.includes('INSERT INTO company_settings')) {
+                  savedLogo = args[24];
+                }
+                return { success: true };
+              }
+            };
+          },
+          async run() {
+            return { success: true };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/companies', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: 'comp_logo_test',
+      companyName: 'Dynamic Logo Co',
+      companyLogo: '/api/media/comp_logo_test.png'
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.equal(body.companyLogo, '/api/media/comp_logo_test.png');
+  assert.equal(savedLogo, '/api/media/comp_logo_test.png');
+});
+
+test('GET /api/companies: Returns company_logo and companyLogo per company profile', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          async all() {
+            return {
+              results: [
+                {
+                  id: 'primary',
+                  company_name: 'Primary Enterprise',
+                  company_logo: '/api/media/primary_logo.png',
+                  header_logo_url: '',
+                  is_default: 1
+                },
+                {
+                  id: 'comp_secondary',
+                  company_name: 'Secondary Traders',
+                  company_logo: '',
+                  header_logo_url: '',
+                  is_default: 0
+                }
+              ]
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/companies', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.equal(body.companies.length, 2);
+  assert.equal(body.companies[0].companyLogo, '/api/media/primary_logo.png');
+  assert.equal(body.companies[0].company_logo, '/api/media/primary_logo.png');
+  assert.equal(body.companies[1].companyLogo, '');
+});
