@@ -582,6 +582,14 @@ const PdfGenerator = {
           </div>
         </div>
 
+        <!-- ======================================================= -->
+        <!-- 4. TERMS & CONDITIONS + AUTHORIZED SIGNATURE            -->
+        <!-- ======================================================= -->
+        ${termsAndSignatureHtml}
+
+        <!-- ======================================================= -->
+        <!-- 5. SHEET CALCULATION DETAILS (Below Terms & Signature)  -->
+        <!-- ======================================================= -->
         ${quote.calculations && quote.calculations.length > 0 ? `
           <div class="calculations-section pt-1">
             ${calculationsHtml}
@@ -589,12 +597,7 @@ const PdfGenerator = {
         ` : ''}
 
         <!-- ======================================================= -->
-        <!-- 4. TERMS & CONDITIONS + AUTHORIZED SIGNATURE            -->
-        <!-- ======================================================= -->
-        ${termsAndSignatureHtml}
-
-        <!-- ======================================================= -->
-        <!-- 5. "OUR PRODUCTS" 3-COLUMN BORDERLESS IMAGE GALLERY     -->
+        <!-- 6. "OUR PRODUCTS" 3-COLUMN BORDERLESS IMAGE GALLERY     -->
         <!-- ======================================================= -->
         ${imagesGridHtml}
         ${promotionalBannersHtml}
