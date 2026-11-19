@@ -4,6 +4,9 @@
  * email dispatch, and PWA installation.
  */
 
+// Feature Toggle Flags (Clean configuration for production)
+const ENABLE_FORGOT_PASSWORD = false;
+
 const App = {
   currentTab: 'dashboard',
   currentQuotation: null,
@@ -172,6 +175,17 @@ const App = {
       const userInput = document.getElementById('login-username-input');
       if (userInput) setTimeout(() => userInput.focus(), 100);
       this.renderTurnstileWidget();
+
+      // Forgot Password UI feature toggle control
+      const forgotBtn = document.getElementById('btn-forgot-password');
+      if (forgotBtn) {
+        if (ENABLE_FORGOT_PASSWORD) {
+          forgotBtn.classList.remove('hidden');
+        } else {
+          forgotBtn.classList.add('hidden');
+        }
+      }
+      this.showForgotPasswordView(false);
     } else {
       modal.classList.add('hidden');
       this.cleanupTurnstileWidget();
@@ -292,6 +306,9 @@ const App = {
   },
 
   showForgotPasswordView(show) {
+    if (!ENABLE_FORGOT_PASSWORD && show) {
+      return;
+    }
     const normalView = document.getElementById('login-view-normal');
     const forgotView = document.getElementById('login-view-forgot');
     const alertBox = document.getElementById('forgot-pass-alert');
