@@ -38,3 +38,15 @@ database_id = "4b39a659-5317-452d-8fbd-afc639faccc8"
 [vars]
 CORS_ALLOW_ORIGIN = "*"
 APP_NAME = "Quotation Manager SaaS"
+
+# ---------------------------------------------------------------------
+# Observability & Real-Time Workers Logs
+# ---------------------------------------------------------------------
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
