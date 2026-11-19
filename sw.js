@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qm-quotes-v3.6.1';
+const CACHE_NAME = 'qm-quotes-v3.6.2';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -83,7 +83,7 @@ self.addEventListener('fetch', (event) => {
           JSON.stringify({
             success: false,
             status: 'offline',
-            message: 'Network offline. Operating with local database.'
+            message: 'Network offline or cloud database unreachable. Please check your network connection.'
           }),
           { headers: { 'Content-Type': 'application/json' } }
         );

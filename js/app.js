@@ -127,9 +127,9 @@ const App = {
         badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> <span class="hidden sm:inline">Cloud Synced</span>`;
         badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-800 border border-green-200';
       } else {
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> <span class="hidden sm:inline">Local Cache</span>`;
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> <span class="hidden sm:inline">Offline</span>`;
         badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 cursor-pointer';
-        badge.title = 'Operating with local database';
+        badge.title = 'Offline - Cloud database unreachable';
         badge.onclick = () => App.switchTab('settings');
       }
     };
