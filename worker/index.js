@@ -241,6 +241,8 @@ async function ensureDatabaseSchema(env) {
               show_signature_in_pdf INTEGER DEFAULT 1,
               show_banner_in_pdf INTEGER DEFAULT 1,
               turnstile_site_key TEXT DEFAULT '',
+              cgst_percent REAL DEFAULT 9.0,
+              sgst_percent REAL DEFAULT 9.0,
               is_default INTEGER DEFAULT 0,
               created_at TEXT NOT NULL DEFAULT (datetime('now')),
               updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -277,9 +279,15 @@ async function ensureDatabaseSchema(env) {
           execSql('ALTER TABLE company_settings ADD COLUMN signature_title TEXT DEFAULT "Authorized Signatory"'),
           execSql('ALTER TABLE company_settings ADD COLUMN show_signature_in_pdf INTEGER DEFAULT 1'),
           execSql('ALTER TABLE company_settings ADD COLUMN show_banner_in_pdf INTEGER DEFAULT 1'),
+          execSql('ALTER TABLE company_settings ADD COLUMN cgst_percent REAL DEFAULT 9.0'),
+          execSql('ALTER TABLE company_settings ADD COLUMN sgst_percent REAL DEFAULT 9.0'),
           execSql('ALTER TABLE quotations ADD COLUMN company_id TEXT DEFAULT "primary"'),
           execSql('ALTER TABLE quotations ADD COLUMN company_name TEXT DEFAULT ""'),
           execSql('ALTER TABLE quotations ADD COLUMN created_by_name TEXT DEFAULT ""'),
+          execSql('ALTER TABLE quotations ADD COLUMN cgst_percent REAL DEFAULT 9.0'),
+          execSql('ALTER TABLE quotations ADD COLUMN sgst_percent REAL DEFAULT 9.0'),
+          execSql('ALTER TABLE quotations ADD COLUMN cgst_amount REAL DEFAULT 0.0'),
+          execSql('ALTER TABLE quotations ADD COLUMN sgst_amount REAL DEFAULT 0.0'),
           execSql('ALTER TABLE clients ADD COLUMN created_by_name TEXT DEFAULT ""'),
           execSql('ALTER TABLE items_master ADD COLUMN created_by_name TEXT DEFAULT ""'),
           execSql('ALTER TABLE password_resets ADD COLUMN attempts INTEGER DEFAULT 0'),
@@ -1241,10 +1249,15 @@ export default {
           companyId: q.company_id || 'primary',
           companyName: q.company_name || '',
           items: JSON.parse(q.items_json || '[]').map(it => {
-            if (it && it.imageUrl && it.imageUrl.startsWith('data:image/') && it.imageUrl.length > 500) {
-              return { ...it, imageUrl: '' };
-            }
-            return it;
+            if (!it) return it;
+            const imgUrl = (it.imageUrl || it.image_url || it.image || '').trim();
+            const safeImg = (imgUrl.startsWith('data:image/') && imgUrl.length > 500) ? '' : imgUrl;
+            return {
+              ...it,
+              imageUrl: safeImg,
+              image_url: safeImg,
+              image: safeImg
+            };
           }),
           calculations: JSON.parse(q.calculations_json || '[]'),
           materialTotal: q.material_total,
@@ -1254,6 +1267,14 @@ export default {
           gstType: q.gst_type,
           gstRate: q.gst_rate,
           gstAmount: q.gst_amount,
+          cgstPercent: q.cgst_percent !== null && q.cgst_percent !== undefined ? q.cgst_percent : 9.0,
+          sgstPercent: q.sgst_percent !== null && q.sgst_percent !== undefined ? q.sgst_percent : 9.0,
+          cgstAmount: q.cgst_amount || 0.0,
+          sgstAmount: q.sgst_amount || 0.0,
+          cgst_percent: q.cgst_percent !== null && q.cgst_percent !== undefined ? q.cgst_percent : 9.0,
+          sgst_percent: q.sgst_percent !== null && q.sgst_percent !== undefined ? q.sgst_percent : 9.0,
+          cgst_amount: q.cgst_amount || 0.0,
+          sgst_amount: q.sgst_amount || 0.0,
           roundOff: q.round_off,
           grandTotal: q.grand_total,
           grandTotalWords: q.grand_total_words,
@@ -1338,7 +1359,18 @@ export default {
         const companyId = String(body.companyId || body.company_id || 'primary').trim();
         const companyName = String(body.companyName || body.company_name || '').trim();
 
-        const itemsJson = JSON.stringify(body.items || []);
+        const rawItems = Array.isArray(body.items) ? body.items : [];
+        const processedItems = rawItems.map(it => {
+          if (!it) return it;
+          const imgUrl = (it.imageUrl || it.image_url || it.image || '').trim();
+          return {
+            ...it,
+            imageUrl: imgUrl,
+            image_url: imgUrl,
+            image: imgUrl
+          };
+        });
+        const itemsJson = JSON.stringify(processedItems);
         const calcsJson = JSON.stringify(body.calculations || []);
         const addChargesJson = JSON.stringify(body.additionalCharges || []);
 
@@ -1355,6 +1387,15 @@ export default {
         const includeBanner = (body.includeBanner === false || body.includeBanner === 0 || body.include_banner === 0 || body.include_banner === false) ? 0 : 1;
         const status = body.status || 'Draft';
 
+        const cgstPercent = (body.cgstPercent !== undefined && body.cgstPercent !== null && body.cgstPercent !== '')
+          ? parseFloat(body.cgstPercent)
+          : ((body.cgst_percent !== undefined && body.cgst_percent !== null && body.cgst_percent !== '') ? parseFloat(body.cgst_percent) : 9.0);
+        const sgstPercent = (body.sgstPercent !== undefined && body.sgstPercent !== null && body.sgstPercent !== '')
+          ? parseFloat(body.sgstPercent)
+          : ((body.sgst_percent !== undefined && body.sgst_percent !== null && body.sgst_percent !== '') ? parseFloat(body.sgst_percent) : 9.0);
+        const cgstAmount = parseFloat(body.cgstAmount ?? body.cgst_amount ?? 0) || 0.0;
+        const sgstAmount = parseFloat(body.sgstAmount ?? body.sgst_amount ?? 0) || 0.0;
+
         // Audit Trail: Store user's actual Full Name (e.g. Ramesh Patel) instead of Role
         const authorName = (currentUser.fullName || currentUser.username || 'System Administrator').trim();
 
@@ -1364,13 +1405,15 @@ export default {
             client_phone, client_email, client_gst, client_address, company_id, company_name,
             items_json, calculations_json, material_total, loading_charges, additional_charges_json, charges_total,
             gst_type, gst_rate, gst_amount, round_off, grand_total, grand_total_words,
-            notes, include_banner, status, created_by, created_by_name, created_at, updated_at
+            notes, include_banner, status, created_by, created_by_name,
+            cgst_percent, sgst_percent, cgst_amount, sgst_amount, created_at, updated_at
           ) VALUES (
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, datetime("now"), datetime("now")
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, datetime("now"), datetime("now")
           )
           ON CONFLICT(id) DO UPDATE SET
             quote_number = excluded.quote_number,
@@ -1400,13 +1443,18 @@ export default {
             notes = excluded.notes,
             include_banner = excluded.include_banner,
             status = excluded.status,
+            cgst_percent = excluded.cgst_percent,
+            sgst_percent = excluded.sgst_percent,
+            cgst_amount = excluded.cgst_amount,
+            sgst_amount = excluded.sgst_amount,
             updated_at = datetime("now")
         `).bind(
           id, finalQuoteNumber, date, validUntil, clientId, clientName, clientCompany,
           clientPhone, clientEmail, clientGst, clientAddress, companyId, companyName,
           itemsJson, calcsJson, materialTotal, loadingCharges, addChargesJson, chargesTotal,
           gstType, gstRate, gstAmount, roundOff, grandTotal, grandTotalWords,
-          notes, includeBanner, status, authorName, authorName
+          notes, includeBanner, status, authorName, authorName,
+          cgstPercent, sgstPercent, cgstAmount, sgstAmount
         ).run();
 
         return jsonResponse({ success: true, message: 'Quotation saved successfully', id, quoteNumber: finalQuoteNumber }, 200, env);
@@ -1435,7 +1483,17 @@ export default {
           clientAddress: q.client_address,
           companyId: q.company_id || 'primary',
           companyName: q.company_name || '',
-          items: JSON.parse(q.items_json || '[]'),
+          items: JSON.parse(q.items_json || '[]').map(it => {
+            if (!it) return it;
+            const imgUrl = (it.imageUrl || it.image_url || it.image || '').trim();
+            const safeImg = (imgUrl.startsWith('data:image/') && imgUrl.length > 500) ? '' : imgUrl;
+            return {
+              ...it,
+              imageUrl: safeImg,
+              image_url: safeImg,
+              image: safeImg
+            };
+          }),
           calculations: JSON.parse(q.calculations_json || '[]'),
           materialTotal: q.material_total,
           loadingCharges: q.loading_charges,
@@ -1444,6 +1502,14 @@ export default {
           gstType: q.gst_type,
           gstRate: q.gst_rate,
           gstAmount: q.gst_amount,
+          cgstPercent: q.cgst_percent !== null && q.cgst_percent !== undefined ? q.cgst_percent : 9.0,
+          sgstPercent: q.sgst_percent !== null && q.sgst_percent !== undefined ? q.sgst_percent : 9.0,
+          cgstAmount: q.cgst_amount || 0.0,
+          sgstAmount: q.sgst_amount || 0.0,
+          cgst_percent: q.cgst_percent !== null && q.cgst_percent !== undefined ? q.cgst_percent : 9.0,
+          sgst_percent: q.sgst_percent !== null && q.sgst_percent !== undefined ? q.sgst_percent : 9.0,
+          cgst_amount: q.cgst_amount || 0.0,
+          sgst_amount: q.sgst_amount || 0.0,
           roundOff: q.round_off,
           grandTotal: q.grand_total,
           grandTotalWords: q.grand_total_words,
@@ -1732,6 +1798,10 @@ export default {
             headerLogoUrl: c.company_logo || c.header_logo_url || '',
             companyLogo: c.company_logo || c.header_logo_url || '',
             company_logo: c.company_logo || c.header_logo_url || '',
+            cgstPercent: c.cgst_percent !== null && c.cgst_percent !== undefined ? c.cgst_percent : 9.0,
+            sgstPercent: c.sgst_percent !== null && c.sgst_percent !== undefined ? c.sgst_percent : 9.0,
+            cgst_percent: c.cgst_percent !== null && c.cgst_percent !== undefined ? c.cgst_percent : 9.0,
+            sgst_percent: c.sgst_percent !== null && c.sgst_percent !== undefined ? c.sgst_percent : 9.0,
             signatureImageUrl: c.signature_image_url || '',
             authorizedSignature: c.signature_image_url || '',
             signatureTitle: c.signature_title || 'Authorized Signatory',
@@ -1815,6 +1885,12 @@ export default {
 
           const companyLogo = String(body.companyLogo || body.company_logo || body.headerLogoUrl || body.header_logo_url || '').trim();
           const headerLogoUrl = companyLogo;
+          const cgstPercent = (body.cgstPercent !== undefined && body.cgstPercent !== null && body.cgstPercent !== '')
+            ? parseFloat(body.cgstPercent)
+            : ((body.cgst_percent !== undefined && body.cgst_percent !== null && body.cgst_percent !== '') ? parseFloat(body.cgst_percent) : 9.0);
+          const sgstPercent = (body.sgstPercent !== undefined && body.sgstPercent !== null && body.sgstPercent !== '')
+            ? parseFloat(body.sgstPercent)
+            : ((body.sgst_percent !== undefined && body.sgst_percent !== null && body.sgst_percent !== '') ? parseFloat(body.sgst_percent) : 9.0);
           const signatureImageUrl = body.signatureImageUrl || body.authorizedSignature || '';
           const signatureTitle = body.signatureTitle || 'Authorized Signatory';
           const showSig = body.showSignatureInPdf !== false ? 1 : 0;
@@ -1841,12 +1917,14 @@ export default {
               id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
               bank_name, account_name, account_number, ifsc_code, branch, terms_json,
               banner_url, header_logo_url, signature_image_url, signature_title,
-              show_signature_in_pdf, show_banner_in_pdf, is_default, company_logo, created_at, updated_at
+              show_signature_in_pdf, show_banner_in_pdf, is_default, company_logo,
+              cgst_percent, sgst_percent, created_at, updated_at
             ) VALUES (
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?,
-              ?, ?, ?, ?, datetime("now"), datetime("now")
+              ?, ?, ?, ?,
+              ?, ?, datetime("now"), datetime("now")
             )
             ON CONFLICT(id) DO UPDATE SET
               company_name = excluded.company_name,
@@ -1873,12 +1951,15 @@ export default {
               show_banner_in_pdf = excluded.show_banner_in_pdf,
               is_default = excluded.is_default,
               company_logo = excluded.company_logo,
+              cgst_percent = excluded.cgst_percent,
+              sgst_percent = excluded.sgst_percent,
               updated_at = datetime("now")
           `).bind(
             id, companyName, tagline, address, phone, phoneSecondary, email, website, gstin, state, stateCode,
             bankName, accountName, accountNumber, ifscCode, branch, termsJson,
             bannerUrl, headerLogoUrl, signatureImageUrl, signatureTitle,
-            showSig, showBanner, isDefault, companyLogo
+            showSig, showBanner, isDefault, companyLogo,
+            cgstPercent, sgstPercent
           ).run();
 
           // Sync promotional_banners column if migrated
@@ -1891,7 +1972,11 @@ export default {
             message: 'Company profile saved successfully',
             id,
             company_logo: companyLogo,
-            companyLogo
+            companyLogo,
+            cgstPercent,
+            sgstPercent,
+            cgst_percent: cgstPercent,
+            sgst_percent: sgstPercent
           }, 200, env);
         } catch (postErr) {
           console.error('[API /api/companies POST Error]:', postErr);
@@ -1944,7 +2029,11 @@ export default {
                   website: csRow.website,
                   gstin: csRow.gstin,
                   state: csRow.state,
-                  stateCode: csRow.state_code
+                  stateCode: csRow.state_code,
+                  cgstPercent: csRow.cgst_percent !== null && csRow.cgst_percent !== undefined ? csRow.cgst_percent : 9.0,
+                  sgstPercent: csRow.sgst_percent !== null && csRow.sgst_percent !== undefined ? csRow.sgst_percent : 9.0,
+                  cgst_percent: csRow.cgst_percent !== null && csRow.cgst_percent !== undefined ? csRow.cgst_percent : 9.0,
+                  sgst_percent: csRow.sgst_percent !== null && csRow.sgst_percent !== undefined ? csRow.sgst_percent : 9.0
                 },
                 bank: {
                   bankName: csRow.bank_name,
@@ -2005,6 +2094,12 @@ export default {
         const mediaJson = JSON.stringify(media);
 
         const compLogo = (comp.companyLogo || comp.company_logo || media.companyLogo || media.company_logo || media.headerLogoUrl || '').trim();
+        const cgstPercent = (comp.cgstPercent !== undefined && comp.cgstPercent !== null && comp.cgstPercent !== '')
+          ? parseFloat(comp.cgstPercent)
+          : ((comp.cgst_percent !== undefined && comp.cgst_percent !== null && comp.cgst_percent !== '') ? parseFloat(comp.cgst_percent) : 9.0);
+        const sgstPercent = (comp.sgstPercent !== undefined && comp.sgstPercent !== null && comp.sgstPercent !== '')
+          ? parseFloat(comp.sgstPercent)
+          : ((comp.sgst_percent !== undefined && comp.sgst_percent !== null && comp.sgst_percent !== '') ? parseFloat(comp.sgst_percent) : 9.0);
 
         // Try updating company_settings structured table
         try {
@@ -2013,12 +2108,14 @@ export default {
               id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
               bank_name, account_name, account_number, ifsc_code, branch, terms_json,
               banner_url, header_logo_url, signature_image_url, signature_title,
-              show_signature_in_pdf, show_banner_in_pdf, turnstile_site_key, company_logo, updated_at
+              show_signature_in_pdf, show_banner_in_pdf, turnstile_site_key, company_logo,
+              cgst_percent, sgst_percent, updated_at
             ) VALUES (
               'primary', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?,
-              ?, ?, ?, ?, datetime("now")
+              ?, ?, ?, ?,
+              ?, ?, datetime("now")
             )
             ON CONFLICT(id) DO UPDATE SET
               company_name = excluded.company_name,
@@ -2045,6 +2142,8 @@ export default {
               show_banner_in_pdf = excluded.show_banner_in_pdf,
               turnstile_site_key = excluded.turnstile_site_key,
               company_logo = excluded.company_logo,
+              cgst_percent = excluded.cgst_percent,
+              sgst_percent = excluded.sgst_percent,
               updated_at = datetime("now")
           `).bind(
             comp.name || 'Quotation Manager', comp.tagline || '', comp.address || '', comp.phone || '', comp.phoneSecondary || '',
@@ -2052,7 +2151,8 @@ export default {
             bank.bankName || '', bank.accountName || '', bank.accountNumber || '', bank.ifscCode || '', bank.branch || '',
             termsJson,
             media.bannerUrl || '', compLogo, media.signatureImageUrl || '', media.signatureTitle || 'Authorized Signatory',
-            media.showSignatureInPdf !== false ? 1 : 0, media.showBannerInPdf !== false ? 1 : 0, media.turnstileSiteKey || '', compLogo
+            media.showSignatureInPdf !== false ? 1 : 0, media.showBannerInPdf !== false ? 1 : 0, media.turnstileSiteKey || '', compLogo,
+            cgstPercent, sgstPercent
           ).run();
         } catch (e) {
           // If company_settings doesn't exist yet, silently continue to legacy table

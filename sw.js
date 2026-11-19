@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qm-quotes-v3.6.2';
+const CACHE_NAME = 'qm-quotes-v3.7.0';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -17,7 +17,6 @@ const ASSETS_TO_CACHE = [
   './assets/icons/icon-512.png',
   './assets/sample-banner.svg',
   './assets/sample-signature.svg',
-  './assets/header-roof-logo.svg',
   './assets/product-gallery-page7.svg',
   './assets/profile-indradhanus.svg',
   './assets/profile-crimping.svg',

@@ -79,6 +79,10 @@ CREATE TABLE IF NOT EXISTS quotations (
   gst_type TEXT NOT NULL DEFAULT 'CGST_SGST',
   gst_rate REAL NOT NULL DEFAULT 18.0,
   gst_amount REAL NOT NULL DEFAULT 0.0,
+  cgst_percent REAL NOT NULL DEFAULT 9.0,
+  sgst_percent REAL NOT NULL DEFAULT 9.0,
+  cgst_amount REAL NOT NULL DEFAULT 0.0,
+  sgst_amount REAL NOT NULL DEFAULT 0.0,
   round_off REAL NOT NULL DEFAULT 0.0,
   grand_total REAL NOT NULL DEFAULT 0.0,
   grand_total_words TEXT,
@@ -127,6 +131,8 @@ CREATE TABLE IF NOT EXISTS company_settings (
   show_signature_in_pdf INTEGER DEFAULT 1,
   show_banner_in_pdf INTEGER DEFAULT 1,
   turnstile_site_key TEXT DEFAULT '',
+  cgst_percent REAL DEFAULT 9.0,
+  sgst_percent REAL DEFAULT 9.0,
   is_default INTEGER DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -219,4 +225,14 @@ INSERT OR IGNORE INTO settings (
 
 -- Schema Migration: Dynamic Company Logo (Top-Right Header) per Company Profile
 ALTER TABLE company_settings ADD COLUMN company_logo TEXT DEFAULT '';
+
+-- Schema Migration: Company-Wise Default CGST (%) & SGST (%) Configuration
+ALTER TABLE company_settings ADD COLUMN cgst_percent REAL DEFAULT 9.0;
+ALTER TABLE company_settings ADD COLUMN sgst_percent REAL DEFAULT 9.0;
+
+-- Schema Migration: Quotation-Level CGST & SGST Storage
+ALTER TABLE quotations ADD COLUMN cgst_percent REAL DEFAULT 9.0;
+ALTER TABLE quotations ADD COLUMN sgst_percent REAL DEFAULT 9.0;
+ALTER TABLE quotations ADD COLUMN cgst_amount REAL DEFAULT 0.0;
+ALTER TABLE quotations ADD COLUMN sgst_amount REAL DEFAULT 0.0;
 

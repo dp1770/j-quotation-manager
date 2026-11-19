@@ -14,7 +14,9 @@ const DEFAULT_SETTINGS = {
     website: 'www.company.com',
     gstin: '24AAAAA0000A1Z5',
     state: 'Gujarat',
-    stateCode: '24'
+    stateCode: '24',
+    cgstPercent: 9,
+    sgstPercent: 9
   },
   bank: {
     bankName: 'Primary Bank Name',

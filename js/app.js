@@ -2053,6 +2053,29 @@ const App = {
       }
     }
 
+    // Restore and normalize product images across all items with master catalog fallback
+    const masterCatalog = (StorageManager.getItems && typeof StorageManager.getItems === 'function') ? StorageManager.getItems() : [];
+    q.items = (q.items || []).map(it => {
+      let img = (it.imageUrl || it.image_url || it.image || '').trim();
+      if (!img && masterCatalog.length > 0) {
+        const itDesc = (it.description || it.name || '').trim().toLowerCase();
+        const matched = masterCatalog.find(m =>
+          (it.masterItemId && String(m.id) === String(it.masterItemId)) ||
+          (itDesc && m.name && itDesc === m.name.trim().toLowerCase())
+        );
+        if (matched) {
+          img = (matched.imageUrl || matched.image_url || matched.image || '').trim();
+          if (!it.masterItemId) it.masterItemId = matched.id;
+        }
+      }
+      return {
+        ...it,
+        imageUrl: img,
+        image_url: img,
+        image: img
+      };
+    });
+
     // Header inputs
     const elNum = document.getElementById('edit-quote-number');
     const elDate = document.getElementById('edit-quote-date');
@@ -2095,6 +2118,24 @@ const App = {
     const defComp = StorageManager.getDefaultCompany ? StorageManager.getDefaultCompany() : null;
     const selectedCompanyId = q.companyId || defComp?.id || 'primary';
     this.populateQuotationCompanySelector(selectedCompanyId);
+
+    const companies = StorageManager.getCompanies();
+    const matchedComp = companies.find(c => c.id === selectedCompanyId) || companies[0] || {};
+    const defaultCgst = matchedComp.cgstPercent !== undefined ? matchedComp.cgstPercent : (matchedComp.cgst_percent !== undefined ? matchedComp.cgst_percent : 9.0);
+    const defaultSgst = matchedComp.sgstPercent !== undefined ? matchedComp.sgstPercent : (matchedComp.sgst_percent !== undefined ? matchedComp.sgst_percent : 9.0);
+
+    const quoteCgst = (q.cgstPercent !== undefined && q.cgstPercent !== null) ? q.cgstPercent : ((q.cgst_percent !== undefined && q.cgst_percent !== null) ? q.cgst_percent : defaultCgst);
+    const quoteSgst = (q.sgstPercent !== undefined && q.sgstPercent !== null) ? q.sgstPercent : ((q.sgst_percent !== undefined && q.sgst_percent !== null) ? q.sgst_percent : defaultSgst);
+    const quoteIgst = (q.gstRate !== undefined && q.gstRate !== null) ? q.gstRate : 18.0;
+
+    const elCgstInp = document.getElementById('edit-quote-cgst-percent');
+    const elSgstInp = document.getElementById('edit-quote-sgst-percent');
+    const elIgstInp = document.getElementById('edit-quote-igst-percent');
+    if (elCgstInp) elCgstInp.value = quoteCgst;
+    if (elSgstInp) elSgstInp.value = quoteSgst;
+    if (elIgstInp) elIgstInp.value = quoteIgst;
+
+    this.handleQuotationGstTypeChange();
 
     // Promotional Banner toggle
     const elBanner = document.getElementById('edit-quote-include-banner');
@@ -2158,12 +2199,29 @@ const App = {
       const amt = ((parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0)).toFixed(2);
 
       // Master Items Options
+      const itDesc = (item.description || item.name || '').trim().toLowerCase();
       const masterOptions = masterItems.map(m => {
-        const isSelected = (item.masterItemId === m.id) || (item.description === m.name && !item.isCustom);
+        const isSelected = (item.masterItemId && String(item.masterItemId) === String(m.id)) || (itDesc && m.name && itDesc === m.name.trim().toLowerCase() && !item.isCustom);
         return `<option value="${m.id}" ${isSelected ? 'selected' : ''}>
           ${this.escapeHtml(m.name)} (₹${parseFloat(m.rate).toFixed(2)} / ${this.escapeHtml(m.unit)})
         </option>`;
       }).join('');
+
+      // Check for image URL with master catalog fallback
+      let itImg = (item.imageUrl || item.image_url || item.image || '').trim();
+      if (!itImg && masterItems.length > 0) {
+        const matched = masterItems.find(m =>
+          (item.masterItemId && String(m.id) === String(item.masterItemId)) ||
+          (itDesc && m.name && itDesc === m.name.trim().toLowerCase())
+        );
+        if (matched) {
+          itImg = (matched.imageUrl || matched.image_url || matched.image || '').trim();
+          item.imageUrl = itImg;
+          item.image_url = itImg;
+          item.image = itImg;
+          if (!item.masterItemId) item.masterItemId = matched.id;
+        }
+      }
 
       // Check for accessories nested sub-table
       let subTableRows = '';
@@ -2218,10 +2276,10 @@ const App = {
 
             <!-- Product Image Displayed Directly Below Selected Item in HTML Table -->
             <div class="mt-2">
-              ${item.imageUrl ? `
+              ${itImg ? `
                 <div class="p-2 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-between gap-3 max-w-md">
                   <div class="flex items-center gap-2.5">
-                    <img src="${item.imageUrl}" alt="Product Profile" class="h-10 max-w-44 object-contain bg-white rounded-lg p-1 border border-stone-200 shadow-2xs" />
+                    <img src="${itImg}" alt="Product Profile" class="h-10 max-w-44 object-contain bg-white rounded-lg p-1 border border-stone-200 shadow-2xs" />
                     <div>
                       <span class="text-xs font-semibold text-stone-900 block">Product Profile Diagram</span>
                       <span class="text-[11px] text-stone-500">Displayed on quotation PDF table</span>
@@ -2307,7 +2365,10 @@ const App = {
     item.subRemarks = masterItem.description || '';
     item.unit = masterItem.unit || 'SQ.FEET';
     item.rate = parseFloat(masterItem.rate) || 0; // Automatically fill Unit Price!
-    item.imageUrl = masterItem.imageUrl || '';   // Automatically display Product Image below item!
+    const masterImg = (masterItem.imageUrl || masterItem.image_url || masterItem.image || '').trim();
+    item.imageUrl = masterImg;   // Automatically display Product Image below item!
+    item.image_url = masterImg;
+    item.image = masterImg;
 
     // Smartly initialize corresponding size calculation parameters (strictly informational reference)
     if (!this.currentQuotation.calculations) this.currentQuotation.calculations = [];
@@ -2335,6 +2396,8 @@ const App = {
       const compressedBase64 = await this.compressImage(file, 800, 0.75);
       const mediaUrl = await StorageManager.uploadMedia(compressedBase64, file.name);
       this.currentQuotation.items[itemIdx].imageUrl = mediaUrl;
+      this.currentQuotation.items[itemIdx].image_url = mediaUrl;
+      this.currentQuotation.items[itemIdx].image = mediaUrl;
       this.renderEditorItemsTable();
       this.showToast('Profile image uploaded to cloud storage!', 'success');
     } catch (err) {
@@ -2348,6 +2411,8 @@ const App = {
   removeItemImage(itemIdx) {
     if (!this.currentQuotation || !this.currentQuotation.items[itemIdx]) return;
     this.currentQuotation.items[itemIdx].imageUrl = '';
+    this.currentQuotation.items[itemIdx].image_url = '';
+    this.currentQuotation.items[itemIdx].image = '';
     this.renderEditorItemsTable();
   },
 
@@ -2374,6 +2439,8 @@ const App = {
       description: '',
       subRemarks: '',
       imageUrl: '',
+      image_url: '',
+      image: '',
       quantity: 1,
       unit: 'SQ.FEET',
       rate: 0,
@@ -2667,17 +2734,33 @@ const App = {
     const gstType = document.getElementById('edit-quote-gst-type')?.value || this.currentQuotation.gstType || 'CGST_SGST';
     this.currentQuotation.gstType = gstType;
 
+    const cgstInpVal = document.getElementById('edit-quote-cgst-percent')?.value;
+    const sgstInpVal = document.getElementById('edit-quote-sgst-percent')?.value;
+    const igstInpVal = document.getElementById('edit-quote-igst-percent')?.value;
+
+    const customCgstRate = cgstInpVal !== undefined && cgstInpVal !== '' ? (parseFloat(cgstInpVal) || 0) : 9.0;
+    const customSgstRate = sgstInpVal !== undefined && sgstInpVal !== '' ? (parseFloat(sgstInpVal) || 0) : 9.0;
+    const customGstRate = igstInpVal !== undefined && igstInpVal !== '' ? (parseFloat(igstInpVal) || 0) : 18.0;
+
     const totals = CalculationsEngine.calculateQuotationTotals(
       this.currentQuotation.items || [],
       loadingVal,
       this.currentQuotation.additionalCharges || [],
       gstType,
-      this.currentQuotation.customGstRate,
-      this.currentQuotation.roundOff
+      customGstRate,
+      this.currentQuotation.roundOff,
+      customCgstRate,
+      customSgstRate
     );
 
     const subEl = document.getElementById('calc-summary-subtotal');
     const loadEl = document.getElementById('calc-summary-loading');
+    const cgstLabel = document.getElementById('calc-summary-cgst-label');
+    const sgstLabel = document.getElementById('calc-summary-sgst-label');
+    const igstLabel = document.getElementById('calc-summary-igst-label');
+    const cgstEl = document.getElementById('calc-summary-cgst');
+    const sgstEl = document.getElementById('calc-summary-sgst');
+    const igstEl = document.getElementById('calc-summary-igst');
     const taxEl = document.getElementById('calc-summary-tax');
     const grandEl = document.getElementById('calc-summary-grand');
     const wordsEl = document.getElementById('calc-summary-words');
@@ -2685,11 +2768,25 @@ const App = {
     if (subEl) subEl.innerText = totals.materialTotal.toFixed(2) + '/-';
     if (loadEl) loadEl.innerText = totals.loadingCharges.toFixed(2) + '/-';
     if (taxEl) taxEl.innerText = totals.gstAmount.toFixed(2) + '/-';
+
+    if (cgstLabel) cgstLabel.textContent = `CGST (${totals.cgstRate}%):`;
+    if (sgstLabel) sgstLabel.textContent = `SGST (${totals.sgstRate}%):`;
+    if (igstLabel) igstLabel.textContent = `IGST (${totals.igstRate}%):`;
+    if (cgstEl) cgstEl.innerText = totals.cgstAmount.toFixed(2) + '/-';
+    if (sgstEl) sgstEl.innerText = totals.sgstAmount.toFixed(2) + '/-';
+    if (igstEl) igstEl.innerText = totals.igstAmount.toFixed(2) + '/-';
+
     if (grandEl) grandEl.innerText = Math.round(totals.grandTotal) + '/-';
     if (wordsEl) wordsEl.innerText = totals.grandTotalWords;
 
     this.currentQuotation.materialTotal = totals.materialTotal;
+    this.currentQuotation.gstType = gstType;
+    this.currentQuotation.gstRate = totals.gstRate;
     this.currentQuotation.gstAmount = totals.gstAmount;
+    this.currentQuotation.cgstPercent = totals.cgstRate;
+    this.currentQuotation.sgstPercent = totals.sgstRate;
+    this.currentQuotation.cgstAmount = totals.cgstAmount;
+    this.currentQuotation.sgstAmount = totals.sgstAmount;
     this.currentQuotation.roundOff = totals.roundOff;
     this.currentQuotation.grandTotal = totals.grandTotal;
     this.currentQuotation.grandTotalWords = totals.grandTotalWords;
@@ -2801,6 +2898,29 @@ const App = {
           if (subInput) item.subRemarks = subInput.value.trim();
           item.amount = parseFloat(((parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0)).toFixed(2));
         }
+      });
+
+      // Ensure all line items preserve their image properties and fallback to master if needed
+      const masterCatalog = (StorageManager.getItems && typeof StorageManager.getItems === 'function') ? StorageManager.getItems() : [];
+      this.currentQuotation.items = this.currentQuotation.items.map(item => {
+        let img = (item.imageUrl || item.image_url || item.image || '').trim();
+        if (!img && masterCatalog.length > 0) {
+          const itDesc = (item.description || item.name || '').trim().toLowerCase();
+          const matched = masterCatalog.find(m =>
+            (item.masterItemId && String(m.id) === String(item.masterItemId)) ||
+            (itDesc && m.name && itDesc === m.name.trim().toLowerCase())
+          );
+          if (matched) {
+            img = (matched.imageUrl || matched.image_url || matched.image || '').trim();
+            if (!item.masterItemId) item.masterItemId = matched.id;
+          }
+        }
+        return {
+          ...item,
+          imageUrl: img,
+          image_url: img,
+          image: img
+        };
       });
 
       // Recalculate all financials right before saving
@@ -3466,6 +3586,11 @@ const App = {
     if (elEmail) elEmail.value = comp.email || '';
     if (elGst) elGst.value = comp.gstin || '';
 
+    const elCgst = document.getElementById('set-company-cgst');
+    const elSgst = document.getElementById('set-company-sgst');
+    if (elCgst) elCgst.value = comp.cgstPercent !== undefined ? comp.cgstPercent : (comp.cgst_percent !== undefined ? comp.cgst_percent : 9);
+    if (elSgst) elSgst.value = comp.sgstPercent !== undefined ? comp.sgstPercent : (comp.sgst_percent !== undefined ? comp.sgst_percent : 9);
+
     const elBank = document.getElementById('set-bank-name');
     const elAcName = document.getElementById('set-bank-acname');
     const elAcNo = document.getElementById('set-bank-acno');
@@ -3671,6 +3796,60 @@ const App = {
       const defBadge = c.isDefault ? ' (Default)' : '';
       return `<option value="${c.id}" ${isSel ? 'selected' : ''}>${label}${defBadge}</option>`;
     }).join('');
+  },
+
+  handleQuotationCompanyChange(companyId) {
+    if (!this.currentQuotation) return;
+    const companies = StorageManager.getCompanies();
+    const comp = companies.find(c => c.id === companyId) || companies[0] || {};
+    this.currentQuotation.companyId = companyId;
+    this.currentQuotation.companyName = comp.companyName || comp.name || '';
+
+    const defaultCgst = comp.cgstPercent !== undefined ? comp.cgstPercent : (comp.cgst_percent !== undefined ? comp.cgst_percent : 9.0);
+    const defaultSgst = comp.sgstPercent !== undefined ? comp.sgstPercent : (comp.sgst_percent !== undefined ? comp.sgst_percent : 9.0);
+
+    const elCgstInp = document.getElementById('edit-quote-cgst-percent');
+    const elSgstInp = document.getElementById('edit-quote-sgst-percent');
+    if (elCgstInp) elCgstInp.value = defaultCgst;
+    if (elSgstInp) elSgstInp.value = defaultSgst;
+
+    this.recalculateEditorFinancials();
+  },
+
+  handleQuotationGstTypeChange() {
+    const gstType = document.getElementById('edit-quote-gst-type')?.value || 'CGST_SGST';
+    const cgstSgstInputs = document.getElementById('edit-quote-cgst-sgst-inputs');
+    const igstInputs = document.getElementById('edit-quote-igst-inputs');
+    const cgstRow = document.getElementById('calc-summary-cgst-row');
+    const sgstRow = document.getElementById('calc-summary-sgst-row');
+    const igstRow = document.getElementById('calc-summary-igst-row');
+    const taxRow = document.getElementById('calc-summary-tax-row');
+
+    if (gstType === 'CGST_SGST') {
+      if (cgstSgstInputs) cgstSgstInputs.classList.remove('hidden');
+      if (igstInputs) igstInputs.classList.add('hidden');
+      if (cgstRow) cgstRow.classList.remove('hidden');
+      if (sgstRow) sgstRow.classList.remove('hidden');
+      if (igstRow) igstRow.classList.add('hidden');
+      if (taxRow) taxRow.classList.add('hidden');
+    } else if (gstType === 'IGST') {
+      if (cgstSgstInputs) cgstSgstInputs.classList.add('hidden');
+      if (igstInputs) igstInputs.classList.remove('hidden');
+      if (cgstRow) cgstRow.classList.add('hidden');
+      if (sgstRow) sgstRow.classList.add('hidden');
+      if (igstRow) igstRow.classList.remove('hidden');
+      if (taxRow) taxRow.classList.add('hidden');
+    } else {
+      // NONE or other
+      if (cgstSgstInputs) cgstSgstInputs.classList.add('hidden');
+      if (igstInputs) igstInputs.classList.add('hidden');
+      if (cgstRow) cgstRow.classList.add('hidden');
+      if (sgstRow) sgstRow.classList.add('hidden');
+      if (igstRow) igstRow.classList.add('hidden');
+      if (taxRow) taxRow.classList.add('hidden');
+    }
+
+    this.recalculateEditorFinancials();
   },
 
   renderSettings() {
@@ -4135,6 +4314,16 @@ const App = {
     activeComp.phoneSecondary = phoneSecondary;
     activeComp.email = email;
     activeComp.gstin = gstin;
+
+    const elCgst = document.getElementById('set-company-cgst');
+    const elSgst = document.getElementById('set-company-sgst');
+    const cgstPercent = elCgst && elCgst.value !== '' ? (parseFloat(elCgst.value) || 0) : 9.0;
+    const sgstPercent = elSgst && elSgst.value !== '' ? (parseFloat(elSgst.value) || 0) : 9.0;
+    activeComp.cgstPercent = cgstPercent;
+    activeComp.sgstPercent = sgstPercent;
+    activeComp.cgst_percent = cgstPercent;
+    activeComp.sgst_percent = sgstPercent;
+
     activeComp.bankName = bankName;
     activeComp.accountName = accountName;
     activeComp.accountNo = accountNumber;
@@ -4172,6 +4361,8 @@ const App = {
         gstin: gstin,
         state: 'Gujarat',
         stateCode: '24',
+        cgstPercent: cgstPercent,
+        sgstPercent: sgstPercent,
         companyLogo: compLogo,
         company_logo: compLogo
       };

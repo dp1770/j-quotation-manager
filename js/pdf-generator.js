@@ -18,13 +18,18 @@ const PdfGenerator = {
     const media = settings?.media || DEFAULT_SETTINGS.media;
 
     // Recalculate totals for precision
+    const customCgst = quote.cgstPercent !== undefined && quote.cgstPercent !== null ? quote.cgstPercent : (quote.cgst_percent !== undefined && quote.cgst_percent !== null ? quote.cgst_percent : (comp.cgstPercent !== undefined ? comp.cgstPercent : (comp.cgst_percent !== undefined ? comp.cgst_percent : 9)));
+    const customSgst = quote.sgstPercent !== undefined && quote.sgstPercent !== null ? quote.sgstPercent : (quote.sgst_percent !== undefined && quote.sgst_percent !== null ? quote.sgst_percent : (comp.sgstPercent !== undefined ? comp.sgstPercent : (comp.sgst_percent !== undefined ? comp.sgst_percent : 9)));
+
     const totals = CalculationsEngine.calculateQuotationTotals(
       quote.items || [],
       quote.loadingCharges || 0,
       quote.additionalCharges || [],
       quote.gstType || 'CGST_SGST',
       quote.gstRate,
-      quote.roundOff
+      quote.roundOff,
+      customCgst,
+      customSgst
     );
 
     let bannersList = [];
@@ -73,9 +78,24 @@ const PdfGenerator = {
       const rateStr = (parseFloat(it.rate) || 0).toFixed(2);
       const amtStr = ((parseFloat(it.quantity) || 0) * (parseFloat(it.rate) || 0)).toFixed(2);
 
-      // Collect product profile / item image
-      const itImg = (it.imageUrl || it.image_url || it.image || '').trim() ||
-        (it.description && it.description.toUpperCase().includes('POLY CARBONATE EMBOSSED CLEAR DOUBLE WALLY') ? 'assets/profile-polycarbonate.svg' : '');
+      // Collect product profile / item image with fallback to Items Master
+      let itImg = (it.imageUrl || it.image_url || it.image || '').trim();
+      if (!itImg && typeof StorageManager !== 'undefined' && StorageManager && typeof StorageManager.getItems === 'function') {
+        try {
+          const masterList = StorageManager.getItems();
+          const itDesc = (it.description || it.name || '').trim().toLowerCase();
+          const matched = masterList.find(m =>
+            (it.masterItemId && String(m.id) === String(it.masterItemId)) ||
+            (itDesc && m.name && itDesc === m.name.trim().toLowerCase())
+          );
+          if (matched) {
+            itImg = (matched.imageUrl || matched.image_url || matched.image || '').trim();
+          }
+        } catch (e) {}
+      }
+      if (!itImg && it.description && it.description.toUpperCase().includes('POLY CARBONATE EMBOSSED CLEAR DOUBLE WALLY')) {
+        itImg = 'assets/profile-polycarbonate.svg';
+      }
       if (itImg) {
         imageCards.push({
           index: idx + 1,
@@ -145,9 +165,9 @@ const PdfGenerator = {
       `;
     }).join('');
 
-    let taxLabel = 'GST 18% (SGST 9% CGST 9%)';
+    let taxLabel = `GST ${totals.gstRate}% (CGST ${totals.cgstRate}% + SGST ${totals.sgstRate}%)`;
     if (totals.gstType === 'IGST') {
-      taxLabel = 'IGST 18%';
+      taxLabel = `IGST ${totals.igstRate}%`;
     } else if (totals.gstType === 'CUSTOM') {
       taxLabel = `GST ${totals.gstRate}%`;
     }
@@ -568,10 +588,21 @@ const PdfGenerator = {
             <span class="font-bold">Loading Charge:</span>
             <span class="font-mono text-slate-950 font-black">${totals.loadingCharges.toFixed(2)}/-</span>
           </div>
+          ${totals.gstType === 'CGST_SGST' ? `
+          <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
+            <span class="font-bold">CGST (${totals.cgstRate}%):</span>
+            <span class="font-mono text-slate-950 font-black">${totals.cgstAmount.toFixed(2)}/-</span>
+          </div>
+          <div class="flex justify-between items-center py-0.5 border-b-2 border-slate-400 text-slate-700">
+            <span class="font-bold">SGST (${totals.sgstRate}%):</span>
+            <span class="font-mono text-slate-950 font-black">${totals.sgstAmount.toFixed(2)}/-</span>
+          </div>
+          ` : `
           <div class="flex justify-between items-center py-0.5 border-b-2 border-slate-400 text-slate-700">
             <span class="font-bold">${taxLabel}:</span>
             <span class="font-mono text-slate-950 font-black">${totals.gstAmount.toFixed(2)}/-</span>
           </div>
+          `}
           <!-- FINAL CALCULATION ROW: GRAND TOTAL (Directly below GST row) -->
           <div class="flex justify-between items-center py-1.5 bg-blue-50/90 border border-blue-200 px-2 rounded mt-0.5 text-blue-950">
             <span class="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950">GRAND TOTAL:</span>

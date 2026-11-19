@@ -700,6 +700,16 @@
               <input type="text" id="set-company-gstin" class="h-11 w-full px-3.5 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 text-sm font-code uppercase focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20" />
             </div>
           </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1.5">
+              <label for="set-company-cgst" class="text-sm font-semibold text-stone-700">Default CGST (%)</label>
+              <input type="number" id="set-company-cgst" step="0.01" min="0" max="50" placeholder="9" class="h-11 w-full px-3.5 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 text-sm font-code focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label for="set-company-sgst" class="text-sm font-semibold text-stone-700">Default SGST (%)</label>
+              <input type="number" id="set-company-sgst" step="0.01" min="0" max="50" placeholder="9" class="h-11 w-full px-3.5 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 text-sm font-code focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20" />
+            </div>
+          </div>
 
           <!-- Company Logo (Top-Right Header) -->
           <div class="flex flex-col gap-2 pt-3 border-t border-stone-100">
@@ -1449,11 +1459,29 @@
               <!-- GST Tax Select -->
               <div class="flex flex-col gap-1.5">
                 <label for="edit-quote-gst-type" class="text-sm font-semibold text-stone-700">GST tax type</label>
-                <select id="edit-quote-gst-type" onchange="App.recalculateEditorFinancials()" class="h-11 w-full px-3.5 rounded-xl border border-stone-300 bg-stone-50 text-sm font-semibold text-stone-900 focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20">
-                  <option value="CGST_SGST">GST 18% (SGST 9% + CGST 9%) - Gujarat</option>
-                  <option value="IGST">GST 18% (IGST 18%) - Inter-State</option>
+                <select id="edit-quote-gst-type" onchange="App.handleQuotationGstTypeChange()" class="h-11 w-full px-3.5 rounded-xl border border-stone-300 bg-stone-50 text-sm font-semibold text-stone-900 focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20">
+                  <option value="CGST_SGST">GST (CGST + SGST) - In-State</option>
+                  <option value="IGST">GST (IGST) - Inter-State</option>
                   <option value="NONE">No GST (Nil Rated)</option>
                 </select>
+              </div>
+
+              <!-- Editable CGST & SGST Overrides (when CGST_SGST selected) -->
+              <div id="edit-quote-cgst-sgst-inputs" class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1.5">
+                  <label for="edit-quote-cgst-percent" class="text-xs font-semibold text-stone-700">CGST (%)</label>
+                  <input type="number" step="0.01" min="0" max="50" id="edit-quote-cgst-percent" value="9" oninput="App.recalculateEditorFinancials()" class="h-10 w-full px-3 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 font-code font-semibold text-sm text-right focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20" placeholder="9" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                  <label for="edit-quote-sgst-percent" class="text-xs font-semibold text-stone-700">SGST (%)</label>
+                  <input type="number" step="0.01" min="0" max="50" id="edit-quote-sgst-percent" value="9" oninput="App.recalculateEditorFinancials()" class="h-10 w-full px-3 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 font-code font-semibold text-sm text-right focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20" placeholder="9" />
+                </div>
+              </div>
+
+              <!-- Editable IGST Override (when IGST selected) -->
+              <div id="edit-quote-igst-inputs" class="hidden flex flex-col gap-1.5">
+                <label for="edit-quote-igst-percent" class="text-xs font-semibold text-stone-700">IGST (%)</label>
+                <input type="number" step="0.01" min="0" max="50" id="edit-quote-igst-percent" value="18" oninput="App.recalculateEditorFinancials()" class="h-10 w-full px-3 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 font-code font-semibold text-sm text-right focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20" placeholder="18" />
               </div>
 
               <!-- Amount Breakdown -->
@@ -1466,7 +1494,22 @@
                   <span class="text-stone-600">Loading charge:</span>
                   <span id="calc-summary-loading" class="font-code font-semibold text-stone-900">0.00/-</span>
                 </div>
-                <div class="flex justify-between items-center py-1 border-b border-stone-100">
+                <!-- Separate CGST & SGST Rows -->
+                <div id="calc-summary-cgst-row" class="flex justify-between items-center py-1 border-b border-stone-100">
+                  <span id="calc-summary-cgst-label" class="text-stone-600">CGST (9%):</span>
+                  <span id="calc-summary-cgst" class="font-code font-semibold text-stone-900">0.00/-</span>
+                </div>
+                <div id="calc-summary-sgst-row" class="flex justify-between items-center py-1 border-b border-stone-100">
+                  <span id="calc-summary-sgst-label" class="text-stone-600">SGST (9%):</span>
+                  <span id="calc-summary-sgst" class="font-code font-semibold text-stone-900">0.00/-</span>
+                </div>
+                <!-- IGST Row -->
+                <div id="calc-summary-igst-row" class="hidden justify-between items-center py-1 border-b border-stone-100">
+                  <span id="calc-summary-igst-label" class="text-stone-600">IGST (18%):</span>
+                  <span id="calc-summary-igst" class="font-code font-semibold text-stone-900">0.00/-</span>
+                </div>
+                <!-- Fallback / Total Tax Summary Row -->
+                <div id="calc-summary-tax-row" class="hidden justify-between items-center py-1 border-b border-stone-100">
                   <span class="text-stone-600">GST:</span>
                   <span id="calc-summary-tax" class="font-code font-semibold text-stone-900">0.00/-</span>
                 </div>

@@ -83,6 +83,30 @@ test('calculateQuotationTotals: CGST + SGST tax split and loading charges', () =
   assert.equal(totals.grandTotal, 6990);
 });
 
+test('calculateQuotationTotals: Custom company-wise CGST (%) & SGST (%) calculation', () => {
+  const items = [{ name: 'Roofing Sheet', quantity: 100, rate: 100 }]; // 10,000
+  // Custom 2.5% CGST and 2.5% SGST (5% total GST)
+  const totals = CalculationsEngine.calculateQuotationTotals(
+    items,
+    0,
+    [],
+    'CGST_SGST',
+    null,
+    null,
+    2.5,
+    2.5
+  );
+
+  assert.equal(totals.materialTotal, 10000);
+  assert.equal(totals.cgstRate, 2.5);
+  assert.equal(totals.sgstRate, 2.5);
+  assert.equal(totals.gstRate, 5);
+  assert.equal(totals.cgstAmount, 250);
+  assert.equal(totals.sgstAmount, 250);
+  assert.equal(totals.gstAmount, 500);
+  assert.equal(totals.grandTotal, 10500);
+});
+
 test('calculateQuotationTotals: IGST interstate tax calculation', () => {
   const items = [{ name: 'Industrial Coil', quantity: 10, rate: 1000 }];
   const totals = CalculationsEngine.calculateQuotationTotals(items, 0, [], 'IGST');
@@ -168,4 +192,88 @@ test('PdfGenerator.generateQuotationHtml: Dynamic company logo rendering in head
   const htmlWithoutLogo = PdfGenerator.generateQuotationHtml(quote, settingsWithoutLogo);
   assert.doesNotMatch(htmlWithoutLogo, /header-roof-logo\.svg/);
   assert.doesNotMatch(htmlWithoutLogo, /Balaji Industries Logo/);
+});
+
+test('PdfGenerator.generateQuotationHtml: Dynamic CGST and SGST breakdown in PDF calculation box', () => {
+  const pdfGenCode = fs.readFileSync(path.join(__dirname, '../js/pdf-generator.js'), 'utf8');
+  const defaultDataCode = fs.readFileSync(path.join(__dirname, '../js/default-data.js'), 'utf8');
+  const pdfContext = {
+    window: { CalculationsEngine },
+    globalThis: { CalculationsEngine },
+    CalculationsEngine,
+    console
+  };
+  vm.createContext(pdfContext);
+  vm.runInContext(defaultDataCode, pdfContext);
+  vm.runInContext(pdfGenCode, pdfContext);
+  const PdfGenerator = pdfContext.PdfGenerator || pdfContext.window.PdfGenerator;
+
+  const quote = {
+    quoteNumber: 'QT-2026-0002',
+    date: '2026-11-19',
+    gstType: 'CGST_SGST',
+    cgstPercent: 6,
+    sgstPercent: 6,
+    items: [{ name: 'PPGL Sheet', quantity: 10, rate: 1000 }] // 10,000
+  };
+
+  const settings = {
+    company: { name: 'Balaji Industries', gstin: '24ABCDE1234F1Z5' },
+    bank: {},
+    terms: [],
+    media: { showSignatureInPdf: false, showBannerInPdf: false }
+  };
+
+  const html = PdfGenerator.generateQuotationHtml(quote, settings);
+  assert.match(html, /CGST \(6%\):/);
+  assert.match(html, /SGST \(6%\):/);
+  assert.match(html, /600\.00\/-/);
+});
+
+test('PdfGenerator.generateQuotationHtml: Line item product images rendered in table and image cards', () => {
+  const pdfGenCode = fs.readFileSync(path.join(__dirname, '../js/pdf-generator.js'), 'utf8');
+  const defaultDataCode = fs.readFileSync(path.join(__dirname, '../js/default-data.js'), 'utf8');
+  const mockStorageManager = {
+    getItems() {
+      return [
+        { id: 'master_1', name: 'Master Roofing Sheet', imageUrl: '/api/media/master_sheet.png' }
+      ];
+    }
+  };
+
+  const pdfContext = {
+    window: { CalculationsEngine, StorageManager: mockStorageManager },
+    globalThis: { CalculationsEngine, StorageManager: mockStorageManager },
+    CalculationsEngine,
+    StorageManager: mockStorageManager,
+    console
+  };
+  vm.createContext(pdfContext);
+  vm.runInContext(defaultDataCode, pdfContext);
+  vm.runInContext(pdfGenCode, pdfContext);
+  const PdfGenerator = pdfContext.PdfGenerator || pdfContext.window.PdfGenerator;
+
+  const quote = {
+    quoteNumber: 'QT-2026-0003',
+    date: '2026-11-19',
+    gstType: 'CGST_SGST',
+    items: [
+      // Item 1: Explicit imageUrl
+      { description: 'Item With Custom Image', quantity: 5, rate: 200, imageUrl: '/api/media/custom_product.png' },
+      // Item 2: Missing imageUrl, should fall back to master by matching name
+      { description: 'Master Roofing Sheet', quantity: 10, rate: 500 }
+    ]
+  };
+
+  const settings = {
+    company: { name: 'Balaji Industries', gstin: '24ABCDE1234F1Z5' },
+    bank: {},
+    terms: [],
+    media: { showSignatureInPdf: false, showBannerInPdf: false }
+  };
+
+  const html = PdfGenerator.generateQuotationHtml(quote, settings);
+  // Both images must be rendered in the document
+  assert.match(html, /\/api\/media\/custom_product\.png/);
+  assert.match(html, /\/api\/media\/master_sheet\.png/);
 });

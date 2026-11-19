@@ -87,7 +87,7 @@ const CalculationsEngine = {
    * - GST (SGST 9% + CGST 9% or IGST 18%)
    * - Grand Total (Rounded off)
    */
-  calculateQuotationTotals(items = [], loadingCharges = 0, additionalCharges = [], gstType = 'CGST_SGST', customGstRate = null, manualRoundOff = null) {
+  calculateQuotationTotals(items = [], loadingCharges = 0, additionalCharges = [], gstType = 'CGST_SGST', customGstRate = null, manualRoundOff = null, customCgstRate = null, customSgstRate = null) {
     // 1. Material subtotal
     let materialTotal = 0;
     const processedItems = items.map(item => {
@@ -112,7 +112,7 @@ const CalculationsEngine = {
     // 3. Taxable Amount (Material total as in sample PDF)
     const taxableAmount = materialTotal;
 
-    // 4. GST calculation (18% on Material Subtotal)
+    // 4. GST calculation (CGST + SGST or IGST on Material Subtotal)
     let gstRate = 0;
     let cgstRate = 0;
     let sgstRate = 0;
@@ -120,14 +120,16 @@ const CalculationsEngine = {
     let gstAmount = 0;
 
     if (gstType === 'CGST_SGST') {
-      gstRate = 18;
-      cgstRate = 9;
-      sgstRate = 9;
-      gstAmount = parseFloat((taxableAmount * 0.18).toFixed(2));
+      cgstRate = (customCgstRate !== null && customCgstRate !== undefined && customCgstRate !== '') ? (parseFloat(customCgstRate) || 0) : 9;
+      sgstRate = (customSgstRate !== null && customSgstRate !== undefined && customSgstRate !== '') ? (parseFloat(customSgstRate) || 0) : 9;
+      gstRate = parseFloat((cgstRate + sgstRate).toFixed(2));
+      const cgstAmt = parseFloat((taxableAmount * (cgstRate / 100)).toFixed(2));
+      const sgstAmt = parseFloat((taxableAmount * (sgstRate / 100)).toFixed(2));
+      gstAmount = parseFloat((cgstAmt + sgstAmt).toFixed(2));
     } else if (gstType === 'IGST') {
-      gstRate = 18;
-      igstRate = 18;
-      gstAmount = parseFloat((taxableAmount * 0.18).toFixed(2));
+      gstRate = (customGstRate !== null && customGstRate !== undefined && customGstRate !== '') ? (parseFloat(customGstRate) || 0) : 18;
+      igstRate = gstRate;
+      gstAmount = parseFloat((taxableAmount * (gstRate / 100)).toFixed(2));
     } else if (gstType === 'CUSTOM') {
       gstRate = parseFloat(customGstRate) || 0;
       gstAmount = parseFloat((taxableAmount * (gstRate / 100)).toFixed(2));
@@ -152,8 +154,8 @@ const CalculationsEngine = {
       grandTotal = rounded;
     }
 
-    const cgstAmount = cgstRate > 0 ? parseFloat((taxableAmount * 0.09).toFixed(2)) : 0;
-    const sgstAmount = sgstRate > 0 ? parseFloat((taxableAmount * 0.09).toFixed(2)) : 0;
+    const cgstAmount = cgstRate > 0 ? parseFloat((taxableAmount * (cgstRate / 100)).toFixed(2)) : 0;
+    const sgstAmount = sgstRate > 0 ? parseFloat((taxableAmount * (sgstRate / 100)).toFixed(2)) : 0;
     const igstAmount = igstRate > 0 ? gstAmount : 0;
 
     return {
@@ -167,6 +169,8 @@ const CalculationsEngine = {
       gstRate,
       cgstRate,
       sgstRate,
+      cgstPercent: cgstRate,
+      sgstPercent: sgstRate,
       igstRate,
       cgstAmount,
       sgstAmount,

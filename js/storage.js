@@ -267,6 +267,10 @@ const StorageManager = {
       gstin: settings.company?.gstin || '',
       state: settings.company?.state || 'Gujarat',
       stateCode: settings.company?.stateCode || '24',
+      cgstPercent: settings.company?.cgstPercent !== undefined ? settings.company.cgstPercent : 9.0,
+      sgstPercent: settings.company?.sgstPercent !== undefined ? settings.company.sgstPercent : 9.0,
+      cgst_percent: settings.company?.cgstPercent !== undefined ? settings.company.cgstPercent : 9.0,
+      sgst_percent: settings.company?.sgstPercent !== undefined ? settings.company.sgstPercent : 9.0,
       bankName: settings.bank?.bankName || '',
       accountName: settings.bank?.accountName || '',
       accountNumber: settings.bank?.accountNumber || '',
@@ -383,6 +387,10 @@ const StorageManager = {
         gstin: targetComp.gstin || '',
         state: targetComp.state || 'Gujarat',
         stateCode: targetComp.stateCode || '24',
+        cgstPercent: targetComp.cgstPercent !== undefined ? targetComp.cgstPercent : (targetComp.cgst_percent !== undefined ? targetComp.cgst_percent : 9.0),
+        sgstPercent: targetComp.sgstPercent !== undefined ? targetComp.sgstPercent : (targetComp.sgst_percent !== undefined ? targetComp.sgst_percent : 9.0),
+        cgst_percent: targetComp.cgstPercent !== undefined ? targetComp.cgstPercent : (targetComp.cgst_percent !== undefined ? targetComp.cgst_percent : 9.0),
+        sgst_percent: targetComp.sgstPercent !== undefined ? targetComp.sgstPercent : (targetComp.sgst_percent !== undefined ? targetComp.sgst_percent : 9.0),
         companyLogo: companyLogo,
         company_logo: companyLogo
       },
@@ -423,6 +431,32 @@ const StorageManager = {
         q.items = [];
       }
     }
+
+    // Normalize each item's image URL with master catalog fallback
+    if (Array.isArray(q.items)) {
+      const masterItems = (this.getItems && typeof this.getItems === 'function') ? this.getItems() : [];
+      q.items = q.items.map(it => {
+        if (!it) return it;
+        let img = (it.imageUrl || it.image_url || it.image || '').trim();
+        if (!img && masterItems.length > 0) {
+          const itDesc = (it.description || it.name || '').trim().toLowerCase();
+          const matched = masterItems.find(m =>
+            (it.masterItemId && String(m.id) === String(it.masterItemId)) ||
+            (itDesc && m.name && itDesc === m.name.trim().toLowerCase())
+          );
+          if (matched) {
+            img = (matched.imageUrl || matched.image_url || matched.image || '').trim();
+            if (!it.masterItemId) it.masterItemId = matched.id;
+          }
+        }
+        return {
+          ...it,
+          imageUrl: img,
+          image_url: img,
+          image: img
+        };
+      });
+    }
     if (!Array.isArray(q.calculations)) {
       if (typeof q.calculationsJson === 'string') {
         try { q.calculations = JSON.parse(q.calculationsJson); } catch (e) { q.calculations = []; }
@@ -445,6 +479,14 @@ const StorageManager = {
     q.companyName = q.companyName || q.company_name || '';
     q.includeBanner = (q.includeBanner !== undefined ? Boolean(q.includeBanner) : (q.include_banner !== undefined ? (q.include_banner === 1 || q.include_banner === '1' || q.include_banner === true) : true));
     q.include_banner = q.includeBanner ? 1 : 0;
+    q.cgstPercent = q.cgstPercent !== undefined && q.cgstPercent !== null ? parseFloat(q.cgstPercent) : (q.cgst_percent !== undefined && q.cgst_percent !== null ? parseFloat(q.cgst_percent) : 9.0);
+    q.sgstPercent = q.sgstPercent !== undefined && q.sgstPercent !== null ? parseFloat(q.sgstPercent) : (q.sgst_percent !== undefined && q.sgst_percent !== null ? parseFloat(q.sgst_percent) : 9.0);
+    q.cgstAmount = q.cgstAmount !== undefined && q.cgstAmount !== null ? parseFloat(q.cgstAmount) : (q.cgst_amount !== undefined && q.cgst_amount !== null ? parseFloat(q.cgst_amount) : 0.0);
+    q.sgstAmount = q.sgstAmount !== undefined && q.sgstAmount !== null ? parseFloat(q.sgstAmount) : (q.sgst_amount !== undefined && q.sgst_amount !== null ? parseFloat(q.sgst_amount) : 0.0);
+    q.cgst_percent = q.cgstPercent;
+    q.sgst_percent = q.sgstPercent;
+    q.cgst_amount = q.cgstAmount;
+    q.sgst_amount = q.sgstAmount;
     q.createdBy = q.createdByName || q.createdBy || 'System Administrator';
     q.createdByName = q.createdByName || q.createdBy || 'System Administrator';
     return q;

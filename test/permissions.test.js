@@ -1186,3 +1186,217 @@ test('GET /api/companies: Returns company_logo and companyLogo per company profi
   assert.equal(body.companies[0].company_logo, '/api/media/primary_logo.png');
   assert.equal(body.companies[1].companyLogo, '');
 });
+
+test('POST /api/companies: Saves and returns custom cgst_percent and sgst_percent per company', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  let savedCgst = null;
+  let savedSgst = null;
+
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                if (sql.includes('COUNT(*) as count')) return { count: 1 };
+                return null;
+              },
+              async run() {
+                if (sql.includes('INSERT INTO company_settings')) {
+                  savedCgst = args[25];
+                  savedSgst = args[26];
+                }
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/companies', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      id: 'comp_balaji',
+      companyName: 'Balaji Steel Industries',
+      cgstPercent: 2.5,
+      sgstPercent: 2.5
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.equal(body.cgstPercent, 2.5);
+  assert.equal(body.sgstPercent, 2.5);
+  assert.equal(savedCgst, 2.5);
+  assert.equal(savedSgst, 2.5);
+});
+
+test('POST /api/quotations: Saves custom cgst_percent, sgst_percent, cgst_amount, and sgst_amount', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    fullName: 'Dhaval Admin',
+    isSuperAdmin: true
+  });
+
+  let capturedCgstPercent = null;
+  let capturedSgstPercent = null;
+  let capturedCgstAmount = null;
+  let capturedSgstAmount = null;
+
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                return null;
+              },
+              async run() {
+                if (sql.includes('INSERT INTO quotations')) {
+                  capturedCgstPercent = args[30];
+                  capturedSgstPercent = args[31];
+                  capturedCgstAmount = args[32];
+                  capturedSgstAmount = args[33];
+                }
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  const req = new Request('https://example.com/api/quotations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      quoteNumber: 'QT-2026-9999',
+      clientCompany: 'ABC Corp',
+      items: [{ description: 'Roofing Sheet', quantity: 10, rate: 100 }],
+      cgstPercent: 2.5,
+      sgstPercent: 2.5,
+      cgstAmount: 25.0,
+      sgstAmount: 25.0,
+      grandTotal: 1050
+    })
+  });
+
+  const res = await worker.fetch(req, customEnv);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.equal(capturedCgstPercent, 2.5);
+  assert.equal(capturedSgstPercent, 2.5);
+  assert.equal(capturedCgstAmount, 25.0);
+  assert.equal(capturedSgstAmount, 25.0);
+});
+
+test('POST /api/quotations & GET /api/quotations: Persists and restores quotation line item product image URLs', async () => {
+  const token = await createTestToken({
+    userId: 'admin_1',
+    username: 'admin',
+    fullName: 'Dhaval Admin',
+    isSuperAdmin: true
+  });
+
+  let savedItemsJson = '';
+
+  const customEnv = createMockEnv({
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                if (sql.includes('SELECT * FROM quotations WHERE id = ?')) {
+                  return {
+                    id: 'qt_test_img',
+                    quote_number: 'QT-2026-0088',
+                    items_json: savedItemsJson,
+                    cgst_percent: 9.0,
+                    sgst_percent: 9.0,
+                    created_at: new Date().toISOString()
+                  };
+                }
+                return null;
+              },
+              async run() {
+                if (sql.includes('INSERT INTO quotations')) {
+                  // itemsJson is bound at index 13
+                  savedItemsJson = args[13];
+                }
+                return { success: true };
+              }
+            };
+          }
+        };
+      }
+    }
+  });
+
+  // 1. POST: Save quotation with product image
+  const postReq = new Request('https://example.com/api/quotations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      id: 'qt_test_img',
+      quoteNumber: 'QT-2026-0088',
+      clientCompany: 'ABC Corp',
+      items: [
+        {
+          description: 'PPGL INDRADHANUS 0.50MM',
+          quantity: 10,
+          rate: 100,
+          imageUrl: '/api/media/profile-indradhanus.png'
+        }
+      ],
+      grandTotal: 1180
+    })
+  });
+
+  const postRes = await worker.fetch(postReq, customEnv);
+  assert.equal(postRes.status, 200);
+
+  // Check saved JSON contains image URL
+  const parsedItems = JSON.parse(savedItemsJson);
+  assert.equal(parsedItems.length, 1);
+  assert.equal(parsedItems[0].imageUrl, '/api/media/profile-indradhanus.png');
+  assert.equal(parsedItems[0].image_url, '/api/media/profile-indradhanus.png');
+  assert.equal(parsedItems[0].image, '/api/media/profile-indradhanus.png');
+
+  // 2. GET by ID: Check quotation item returns image intact
+  const getReq = new Request('https://example.com/api/quotations/qt_test_img', {
+    method: 'GET',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+
+  const getRes = await worker.fetch(getReq, customEnv);
+  assert.equal(getRes.status, 200);
+  const getBody = await getRes.json();
+  assert.equal(getBody.success, true);
+  assert.equal(getBody.quotation.items[0].imageUrl, '/api/media/profile-indradhanus.png');
+  assert.equal(getBody.quotation.items[0].image, '/api/media/profile-indradhanus.png');
+});
