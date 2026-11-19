@@ -830,7 +830,9 @@ const StorageManager = {
       throw new Error(err.error || `Export failed with HTTP ${res.status}`);
     }
     const data = await res.json();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    // Guarantee exported file is pure data with zero data:image or base64 image strings
+    const cleanJson = JSON.stringify(data, null, 2).replace(/data:image\/[^"'\s\\]+/g, '');
+    const blob = new Blob([cleanJson], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

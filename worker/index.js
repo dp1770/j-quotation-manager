@@ -2153,7 +2153,7 @@ export default {
 
         // Guarantee 100% pure data: strip any surviving data:image Base64 strings from entire export
         const cleanJsonString = JSON.stringify(backupData, null, 2)
-          .replace(/"data:image\/[^;]+;base64,[^"\\]*"/g, '""');
+          .replace(/data:image\/[^"'\s\\]+/g, '');
 
         return new Response(cleanJsonString, {
           status: 200,
