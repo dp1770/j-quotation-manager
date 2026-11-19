@@ -865,10 +865,6 @@ export default {
     // Authenticated Endpoint: Direct Image Upload to Cloudflare R2
     // =================================================================
     if (path === '/api/upload' && method === 'POST') {
-      if (!env.MEDIA_BUCKET) {
-        return errorResponse('Cloudflare R2 bucket "MEDIA_BUCKET" binding is not configured. Please bind MEDIA_BUCKET in wrangler.toml.', 500, env);
-      }
-
       try {
         let fileBuffer;
         let contentType = 'image/jpeg';
@@ -921,6 +917,23 @@ export default {
 
         if (fileBuffer.byteLength > 10 * 1024 * 1024) {
           return errorResponse('Image file size exceeds 10MB limit.', 400, env);
+        }
+
+        // Graceful fallback if R2 MEDIA_BUCKET is not yet activated on account
+        if (!env.MEDIA_BUCKET) {
+          const bytes = new Uint8Array(fileBuffer);
+          let binary = '';
+          const chunkSize = 8192;
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+          }
+          const base64Url = `data:${contentType};base64,${btoa(binary)}`;
+          return jsonResponse({
+            success: true,
+            ok: true,
+            filename: 'embedded',
+            url: base64Url
+          }, 201, env);
         }
 
         let ext = 'jpg';
