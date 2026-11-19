@@ -257,34 +257,9 @@ const PdfGenerator = {
     `;
 
     // -------------------------------------------------------------
-    // PART 3: ITEM IMAGES 3-COLUMN HORIZONTAL GRID
+    // PART 3: ITEM IMAGES (Rendered inline inside items table; separate gallery removed as not required)
     // -------------------------------------------------------------
     let imagesGridHtml = '';
-    if (imageCards.length > 0) {
-      imagesGridHtml = `
-        <div class="quotation-images-section avoid-break mt-3 mb-3" style="page-break-inside: avoid; break-inside: avoid;">
-          <div class="text-[11px] font-black uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-1.5 border-b border-slate-300 pb-1">
-            <i class="fa-solid fa-images text-blue-900"></i>
-            <span>Product Profile &amp; Reference Specifications</span>
-          </div>
-          <div class="quotation-images-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-            ${imageCards.map(c => `
-              <div class="quotation-image-card avoid-break bg-white rounded border border-slate-300 p-2 text-center flex flex-col justify-between" style="border: 1px solid #ddd; padding: 6px; page-break-inside: avoid; break-inside: avoid; background-color: #ffffff;">
-                <div class="w-full flex items-center justify-center bg-slate-50 rounded" style="height: 130px; max-height: 130px; overflow: hidden; background-color: #f8fafc; border: 1px solid #eee;">
-                  <img src="${c.url}" alt="${this.escapeHtml(c.title)}" style="height: 130px; max-height: 130px; width: 100%; object-fit: contain; padding: 4px;" />
-                </div>
-                <div class="mt-1.5 pt-1 border-t border-slate-100 text-left">
-                  <div class="text-[10px] font-bold text-slate-900 leading-tight truncate" title="${this.escapeHtml(c.title)}">
-                    <span class="text-blue-900 font-mono mr-1">#${c.index}</span>${this.escapeHtml(c.title)}
-                  </div>
-                  ${c.subText ? `<div class="text-[9px] text-slate-500 font-semibold truncate mt-0.5">${this.escapeHtml(c.subText)}</div>` : ''}
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
-    }
 
     // -------------------------------------------------------------
     // PART 3B: OUR PRODUCTS - BORDERLESS 3-COLUMN IMAGE GALLERY
@@ -319,30 +294,35 @@ const PdfGenerator = {
     }
 
     // -------------------------------------------------------------
-    // PART 4: BANK PAYMENT DETAILS BLOCK (Directly ABOVE Terms & Conditions)
+    // PART 4: BANK PAYMENT DETAILS BLOCK (Compact 2x2 Layout for Side-by-Side Row)
     // -------------------------------------------------------------
     const bankDetailsHtml = `
-      <div class="bank-details-box avoid-break mb-3 border border-slate-300 rounded-lg p-3 bg-slate-50/80 shadow-2xs" style="page-break-inside: avoid; break-inside: avoid;">
-        <h3 class="text-xs font-black text-sky-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-          <i class="fa-solid fa-building-columns"></i> BANK PAYMENT DETAILS:
-        </h3>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          <div>
-            <span class="text-[10px] text-slate-500 font-bold block uppercase">Bank Name</span>
-            <span class="text-xs font-black text-amber-700 uppercase">${this.escapeHtml(bank.bankName)}</span>
+      <div class="bank-details-box avoid-break border border-slate-300 rounded-lg p-3 bg-slate-50/80 shadow-2xs flex flex-col justify-between" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 0;">
+        <div>
+          <h3 class="text-xs font-black text-sky-700 uppercase tracking-wider mb-2 flex items-center gap-1.5 border-b border-slate-200 pb-1">
+            <i class="fa-solid fa-building-columns"></i> BANK PAYMENT DETAILS:
+          </h3>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+            <div>
+              <span class="text-[10px] text-slate-500 font-bold block uppercase">Bank Name</span>
+              <span class="text-xs font-black text-amber-700 uppercase leading-snug">${this.escapeHtml(bank.bankName || 'N/A')}</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-500 font-bold block uppercase">Account No</span>
+              <span class="text-[11px] font-bold font-mono text-slate-950 leading-snug">${this.escapeHtml(bank.accountNumber || 'N/A')}</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-500 font-bold block uppercase">IFSC Code</span>
+              <span class="text-[11px] font-bold font-mono text-blue-900 leading-snug">${this.escapeHtml(bank.ifscCode || 'N/A')}</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-500 font-bold block uppercase">Branch</span>
+              <span class="text-[11px] font-bold text-slate-800 uppercase leading-snug">${this.escapeHtml(bank.branch || 'N/A')}</span>
+            </div>
           </div>
-          <div>
-            <span class="text-[10px] text-slate-500 font-bold block uppercase">Account No</span>
-            <span class="text-[11px] font-bold font-mono text-slate-950">${this.escapeHtml(bank.accountNumber)}</span>
-          </div>
-          <div>
-            <span class="text-[10px] text-slate-500 font-bold block uppercase">IFSC Code</span>
-            <span class="text-[11px] font-bold font-mono text-blue-900">${this.escapeHtml(bank.ifscCode)}</span>
-          </div>
-          <div>
-            <span class="text-[10px] text-slate-500 font-bold block uppercase">Branch</span>
-            <span class="text-[11px] font-bold text-slate-800 uppercase">${this.escapeHtml(bank.branch)}</span>
-          </div>
+        </div>
+        <div class="pt-1.5 text-[10px] text-slate-500 italic border-t border-slate-200 mt-2">
+          Please transfer payment directly to the account above.
         </div>
       </div>
     `;
@@ -441,6 +421,7 @@ const PdfGenerator = {
             break-inside: avoid !important;
           }
           #print-quotation-root .avoid-break,
+          #print-quotation-root .bank-and-financial-row,
           #print-quotation-root .bank-details-box,
           #print-quotation-root .calc-block,
           #print-quotation-root .financial-summary-box,
@@ -450,6 +431,12 @@ const PdfGenerator = {
           #print-quotation-root .quotation-final-footer {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+          }
+          #print-quotation-root .bank-and-financial-row {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 14px !important;
+            align-items: stretch !important;
           }
           #print-quotation-root .quotation-images-grid {
             display: grid !important;
@@ -572,44 +559,59 @@ const PdfGenerator = {
         </div>
 
         <!-- ======================================================= -->
-        <!-- 3. FINANCIAL SUMMARY BOX (Subtotal, Loading, GST, Grand)-->
+        <!-- 3. SIDE-BY-SIDE: BANK DETAILS (LEFT) & FINANCIAL SUMMARY (RIGHT) -->
         <!-- ======================================================= -->
-        <div class="financial-summary-box avoid-break w-full max-w-sm ml-auto space-y-1 text-xs text-right font-bold text-slate-900 pt-1.5 mb-3 border border-slate-300 rounded-lg p-2.5 bg-slate-50/80 shadow-2xs" style="page-break-inside: avoid; break-inside: avoid;">
-          <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
-            <span class="uppercase tracking-wider font-bold">Quotation Subtotal (TOTAL):</span>
-            <span class="font-mono text-xs sm:text-sm text-slate-950 font-black">${totals.materialTotal.toFixed(2)}/-</span>
+        <div class="bank-and-financial-row avoid-break mb-3 grid grid-cols-1 md:grid-cols-2 gap-3.5 items-stretch" style="page-break-inside: avoid; break-inside: avoid; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch;">
+          
+          <!-- Left Column: Bank Payment Details Card -->
+          ${bankDetailsHtml}
+
+          <!-- Right Column: Financial Summary Box -->
+          <div class="financial-summary-box avoid-break w-full space-y-1 text-xs text-right font-bold text-slate-900 border border-slate-300 rounded-lg p-2.5 bg-slate-50/80 shadow-2xs flex flex-col justify-between" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 0;">
+            <div>
+              <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
+                <span class="uppercase tracking-wider font-bold">Quotation Subtotal (TOTAL):</span>
+                <span class="font-mono text-xs sm:text-sm text-slate-950 font-black">${totals.materialTotal.toFixed(2)}/-</span>
+              </div>
+              <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
+                <span class="font-bold">Loading Charge:</span>
+                <span class="font-mono text-slate-950 font-black">${totals.loadingCharges.toFixed(2)}/-</span>
+              </div>
+              ${totals.gstType === 'CGST_SGST' ? `
+              <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
+                <span class="font-bold">CGST (${totals.cgstRate}%):</span>
+                <span class="font-mono text-slate-950 font-black">${totals.cgstAmount.toFixed(2)}/-</span>
+              </div>
+              <div class="flex justify-between items-center py-0.5 border-b-2 border-slate-400 text-slate-700">
+                <span class="font-bold">SGST (${totals.sgstRate}%):</span>
+                <span class="font-mono text-slate-950 font-black">${totals.sgstAmount.toFixed(2)}/-</span>
+              </div>
+              ` : `
+              <div class="flex justify-between items-center py-0.5 border-b-2 border-slate-400 text-slate-700">
+                <span class="font-bold">${taxLabel}:</span>
+                <span class="font-mono text-slate-950 font-black">${totals.gstAmount.toFixed(2)}/-</span>
+              </div>
+              `}
+              <!-- FINAL CALCULATION ROW: GRAND TOTAL (Directly below GST row) -->
+              <div class="flex justify-between items-center py-1.5 bg-blue-50/90 border border-blue-200 px-2 rounded mt-1 text-blue-950">
+                <span class="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950">GRAND TOTAL:</span>
+                <span class="text-base sm:text-lg font-black text-blue-950 font-mono">₹ ${Math.round(totals.grandTotal).toLocaleString('en-IN')}/-</span>
+              </div>
+            </div>
+            <div class="pt-1 text-[10px] text-slate-600 italic text-left border-t border-slate-200 mt-1">
+              <span class="font-bold not-italic text-slate-800">Words:</span> ${totals.grandTotalWords}
+            </div>
           </div>
-          <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
-            <span class="font-bold">Loading Charge:</span>
-            <span class="font-mono text-slate-950 font-black">${totals.loadingCharges.toFixed(2)}/-</span>
-          </div>
-          ${totals.gstType === 'CGST_SGST' ? `
-          <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
-            <span class="font-bold">CGST (${totals.cgstRate}%):</span>
-            <span class="font-mono text-slate-950 font-black">${totals.cgstAmount.toFixed(2)}/-</span>
-          </div>
-          <div class="flex justify-between items-center py-0.5 border-b-2 border-slate-400 text-slate-700">
-            <span class="font-bold">SGST (${totals.sgstRate}%):</span>
-            <span class="font-mono text-slate-950 font-black">${totals.sgstAmount.toFixed(2)}/-</span>
-          </div>
-          ` : `
-          <div class="flex justify-between items-center py-0.5 border-b-2 border-slate-400 text-slate-700">
-            <span class="font-bold">${taxLabel}:</span>
-            <span class="font-mono text-slate-950 font-black">${totals.gstAmount.toFixed(2)}/-</span>
-          </div>
-          `}
-          <!-- FINAL CALCULATION ROW: GRAND TOTAL (Directly below GST row) -->
-          <div class="flex justify-between items-center py-1.5 bg-blue-50/90 border border-blue-200 px-2 rounded mt-0.5 text-blue-950">
-            <span class="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950">GRAND TOTAL:</span>
-            <span class="text-base sm:text-lg font-black text-blue-950 font-mono">₹ ${Math.round(totals.grandTotal).toLocaleString('en-IN')}/-</span>
-          </div>
-          <div class="pt-1 text-[10px] text-slate-600 italic text-left border-t border-slate-200 mt-0.5">
-            <span class="font-bold not-italic text-slate-800">Words:</span> ${totals.grandTotalWords}
-          </div>
+
         </div>
 
         <!-- ======================================================= -->
-        <!-- 4. MEASUREMENT / CALCULATION DETAILS TABLE              -->
+        <!-- 4. TERMS AND CONDITIONS & AUTHORIZED SIGNATORY BOX      -->
+        <!-- ======================================================= -->
+        ${termsAndSignatureHtml}
+
+        <!-- ======================================================= -->
+        <!-- 5. MEASUREMENT / CALCULATION DETAILS TABLE              -->
         <!-- ======================================================= -->
         ${quote.calculations && quote.calculations.length > 0 ? `
           <div class="calculations-section pt-1 mb-3">
@@ -618,19 +620,8 @@ const PdfGenerator = {
         ` : ''}
 
         <!-- ======================================================= -->
-        <!-- 5. BANK PAYMENT DETAILS (Directly ABOVE Terms & Cond.)  -->
+        <!-- 6. "OUR PRODUCTS" 3-COLUMN BORDERLESS IMAGE GALLERY     -->
         <!-- ======================================================= -->
-        ${bankDetailsHtml}
-
-        <!-- ======================================================= -->
-        <!-- 6. TERMS AND CONDITIONS & AUTHORIZED SIGNATORY BOX      -->
-        <!-- ======================================================= -->
-        ${termsAndSignatureHtml}
-
-        <!-- ======================================================= -->
-        <!-- 7. "OUR PRODUCTS" 3-COLUMN BORDERLESS IMAGE GALLERY     -->
-        <!-- ======================================================= -->
-        ${imagesGridHtml}
         ${promotionalBannersHtml}
 
       </div>
@@ -657,7 +648,7 @@ const PdfGenerator = {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: {
         mode: ['css', 'legacy'],
-        avoid: ['tr', '.avoid-break', '.bank-details-box', '.financial-summary-box', '.calc-block', '.quotation-terms-signature-block', '.quotation-image-card', '.quotation-banner-card', '.quotation-final-footer']
+        avoid: ['tr', '.avoid-break', '.bank-and-financial-row', '.bank-details-box', '.financial-summary-box', '.calc-block', '.quotation-terms-signature-block', '.quotation-image-card', '.quotation-banner-card', '.quotation-final-footer']
       }
     };
 
@@ -705,7 +696,7 @@ const PdfGenerator = {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: {
         mode: ['css', 'legacy'],
-        avoid: ['tr', '.avoid-break', '.bank-details-box', '.financial-summary-box', '.calc-block', '.quotation-terms-signature-block', '.quotation-image-card', '.quotation-banner-card', '.quotation-final-footer']
+        avoid: ['tr', '.avoid-break', '.bank-and-financial-row', '.bank-details-box', '.financial-summary-box', '.calc-block', '.quotation-terms-signature-block', '.quotation-image-card', '.quotation-banner-card', '.quotation-final-footer']
       }
     };
 
@@ -862,9 +853,15 @@ const PdfGenerator = {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
-    .avoid-break, .bank-details-box, .calc-block, .financial-summary-box, .quotation-terms-signature-block, .quotation-image-card, .quotation-banner-card, .quotation-final-footer {
+    .avoid-break, .bank-and-financial-row, .bank-details-box, .calc-block, .financial-summary-box, .quotation-terms-signature-block, .quotation-image-card, .quotation-banner-card, .quotation-final-footer {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
+    }
+    .bank-and-financial-row {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 14px !important;
+      align-items: stretch !important;
     }
     .quotation-images-grid {
       display: grid !important;

@@ -230,7 +230,7 @@ test('PdfGenerator.generateQuotationHtml: Dynamic CGST and SGST breakdown in PDF
   assert.match(html, /600\.00\/-/);
 });
 
-test('PdfGenerator.generateQuotationHtml: Line item product images rendered in table and image cards', () => {
+test('PdfGenerator.generateQuotationHtml: Line item product images rendered in table (duplicate specifications gallery removed)', () => {
   const pdfGenCode = fs.readFileSync(path.join(__dirname, '../js/pdf-generator.js'), 'utf8');
   const defaultDataCode = fs.readFileSync(path.join(__dirname, '../js/default-data.js'), 'utf8');
   const mockStorageManager = {
@@ -273,12 +273,15 @@ test('PdfGenerator.generateQuotationHtml: Line item product images rendered in t
   };
 
   const html = PdfGenerator.generateQuotationHtml(quote, settings);
-  // Both images must be rendered in the document
+  // Both line item images must be rendered in the items table
   assert.match(html, /\/api\/media\/custom_product\.png/);
   assert.match(html, /\/api\/media\/master_sheet\.png/);
+  // Redundant specifications gallery must NOT be rendered
+  assert.doesNotMatch(html, /Product Profile &amp; Reference Specifications/);
+  assert.doesNotMatch(html, /class="quotation-images-section/);
 });
 
-test('PdfGenerator.generateQuotationHtml: Strict vertical section order (Financial Box -> Calculations -> Bank Details -> Terms)', () => {
+test('PdfGenerator.generateQuotationHtml: Side-by-side Bank Details (Left) & Financial Summary (Right) followed by Terms, Calculations, and Products', () => {
   const pdfGenCode = fs.readFileSync(path.join(__dirname, '../js/pdf-generator.js'), 'utf8');
   const defaultDataCode = fs.readFileSync(path.join(__dirname, '../js/default-data.js'), 'utf8');
   const pdfContext = {
@@ -317,25 +320,28 @@ test('PdfGenerator.generateQuotationHtml: Strict vertical section order (Financi
 
   const idxHeader = html.indexOf('class="quotation-header-block');
   const idxItems = html.indexOf('class="quotation-items-table');
-  const idxFinancial = html.indexOf('class="financial-summary-box');
-  const idxCalc = html.indexOf('class="calculations-section');
+  const idxRow = html.indexOf('class="bank-and-financial-row');
   const idxBank = html.indexOf('class="bank-details-box');
+  const idxFinancial = html.indexOf('class="financial-summary-box');
   const idxTerms = html.indexOf('class="quotation-terms-signature-block');
+  const idxCalc = html.indexOf('class="calculations-section');
   const idxPromo = html.indexOf('class="quotation-promotional-section');
 
   assert.ok(idxHeader !== -1, 'Header block must exist');
   assert.ok(idxItems !== -1, 'Items table must exist');
-  assert.ok(idxFinancial !== -1, 'Financial summary box must exist');
-  assert.ok(idxCalc !== -1, 'Calculations section must exist');
+  assert.ok(idxRow !== -1, 'Side-by-side row must exist');
   assert.ok(idxBank !== -1, 'Bank details box must exist');
+  assert.ok(idxFinancial !== -1, 'Financial summary box must exist');
   assert.ok(idxTerms !== -1, 'Terms and signature block must exist');
+  assert.ok(idxCalc !== -1, 'Calculations section must exist');
   assert.ok(idxPromo !== -1, 'Promotional gallery must exist');
 
-  // Verify strict vertical order
+  // Verify strict vertical & side-by-side order:
+  // 1. Header < 2. Items < 3. Row [Bank (left) & Financial (right)] < 4. Terms < 5. Calculations < 6. Promotional Gallery
   assert.ok(idxHeader < idxItems, 'Header (1) must precede Items (2)');
-  assert.ok(idxItems < idxFinancial, 'Items (2) must precede Financial Summary (3)');
-  assert.ok(idxFinancial < idxCalc, 'Financial Summary (3) must precede Measurement Table (4)');
-  assert.ok(idxCalc < idxBank, 'Measurement Table (4) must precede Bank Details (5)');
-  assert.ok(idxBank < idxTerms, 'Bank Details (5) must precede Terms & Signature (6)');
-  assert.ok(idxTerms < idxPromo, 'Terms & Signature (6) must precede Products Gallery (7)');
+  assert.ok(idxItems < idxRow, 'Items (2) must precede Side-by-Side Row (3)');
+  assert.ok(idxRow < idxBank && idxBank < idxFinancial, 'Bank (Left) & Financial (Right) must reside within side-by-side row (3)');
+  assert.ok(idxFinancial < idxTerms, 'Side-by-side row (3) must precede Terms & Signatory (4)');
+  assert.ok(idxTerms < idxCalc, 'Terms & Signatory (4) must precede Measurement Table (5)');
+  assert.ok(idxCalc < idxPromo, 'Measurement Table (5) must precede Products Gallery (6)');
 });
