@@ -184,14 +184,6 @@ async function ensureDatabaseSchema(env) {
   if (schemaInitialized || !env || !env.DB) return;
   if (!schemaInitPromise) {
     schemaInitPromise = (async () => {
-      try {
-        const testCheck = await env.DB.prepare('SELECT id FROM users LIMIT 1').first().catch(() => null);
-        if (testCheck !== null) {
-          schemaInitialized = true;
-          return;
-        }
-      } catch (e) {}
-
       const execSql = async (sql) => {
         try {
           const s = env.DB.prepare(sql);
@@ -501,7 +493,7 @@ export default {
           }
         } else {
           // Fresh Database Fallback (allows initial Super Admin setup)
-          const isDefaultAdmin = (username === 'admin' && (passHash === 'a679cb086580f4949ad453e00bb982d1598f804791522f7c088ef577ef3724ff' || rawPass === 'admin@2026'));
+          const isDefaultAdmin = (username === 'admin' && (rawPass === 'admin@2026' || rawPass === 'a679cb086580f4949ad453e00bb982d1598f804791522f7c088ef577ef3724ff'));
           if (isDefaultAdmin) {
             authenticatedUser = {
               id: 'user_super_admin_' + username,
@@ -592,11 +584,17 @@ export default {
           return errorResponse('No account registered with that email address or username', 404, env);
         }
 
-        // 2. Generate secure 6-digit numeric OTP
-        const otp = String(Math.floor(100000 + Math.random() * 900000));
+        // 2. Generate secure 6-digit numeric OTP using Web Crypto API
+        const randomValues = new Uint32Array(1);
+        crypto.getRandomValues(randomValues);
+        const otp = String(100000 + (randomValues[0] % 900000));
         const otpHash = await sha256(otp);
         const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes expiry
-        const resetId = 'reset_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+
+        const idBytes = new Uint8Array(4);
+        crypto.getRandomValues(idBytes);
+        const idSuffix = Array.from(idBytes, b => b.toString(16).padStart(2, '0')).join('');
+        const resetId = `reset_${Date.now()}_${idSuffix}`;
 
         // Ensure table exists (auto-migration)
         try {
@@ -622,9 +620,6 @@ export default {
           INSERT INTO password_resets (id, email, otp_hash, expires_at, used, created_at)
           VALUES (?, ?, ?, ?, 0, datetime('now'))
         `).bind(resetId, email, otpHash, expiresAt).run();
-
-        // Log OTP to console for local testing / debugging as required
-        console.log(`[AUTH-OTP] Password reset OTP for ${email} (${userRow.username}): ${otp}`);
 
         // 3. Dispatch email via Resend or MailChannels if configured
         if (env.RESEND_API_KEY) {
@@ -998,7 +993,7 @@ export default {
         const year = queryParams.get('year');   // e.g., '2026'
         const status = queryParams.get('status');
         const search = queryParams.get('search');
-        const limit = Math.min(parseInt(queryParams.get('limit') || '50', 10), 500);
+        const limit = Math.min(parseInt(queryParams.get('limit') || '50', 10), 5000);
         const offset = Math.max(parseInt(queryParams.get('offset') || '0', 10), 0);
 
         let whereClauses = [];
@@ -1047,13 +1042,6 @@ export default {
         `;
         const listStmt = env.DB.prepare(listSql);
         const listBindings = [...bindings, limit, offset];
-        // Auto-migration helper for company_id and company_name in quotations
-        try {
-          await env.DB.prepare('ALTER TABLE quotations ADD COLUMN company_id TEXT DEFAULT "primary"').run();
-        } catch (e) {}
-        try {
-          await env.DB.prepare('ALTER TABLE quotations ADD COLUMN company_name TEXT DEFAULT ""').run();
-        } catch (e) {}
 
         const rows = await listStmt.bind(...listBindings).all();
 
@@ -1187,17 +1175,6 @@ export default {
 
         // Audit Trail: Store user's actual Full Name (e.g. Ramesh Patel) instead of Role
         const authorName = (currentUser.fullName || currentUser.username || 'System Administrator').trim();
-
-        // Ensure columns exist before insert
-        try {
-          await env.DB.prepare('ALTER TABLE quotations ADD COLUMN company_id TEXT DEFAULT "primary"').run();
-        } catch (e) {}
-        try {
-          await env.DB.prepare('ALTER TABLE quotations ADD COLUMN company_name TEXT DEFAULT ""').run();
-        } catch (e) {}
-        try {
-          await env.DB.prepare('ALTER TABLE quotations ADD COLUMN include_banner INTEGER DEFAULT 1').run();
-        } catch (e) {}
 
         await env.DB.prepare(`
           INSERT INTO quotations (

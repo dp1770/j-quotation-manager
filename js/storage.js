@@ -777,7 +777,7 @@ const StorageManager = {
       await Promise.all([
         this.fetchSettingsFromCloud(),
         this.fetchCompaniesFromCloud(),
-        this.fetchQuotationsFromCloud({ limit: 500 }),
+        this.fetchQuotationsFromCloud({ limit: 2000 }),
         this.fetchClientsFromCloud(),
         this.fetchItemsFromCloud()
       ]);

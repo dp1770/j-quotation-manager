@@ -104,10 +104,10 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          return caches.match(event.request).then((cached) => {
+          return caches.match(event.request, { ignoreSearch: true }).then((cached) => {
             if (cached) return cached;
             if (event.request.mode === 'navigate') {
-              return caches.match('./index.html');
+              return caches.match('./index.html', { ignoreSearch: true });
             }
           });
         })
@@ -117,7 +117,7 @@ self.addEventListener('fetch', (event) => {
 
   // Stale-While-Revalidate for external CDN libraries
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
         if (event.request.method === 'GET' && networkResponse && networkResponse.status === 200) {
           const clone = networkResponse.clone();

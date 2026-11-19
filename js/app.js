@@ -115,19 +115,19 @@ const App = {
       if (!badge) return;
 
       if (!navigator.onLine) {
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400"></span> <span class="hidden sm:inline">Offline Mode</span>`;
-        badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-300';
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-stone-400"></span> <span class="hidden sm:inline">Offline</span>`;
+        badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-600 border border-stone-300';
         return;
       }
 
       if (statusInfo.status === 'syncing') {
-        badge.innerHTML = `<i class="fa-solid fa-rotate fa-spin text-blue-600"></i> <span class="hidden sm:inline">Syncing...</span>`;
-        badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200';
+        badge.innerHTML = `<i class="fa-solid fa-rotate fa-spin text-orange-700"></i> <span class="hidden sm:inline">Syncing...</span>`;
+        badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-800 border border-orange-200';
       } else if (statusInfo.status === 'online') {
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> <span class="hidden sm:inline">Database Synced</span>`;
-        badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200';
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> <span class="hidden sm:inline">Cloud Synced</span>`;
+        badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-800 border border-green-200';
       } else {
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span> <span class="hidden sm:inline">Local Cache Active</span>`;
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> <span class="hidden sm:inline">Local Cache</span>`;
         badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 cursor-pointer';
         badge.title = 'Operating with local database';
         badge.onclick = () => App.switchTab('settings');
@@ -466,9 +466,9 @@ const App = {
     if (headerRole) {
       headerRole.textContent = user.role || (user.isSuperAdmin ? 'Super Admin' : 'Sub-Admin');
       if (user.isSuperAdmin) {
-        headerRole.className = 'bg-amber-400 text-blue-950 font-black text-[9px] px-1.5 py-0.5 rounded uppercase';
+        headerRole.className = 'bg-stone-800 text-stone-200 font-semibold text-[10px] px-2 py-0.5 rounded uppercase';
       } else {
-        headerRole.className = 'bg-purple-200 text-purple-950 font-black text-[9px] px-1.5 py-0.5 rounded uppercase';
+        headerRole.className = 'bg-stone-100 text-stone-800 border border-stone-200 font-semibold text-[10px] px-2 py-0.5 rounded uppercase';
       }
     }
 
@@ -610,8 +610,8 @@ const App = {
     if (!tbody) return;
 
     if (this.isLoadingData) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-16 text-slate-400 font-medium">
-        <i class="fa-solid fa-spinner fa-spin mr-2 text-blue-600 text-lg"></i> Loading users from Cloudflare D1...
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-16 text-stone-400 font-medium">
+        <i class="fa-solid fa-spinner fa-spin mr-2 text-stone-500 text-base"></i> Loading users from Cloudflare D1...
       </td></tr>`;
       return;
     }
@@ -619,7 +619,7 @@ const App = {
     const users = AuthManager.getUsers();
 
     if (users.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400">No users found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-stone-400">No users found.</td></tr>`;
       return;
     }
 
@@ -627,58 +627,58 @@ const App = {
       const isSuper = !!(u.isSuperAdmin || u.role === 'Super Admin');
       const perms = u.permissions || {};
       const permBadges = isSuper ? 
-        `<span class="bg-amber-100 text-amber-900 px-2 py-0.5 rounded text-[10px] font-bold">FULL ACCESS (SUPER ADMIN)</span>` :
+        `<span class="bg-stone-900 text-stone-100 px-2 py-0.5 rounded text-[10px] font-semibold">FULL ACCESS</span>` :
         `
           <div class="flex flex-wrap gap-1">
-            ${perms.canManageClients ? '<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-semibold">Clients</span>' : ''}
-            ${perms.canCreateQuotations ? '<span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-semibold">Quotes</span>' : ''}
-            ${perms.canManageItems ? '<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-semibold">Items</span>' : ''}
-            ${perms.canDeleteQuotes ? '<span class="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded text-[10px] font-semibold">Delete</span>' : ''}
-            ${perms.canManageSettings ? '<span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-semibold">Settings</span>' : ''}
+            ${perms.canManageClients ? '<span class="bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.5 rounded text-[10px] font-medium">Clients</span>' : ''}
+            ${perms.canCreateQuotations ? '<span class="bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.5 rounded text-[10px] font-medium">Quotes</span>' : ''}
+            ${perms.canManageItems ? '<span class="bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.5 rounded text-[10px] font-medium">Items</span>' : ''}
+            ${perms.canDeleteQuotes ? '<span class="bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.5 rounded text-[10px] font-medium">Delete</span>' : ''}
+            ${perms.canManageSettings ? '<span class="bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.5 rounded text-[10px] font-medium">Settings</span>' : ''}
           </div>
         `;
 
       return `
-        <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors text-xs">
-          <td class="py-3 px-3 font-bold text-slate-900">
+        <tr class="border-b border-stone-100 hover:bg-stone-50/80 transition-colors text-xs">
+          <td class="py-3 px-3 font-semibold text-stone-900">
             ${this.escapeHtml(u.fullName || u.username)}
           </td>
-          <td class="py-3 px-3 font-mono font-bold text-blue-900">
+          <td class="py-3 px-3 font-code font-semibold text-stone-900">
             ${this.escapeHtml(u.username)}
           </td>
-          <td class="py-3 px-3 text-slate-600 font-mono text-[11px]">
+          <td class="py-3 px-3 text-stone-600 font-code text-[11px]">
             ${this.escapeHtml(u.email || '-')}
           </td>
           <td class="py-3 px-3">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${isSuper ? 'bg-amber-100 text-amber-900' : 'bg-purple-100 text-purple-900'}">
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${isSuper ? 'bg-stone-900 text-stone-100' : 'bg-stone-100 text-stone-800 border border-stone-200'}">
               ${u.role || (isSuper ? 'Super Admin' : 'Sub-Admin')}
             </span>
           </td>
           <td class="py-3 px-3">
             ${permBadges}
           </td>
-          <td class="py-3 px-3 text-slate-500">
+          <td class="py-3 px-3 text-stone-500 font-code">
             ${PdfGenerator.formatDate(u.createdAt || new Date().toISOString())}
           </td>
           <td class="py-3 px-3 text-right">
             ${isSuper ? `
               <div class="inline-flex items-center gap-1">
-                <button onclick="App.openUserEditorModal('${u.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Admin">
+                <button onclick="App.openUserEditorModal('${u.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors" title="Edit Admin">
                   <i class="fa-solid fa-user-pen text-sm"></i>
                 </button>
-                <button onclick="App.openAdminResetUserModal('${u.id}', '${this.escapeHtml(u.username)}')" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Reset Password">
+                <button onclick="App.openAdminResetUserModal('${u.id}', '${this.escapeHtml(u.username)}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors" title="Reset Password">
                   <i class="fa-solid fa-key text-sm"></i>
                 </button>
               </div>
             ` : `
               <div class="inline-flex items-center gap-1">
-                <button onclick="App.openUserEditorModal('${u.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Permissions">
+                <button onclick="App.openUserEditorModal('${u.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors" title="Edit Permissions">
                   <i class="fa-solid fa-user-pen text-sm"></i>
                 </button>
-                <button onclick="App.openAdminResetUserModal('${u.id}', '${this.escapeHtml(u.username)}')" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Reset Password">
+                <button onclick="App.openAdminResetUserModal('${u.id}', '${this.escapeHtml(u.username)}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors" title="Reset Password">
                   <i class="fa-solid fa-key text-sm"></i>
                 </button>
-                <button onclick="App.deleteUser('${u.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete User">
+                <button onclick="App.deleteUser('${u.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-red-700 hover:bg-red-50 transition-colors" title="Delete User">
                   <i class="fa-solid fa-trash-can text-sm"></i>
                 </button>
               </div>
@@ -1075,11 +1075,11 @@ const App = {
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
       const t = btn.getAttribute('data-tab');
       if (t === tabName) {
-        btn.classList.add('bg-blue-900', 'text-white');
-        btn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+        btn.classList.add('bg-stone-800', 'text-white', 'font-semibold');
+        btn.classList.remove('text-stone-300', 'hover:bg-stone-800', 'hover:text-white');
       } else {
-        btn.classList.remove('bg-blue-900', 'text-white');
-        btn.classList.add('text-slate-600', 'hover:bg-slate-100');
+        btn.classList.remove('bg-stone-800', 'text-white', 'font-semibold');
+        btn.classList.add('text-stone-300', 'hover:bg-stone-800', 'hover:text-white');
       }
     });
 
@@ -1087,11 +1087,11 @@ const App = {
     document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
       const t = btn.getAttribute('data-tab');
       if (t === tabName) {
-        btn.classList.add('text-blue-900', 'font-black', 'bg-blue-50/70', 'rounded-xl');
-        btn.classList.remove('text-slate-500', 'font-medium');
+        btn.classList.add('text-orange-700', 'bg-orange-50', 'font-semibold');
+        btn.classList.remove('text-stone-600');
       } else {
-        btn.classList.remove('text-blue-900', 'font-black', 'bg-blue-50/70', 'rounded-xl');
-        btn.classList.add('text-slate-500', 'font-medium');
+        btn.classList.remove('text-orange-700', 'bg-orange-50', 'font-semibold');
+        btn.classList.add('text-stone-600');
       }
     });
 
@@ -1261,15 +1261,15 @@ const App = {
       const vEl = document.getElementById('dash-total-value');
       const cEl = document.getElementById('dash-total-clients');
       const mEl = document.getElementById('dash-month-value');
-      if (qEl) qEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-slate-400 text-sm"></i>';
-      if (vEl) vEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-slate-400 text-sm"></i>';
-      if (cEl) cEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-slate-400 text-sm"></i>';
-      if (mEl) mEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-slate-400 text-sm"></i>';
+      if (qEl) qEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-stone-400 text-sm"></i>';
+      if (vEl) vEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-stone-400 text-sm"></i>';
+      if (cEl) cEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-stone-400 text-sm"></i>';
+      if (mEl) mEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-stone-400 text-sm"></i>';
 
       const recentTable = document.getElementById('dash-recent-quotes-table');
       if (recentTable) {
-        recentTable.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-400 font-medium">
-          <i class="fa-solid fa-spinner fa-spin text-blue-600 mr-2 text-base"></i> Loading live metrics from Cloudflare D1...
+        recentTable.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-stone-400 font-medium">
+          <i class="fa-solid fa-spinner fa-spin text-stone-500 mr-2 text-base"></i> Loading live metrics from Cloudflare D1...
         </td></tr>`;
       }
       return;
@@ -1288,11 +1288,11 @@ const App = {
       const recentTable = document.getElementById('dash-recent-quotes-table');
       if (recentTable) {
         recentTable.innerHTML = `<tr><td colspan="5" class="py-10 text-center">
-          <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
-            <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
+          <div class="inline-flex flex-col items-center justify-center p-6 bg-red-50 border border-red-200 rounded-2xl text-red-800 max-w-md mx-auto">
+            <i class="fa-solid fa-wifi-slash text-2xl text-red-500 mb-2"></i>
             <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
-            <p class="text-xs text-rose-600 mt-1 mb-3">Live connection to server is required.</p>
-            <button onclick="App.refreshDataLive()" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition">
+            <p class="text-xs text-red-600 mt-1 mb-3">Live connection to server is required.</p>
+            <button onclick="App.refreshDataLive()" class="px-3.5 py-1.5 bg-red-700 text-white rounded-xl text-xs font-semibold hover:bg-red-800 transition cursor-pointer">
               <i class="fa-solid fa-rotate-right mr-1"></i> Retry Connection
             </button>
           </div>
@@ -1306,46 +1306,124 @@ const App = {
     const items = StorageManager.getItems();
 
     const totalCount = quotes.length;
-    const totalValue = quotes.reduce((sum, q) => sum + (parseFloat(q.grandTotal) || 0), 0);
-
     const now = new Date();
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
-    const thisMonthQuotes = quotes.filter(q => {
-      const d = new Date(q.date);
-      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-    });
-    const thisMonthVal = thisMonthQuotes.reduce((sum, q) => sum + (parseFloat(q.grandTotal) || 0), 0);
 
-    document.getElementById('dash-total-quotes').innerText = totalCount;
-    document.getElementById('dash-total-value').innerText = CalculationsEngine.formatCurrency(totalValue);
-    document.getElementById('dash-total-clients').innerText = clients.length;
-    document.getElementById('dash-month-value').innerText = CalculationsEngine.formatCurrency(thisMonthVal);
+    const dateSubtitleEl = document.getElementById('dash-date-subtitle');
+    if (dateSubtitleEl) {
+      dateSubtitleEl.textContent = now.toLocaleDateString('en-IN', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+
+    let totalValue = 0;
+    let thisMonthVal = 0;
+    let acceptedCount = 0;
+    let sentCount = 0;
+    let draftCount = 0;
+    let rejectedCount = 0;
+    const clientMap = {};
+
+    quotes.forEach(q => {
+      const gTotal = parseFloat(q.grandTotal) || 0;
+      totalValue += gTotal;
+
+      if (q.date) {
+        const d = new Date(q.date);
+        if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) {
+          thisMonthVal += gTotal;
+        }
+      }
+
+      const st = q.status || 'Draft';
+      if (st === 'Accepted') acceptedCount++;
+      else if (st === 'Sent') sentCount++;
+      else if (st === 'Rejected') rejectedCount++;
+      else draftCount++;
+
+      const cName = q.clientCompany || q.clientName || 'Unknown Client';
+      if (!clientMap[cName]) clientMap[cName] = { name: cName, total: 0, count: 0 };
+      clientMap[cName].total += gTotal;
+      clientMap[cName].count += 1;
+    });
+
+    const heroValEl = document.getElementById('dash-total-value');
+    if (heroValEl) heroValEl.innerText = CalculationsEngine.formatCurrency(totalValue);
+
+    const heroCountEl = document.getElementById('dash-hero-quote-count');
+    if (heroCountEl) {
+      heroCountEl.innerText = `${totalCount} quote${totalCount === 1 ? '' : 's'} in pipeline`;
+    }
+
+    const heroBarsEl = document.getElementById('dash-hero-bars');
+    if (heroBarsEl) {
+      const accPct = totalCount > 0 ? (acceptedCount / totalCount) * 100 : 0;
+      const sentPct = totalCount > 0 ? (sentCount / totalCount) * 100 : 0;
+      const draftPct = totalCount > 0 ? (draftCount / totalCount) * 100 : 0;
+      const rejPct = totalCount > 0 ? (rejectedCount / totalCount) * 100 : 0;
+      heroBarsEl.innerHTML = `
+        <div class="bg-green-500 h-2 rounded-l-full transition-all" style="width: ${accPct}%" title="Accepted: ${acceptedCount}"></div>
+        <div class="bg-blue-500 h-2 transition-all" style="width: ${sentPct}%" title="Sent: ${sentCount}"></div>
+        <div class="bg-stone-500 h-2 transition-all" style="width: ${draftPct}%" title="Draft: ${draftCount}"></div>
+        <div class="bg-red-500 h-2 rounded-r-full transition-all" style="width: ${rejPct}%" title="Rejected: ${rejectedCount}"></div>
+      `;
+    }
+
+    const tqEl = document.getElementById('dash-total-quotes');
+    if (tqEl) tqEl.innerText = totalCount;
+    const tcEl = document.getElementById('dash-total-clients');
+    if (tcEl) tcEl.innerText = clients.length;
+    const mvEl = document.getElementById('dash-month-value');
+    if (mvEl) mvEl.innerText = CalculationsEngine.formatCurrency(thisMonthVal);
 
     const recentTable = document.getElementById('dash-recent-quotes-table');
     if (recentTable) {
       const topQuotes = quotes.slice(0, 5);
       if (topQuotes.length === 0) {
-        recentTable.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">No quotations found. Click "New Quotation" to create one.</td></tr>`;
+        recentTable.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-stone-400">No quotations found. Click "+ New quotation" to create one.</td></tr>`;
       } else {
         recentTable.innerHTML = topQuotes.map(q => `
-          <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
-            <td class="py-3 px-3 font-mono font-bold text-blue-900">${q.quoteNumber}</td>
+          <tr class="border-b border-stone-100 hover:bg-stone-50/80 transition-colors">
+            <td class="py-3 px-3 font-code font-bold text-stone-900">${q.quoteNumber}</td>
             <td class="py-3 px-3">
-              <div class="font-semibold text-slate-800">${q.clientCompany || q.clientName}</div>
-              <div class="text-xs text-slate-400">${q.clientName || ''}</div>
+              <div class="font-semibold text-stone-900">${this.escapeHtml(q.clientCompany || q.clientName)}</div>
+              <div class="text-xs text-stone-500">${this.escapeHtml(q.clientName || '')}</div>
             </td>
-            <td class="py-3 px-3 text-xs text-slate-500">${PdfGenerator.formatDate(q.date)}</td>
-            <td class="py-3 px-3 font-bold text-slate-900">${CalculationsEngine.formatCurrency(q.grandTotal)}</td>
-            <td class="py-3 px-3 text-right space-x-1">
-              <button onclick="App.openPrintPreview('${q.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Print/Preview">
-                <i class="fa-solid fa-eye"></i>
-              </button>
-              <button onclick="App.editQuotation('${q.id}')" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Edit">
-                <i class="fa-solid fa-pen-to-square"></i>
-              </button>
+            <td class="py-3 px-3 text-xs text-stone-500 font-code">${PdfGenerator.formatDate(q.date)}</td>
+            <td class="py-3 px-3 font-semibold text-stone-900 font-code tabular-nums">${CalculationsEngine.formatCurrency(q.grandTotal)}</td>
+            <td class="py-3 px-3 text-right">
+              <div class="inline-flex items-center gap-1">
+                <button onclick="App.openPrintPreview('${q.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer" title="Print/Preview">
+                  <i class="fa-solid fa-eye text-sm"></i>
+                </button>
+                <button onclick="App.editQuotation('${q.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer" title="Edit">
+                  <i class="fa-solid fa-pen-to-square text-sm"></i>
+                </button>
+              </div>
             </td>
           </tr>
+        `).join('');
+      }
+    }
+
+    const topClientsEl = document.getElementById('dash-top-clients-list');
+    if (topClientsEl) {
+      const topClients = Object.values(clientMap).sort((a, b) => b.total - a.total).slice(0, 5);
+      if (topClients.length === 0) {
+        topClientsEl.innerHTML = `<div class="p-6 text-center text-xs text-stone-400">No client quotations recorded yet.</div>`;
+      } else {
+        topClientsEl.innerHTML = topClients.map(c => `
+          <div class="p-3.5 flex items-center justify-between hover:bg-stone-50 transition-colors">
+            <div>
+              <div class="font-semibold text-stone-900 text-sm">${this.escapeHtml(c.name)}</div>
+              <div class="text-xs text-stone-500 font-code">${c.count} quotation${c.count > 1 ? 's' : ''}</div>
+            </div>
+            <div class="font-code font-semibold text-sm tabular-nums text-stone-900">${CalculationsEngine.formatCurrency(c.total)}</div>
+          </div>
         `).join('');
       }
     }
@@ -1358,8 +1436,8 @@ const App = {
     const tbody = document.getElementById('quotes-list-tbody');
     if (this.isLoadingData) {
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-slate-400 font-medium">
-          <i class="fa-solid fa-spinner fa-spin mr-2 text-blue-600 text-lg"></i> Loading quotations from Cloudflare D1...
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-stone-400 font-medium">
+          <i class="fa-solid fa-spinner fa-spin mr-2 text-stone-500 text-base"></i> Loading quotations from Cloudflare D1...
         </td></tr>`;
       }
       return;
@@ -1430,8 +1508,8 @@ const App = {
     if (this.quotesPage < 1) this.quotesPage = 1;
 
     if (totalRecords === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">No matching quotations found.</td></tr>`;
-      if (paginationBar) paginationBar.innerHTML = `<span class="text-xs text-slate-400">0 quotations found</span>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-stone-400">No matching quotations found.</td></tr>`;
+      if (paginationBar) paginationBar.innerHTML = `<span class="text-xs text-stone-400">0 quotations found</span>`;
       return;
     }
 
@@ -1444,49 +1522,49 @@ const App = {
     const canCreate = AuthManager.canCreateQuotations();
 
     tbody.innerHTML = paginated.map(q => {
-      let statusColor = 'bg-slate-100 text-slate-700';
-      if (q.status === 'Sent') statusColor = 'bg-blue-100 text-blue-800';
-      if (q.status === 'Accepted') statusColor = 'bg-emerald-100 text-emerald-800';
-      if (q.status === 'Rejected') statusColor = 'bg-rose-100 text-rose-800';
+      let statusColor = 'bg-stone-100 text-stone-700 border border-stone-200';
+      if (q.status === 'Sent') statusColor = 'bg-blue-50 text-blue-800 border border-blue-200';
+      if (q.status === 'Accepted') statusColor = 'bg-green-50 text-green-800 border border-green-200';
+      if (q.status === 'Rejected') statusColor = 'bg-red-50 text-red-800 border border-red-200';
 
       return `
-        <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors text-xs">
-          <td class="py-3 px-3 font-mono font-bold text-blue-900">${q.quoteNumber}</td>
+        <tr class="border-b border-stone-100 hover:bg-stone-50/80 transition-colors text-xs">
+          <td class="py-3 px-3 font-code font-bold text-stone-900">${q.quoteNumber}</td>
           <td class="py-3 px-3">
-            <div class="font-bold text-slate-800 text-sm">${q.clientCompany || q.clientName}</div>
-            <div class="text-[11px] text-slate-500">${q.clientName ? 'Attn: ' + q.clientName : ''} ${q.clientPhone ? '• ' + q.clientPhone : ''}</div>
+            <div class="font-semibold text-stone-900 text-sm">${this.escapeHtml(q.clientCompany || q.clientName)}</div>
+            <div class="text-[11px] text-stone-500">${q.clientName ? 'Attn: ' + this.escapeHtml(q.clientName) : ''} ${q.clientPhone ? '• ' + this.escapeHtml(q.clientPhone) : ''}</div>
           </td>
-          <td class="py-3 px-3 text-slate-600">${PdfGenerator.formatDate(q.date)}</td>
-          <td class="py-3 px-3 text-slate-500">${PdfGenerator.formatDate(q.validUntil)}</td>
-          <td class="py-3 px-3 font-bold text-slate-900 text-sm">${CalculationsEngine.formatCurrency(q.grandTotal)}</td>
+          <td class="py-3 px-3 text-stone-600 font-code">${PdfGenerator.formatDate(q.date)}</td>
+          <td class="py-3 px-3 text-stone-500 font-code">${PdfGenerator.formatDate(q.validUntil)}</td>
+          <td class="py-3 px-3 font-semibold text-stone-900 font-code tabular-nums text-sm">${CalculationsEngine.formatCurrency(q.grandTotal)}</td>
           <td class="py-3 px-3">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusColor}">
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${statusColor}">
               ${q.status || 'Draft'}
             </span>
           </td>
           <td class="py-3 px-3">
-            <span class="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-              <i class="fa-solid fa-user-pen text-slate-400 text-[10px]"></i>
+            <span class="inline-flex items-center gap-1 font-medium text-stone-700 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded text-[11px]">
+              <i class="fa-solid fa-user-pen text-stone-400 text-[10px]"></i>
               ${this.escapeHtml(q.createdByName || q.createdBy || 'System Administrator')}
             </span>
           </td>
           <td class="py-3 px-3 text-right">
             <div class="inline-flex items-center gap-1">
-              <button onclick="App.openPrintPreview('${q.id}')" class="p-1.5 text-blue-700 hover:bg-blue-50 rounded" title="View / Print PDF">
+              <button onclick="App.openPrintPreview('${q.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer" title="View / Print PDF">
                 <i class="fa-solid fa-file-pdf text-sm"></i>
               </button>
               ${canEdit ? `
-              <button onclick="App.editQuotation('${q.id}')" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Edit Quote">
+              <button onclick="App.editQuotation('${q.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer" title="Edit Quote">
                 <i class="fa-solid fa-pen-to-square text-sm"></i>
               </button>
               ` : ''}
               ${canCreate ? `
-              <button onclick="App.duplicateQuote('${q.id}')" class="p-1.5 text-purple-600 hover:bg-purple-50 rounded" title="Duplicate Quote">
+              <button onclick="App.duplicateQuote('${q.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer" title="Duplicate Quote">
                 <i class="fa-solid fa-copy text-sm"></i>
               </button>
               ` : ''}
               ${canDelete ? `
-                <button onclick="App.deleteQuote('${q.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Quote">
+                <button onclick="App.deleteQuote('${q.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-red-700 hover:bg-red-50 transition-colors cursor-pointer" title="Delete Quote">
                   <i class="fa-solid fa-trash-can text-sm"></i>
                 </button>
               ` : ''}
@@ -1543,8 +1621,8 @@ const App = {
     const tbody = document.getElementById('items-list-tbody');
     if (this.isLoadingData) {
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-slate-400 font-medium">
-          <i class="fa-solid fa-spinner fa-spin mr-2 text-blue-600 text-lg"></i> Loading items from Cloudflare D1...
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-stone-400 font-medium">
+          <i class="fa-solid fa-spinner fa-spin mr-2 text-stone-500 text-base"></i> Loading items from Cloudflare D1...
         </td></tr>`;
       }
       return;
@@ -1594,8 +1672,8 @@ const App = {
     if (this.itemsPage < 1) this.itemsPage = 1;
 
     if (totalRecords === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-400">No items found in Item Master. Click "Add Product" or "Import CSV" to create one.</td></tr>`;
-      if (paginationBar) paginationBar.innerHTML = `<span class="text-xs text-slate-400">0 products found</span>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-stone-400">No items found in Item Master. Click "+ Add product" or "Import CSV" to create one.</td></tr>`;
+      if (paginationBar) paginationBar.innerHTML = `<span class="text-xs text-stone-400">0 products found</span>`;
       return;
     }
 
@@ -1604,45 +1682,47 @@ const App = {
     const paginated = filtered.slice(startIdx, endIdx);
 
     tbody.innerHTML = paginated.map(it => `
-      <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors text-xs">
-        <td class="py-2.5 px-3 w-20 text-center">
+      <tr class="border-b border-stone-100 hover:bg-stone-50/80 transition-colors text-xs">
+        <td class="py-3 px-3 w-20 text-center">
           ${it.imageUrl ? `
-            <img src="${it.imageUrl}" alt="Profile" class="h-8 max-w-16 object-contain mx-auto border border-slate-200 rounded p-0.5 bg-white shadow-xs" />
+            <img src="${it.imageUrl}" alt="Profile" class="h-8 max-w-16 object-contain mx-auto border border-stone-200 rounded p-0.5 bg-white shadow-xs" />
           ` : `
-            <div class="h-8 w-12 bg-slate-100 border border-slate-200 rounded flex items-center justify-center text-[10px] text-slate-400 mx-auto">No Img</div>
+            <div class="h-8 w-12 bg-stone-100 border border-stone-200 rounded flex items-center justify-center text-[10px] text-stone-400 mx-auto">No Img</div>
           `}
         </td>
-        <td class="py-2.5 px-3">
-          <div class="font-bold text-slate-900">${this.escapeHtml(it.name)}</div>
-          ${it.description ? `<div class="text-[11px] text-slate-500 italic">${this.escapeHtml(it.description)}</div>` : ''}
+        <td class="py-3 px-3">
+          <div class="font-semibold text-stone-900">${this.escapeHtml(it.name)}</div>
+          ${it.description ? `<div class="text-[11px] text-stone-500 italic">${this.escapeHtml(it.description)}</div>` : ''}
         </td>
-        <td class="py-2.5 px-3 font-semibold text-slate-700">
-          <span class="bg-blue-50 text-blue-900 px-2 py-0.5 rounded text-[11px] font-bold">${this.escapeHtml(it.unit || 'PCS')}</span>
+        <td class="py-3 px-3 font-semibold text-stone-700">
+          <span class="bg-stone-100 text-stone-800 border border-stone-200 px-2 py-0.5 rounded text-[11px] font-semibold">${this.escapeHtml(it.unit || 'PCS')}</span>
         </td>
-        <td class="py-2.5 px-3 font-bold text-slate-900 font-mono text-sm">
+        <td class="py-3 px-3 font-semibold text-stone-900 font-code tabular-nums text-sm">
           ₹ ${parseFloat(it.rate || 0).toFixed(2)}
         </td>
-        <td class="py-2.5 px-3 font-semibold text-slate-800 font-mono text-xs">
+        <td class="py-3 px-3 font-medium text-stone-700 font-code tabular-nums text-xs">
           ${(parseFloat(it.defaultWidth) || 3.50).toFixed(2)} Ft
         </td>
-        <td class="py-2.5 px-3">
-          <span class="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-            <i class="fa-solid fa-user-pen text-slate-400 text-[10px]"></i>
+        <td class="py-3 px-3">
+          <span class="inline-flex items-center gap-1 font-medium text-stone-700 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded text-[11px]">
+            <i class="fa-solid fa-user-pen text-stone-400 text-[10px]"></i>
             ${this.escapeHtml(it.createdByName || it.createdBy || 'System Administrator')}
           </span>
         </td>
-        <td class="py-2.5 px-3 text-right space-x-1">
-          ${canManageItems ? `
-            <button onclick="App.openItemModal('${it.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Item">
-              <i class="fa-solid fa-pen-to-square"></i>
-            </button>
-          ` : ''}
-          ${canDeleteRecords ? `
-            <button onclick="App.deleteItem('${it.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Item">
-              <i class="fa-solid fa-trash-can"></i>
-            </button>
-          ` : ''}
-          ${!canManageItems && !canDeleteRecords ? `<span class="text-[11px] text-slate-400 font-medium">Read-Only</span>` : ''}
+        <td class="py-3 px-3 text-right">
+          <div class="inline-flex items-center gap-1">
+            ${canManageItems ? `
+              <button onclick="App.openItemModal('${it.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer" title="Edit Item">
+                <i class="fa-solid fa-pen-to-square text-sm"></i>
+              </button>
+            ` : ''}
+            ${canDeleteRecords ? `
+              <button onclick="App.deleteItem('${it.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-red-700 hover:bg-red-50 transition-colors cursor-pointer" title="Delete Item">
+                <i class="fa-solid fa-trash-can text-sm"></i>
+              </button>
+            ` : ''}
+            ${!canManageItems && !canDeleteRecords ? `<span class="text-[11px] text-stone-400 font-medium">Read-Only</span>` : ''}
+          </div>
         </td>
       </tr>
     `).join('');
@@ -2065,17 +2145,17 @@ const App = {
       }
 
       return `
-        <tr class="border-b border-slate-200 hover:bg-slate-50/50 transition-colors" data-item-idx="${idx}">
-          <td class="py-2.5 px-2 text-center text-slate-500 font-bold align-top pt-3">${idx + 1}</td>
+        <tr class="border-b border-stone-200 hover:bg-stone-50/50 transition-colors" data-item-idx="${idx}">
+          <td class="py-2.5 px-2 text-center text-stone-500 font-semibold align-top pt-3">${idx + 1}</td>
           <td class="py-2.5 px-3 align-top">
             
             <!-- Item Selection Dropdown (Populated Dynamically from Items Master) -->
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">
-                <i class="fa-solid fa-boxes-stacked mr-1 text-blue-700"></i> Select Product / Item:
+              <label class="text-[10px] font-semibold text-stone-600 uppercase tracking-wider block">
+                <i class="fa-solid fa-boxes-stacked mr-1 text-stone-500"></i> Select Product / Item:
               </label>
-              <select onchange="App.selectItemFromMaster(${idx}, this.value)" class="w-full text-xs font-bold border-2 border-blue-500 bg-white rounded-lg px-2.5 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs cursor-pointer">
-                <option value="" disabled ${!item.description ? 'selected' : ''}>-- ⚡ Select Product from Items Master --</option>
+              <select onchange="App.selectItemFromMaster(${idx}, this.value)" class="w-full text-xs font-semibold border border-stone-300 bg-stone-50 rounded-xl px-3 py-2 text-stone-900 focus:bg-white focus:border-stone-900 focus:outline-none transition-colors cursor-pointer">
+                <option value="" disabled ${!item.description ? 'selected' : ''}>-- Select Product from Items Master --</option>
                 ${masterOptions}
                 <option value="__custom__" ${item.isCustom ? 'selected' : ''}>+ Custom Product / Item (Manual Entry)</option>
               </select>
@@ -2084,8 +2164,8 @@ const App = {
             <!-- Custom Product Name Input (Shown when custom item chosen) -->
             ${item.isCustom ? `
               <div class="mt-2">
-                <label class="text-[10px] font-semibold text-slate-600 block mb-0.5">Custom Product Description:</label>
-                <input type="text" class="w-full text-xs font-bold border border-slate-300 rounded px-2.5 py-1.5 focus:border-cyan-500" 
+                <label class="text-[10px] font-semibold text-stone-600 block mb-0.5">Custom Product Description:</label>
+                <input type="text" class="w-full text-xs font-semibold border border-stone-300 rounded-xl px-2.5 py-1.5 bg-stone-50 focus:bg-white focus:border-stone-900 focus:outline-none transition-colors" 
                        value="${PdfGenerator.escapeHtml(item.description)}" 
                        onchange="App.updateItemField(${idx}, 'description', this.value)" 
                        placeholder="Enter custom product name / description..."/>
@@ -2094,7 +2174,7 @@ const App = {
 
             <!-- Sub-Remarks / Line Details (e.g. ROOFING SHEET) -->
             <div class="mt-1.5">
-              <input type="text" class="w-full text-[11px] italic text-slate-700 border border-slate-200 rounded px-2 py-1 bg-slate-50/80" 
+              <input type="text" class="w-full text-xs text-stone-700 border border-stone-200 rounded-xl px-2.5 py-1.5 bg-stone-50 focus:bg-white focus:border-stone-900 focus:outline-none transition-colors" 
                      value="${PdfGenerator.escapeHtml(item.subRemarks || '')}" 
                      onchange="App.updateItemField(${idx}, 'subRemarks', this.value)" 
                      placeholder="Specification remarks e.g. (ROOFING SHEET)"/>
@@ -2103,27 +2183,27 @@ const App = {
             <!-- Product Image Displayed Directly Below Selected Item in HTML Table -->
             <div class="mt-2">
               ${item.imageUrl ? `
-                <div class="p-2 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center justify-between gap-3 shadow-2xs max-w-md">
+                <div class="p-2 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-between gap-3 max-w-md">
                   <div class="flex items-center gap-2.5">
-                    <img src="${item.imageUrl}" alt="Product Profile" class="h-10 max-w-44 object-contain bg-white rounded p-1 border border-blue-200 shadow-2xs" />
+                    <img src="${item.imageUrl}" alt="Product Profile" class="h-10 max-w-44 object-contain bg-white rounded-lg p-1 border border-stone-200 shadow-2xs" />
                     <div>
-                      <span class="text-[11px] font-bold text-blue-950 block">Product Profile Diagram</span>
-                      <span class="text-[10px] text-blue-700 italic">Displayed on quotation PDF table</span>
+                      <span class="text-xs font-semibold text-stone-900 block">Product Profile Diagram</span>
+                      <span class="text-[11px] text-stone-500">Displayed on quotation PDF table</span>
                     </div>
                   </div>
                   <div class="flex items-center gap-1">
-                    <label class="text-[10px] text-blue-600 hover:text-blue-800 cursor-pointer p-1 font-semibold" title="Change Image">
-                      <i class="fa-solid fa-camera"></i>
+                    <label class="h-8 w-8 rounded-lg inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-200/60 cursor-pointer transition-colors" title="Change Image">
+                      <i class="fa-solid fa-camera text-xs"></i>
                       <input type="file" accept="image/*" class="hidden" onchange="App.handleLineItemImageUpload(${idx}, event)" />
                     </label>
-                    <button type="button" onclick="App.removeItemImage(${idx})" class="text-rose-500 hover:text-rose-700 p-1 text-xs" title="Remove Profile Image">
+                    <button type="button" onclick="App.removeItemImage(${idx})" class="h-8 w-8 rounded-lg inline-flex items-center justify-center text-red-700 hover:bg-red-50 text-xs transition-colors cursor-pointer" title="Remove Profile Image">
                       <i class="fa-solid fa-trash-can"></i>
                     </button>
                   </div>
                 </div>
               ` : `
-                <label class="text-[10px] font-semibold text-blue-700 hover:text-blue-900 cursor-pointer inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-md transition-colors">
-                  <i class="fa-solid fa-image text-blue-600"></i> Attach Product Profile Image
+                <label class="text-xs font-semibold text-stone-700 hover:text-stone-900 cursor-pointer inline-flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 border border-stone-300 px-3 py-1.5 rounded-xl transition-colors">
+                  <i class="fa-solid fa-image text-stone-500"></i> Attach Product Profile Image
                   <input type="file" accept="image/*" class="hidden" onchange="App.handleLineItemImageUpload(${idx}, event)" />
                 </label>
               `}
@@ -2132,18 +2212,18 @@ const App = {
             <!-- Nested Accessories Breakdown Subtable Accordion -->
             <div class="mt-1.5">
               ${subTableRows}
-              <button type="button" onclick="App.addSubTableRow(${idx})" class="text-[10px] font-bold text-sky-700 hover:underline mt-1">
-                <i class="fa-solid fa-plus-circle mr-1"></i> Add Accessories Breakdown Row
+              <button type="button" onclick="App.addSubTableRow(${idx})" class="text-xs font-semibold text-orange-700 hover:underline inline-flex items-center gap-1 mt-1 cursor-pointer">
+                <i class="fa-solid fa-plus-circle text-xs"></i> Add Accessories Breakdown Row
               </button>
             </div>
           </td>
           <td class="py-2.5 px-2 w-28 align-top">
-            <input type="number" step="any" class="w-full text-xs font-black text-center border border-slate-300 rounded px-2 py-1.5 focus:border-cyan-500 mt-4" 
+            <input type="number" step="any" class="w-full text-xs font-semibold font-code tabular-nums text-center border border-stone-300 rounded-xl px-2 py-2 bg-stone-50 focus:bg-white focus:border-stone-900 focus:outline-none transition-colors mt-4" 
                    value="${item.quantity}" 
                    oninput="App.updateItemField(${idx}, 'quantity', this.value)"/>
           </td>
           <td class="py-2.5 px-2 w-28 align-top">
-            <select class="w-full text-xs font-medium border border-slate-300 rounded px-1 py-1.5 bg-white mt-4"
+            <select class="w-full text-xs font-semibold border border-stone-300 rounded-xl px-2 py-2 bg-stone-50 text-stone-900 focus:bg-white focus:border-stone-900 focus:outline-none transition-colors mt-4 cursor-pointer"
                     onchange="App.updateItemField(${idx}, 'unit', this.value)">
               <option value="kg(approx.)" ${item.unit === 'kg(approx.)' ? 'selected' : ''}>kg(approx.)</option>
               <option value="PCS" ${item.unit === 'PCS' ? 'selected' : ''}>PCS</option>
@@ -2154,16 +2234,16 @@ const App = {
             </select>
           </td>
           <td class="py-2.5 px-2 w-24 align-top">
-            <input type="number" step="0.01" class="w-full text-xs font-bold text-center border border-slate-300 rounded px-2 py-1.5 focus:border-cyan-500 mt-4 font-mono" 
+            <input type="number" step="0.01" class="w-full text-xs font-semibold font-code tabular-nums text-center border border-stone-300 rounded-xl px-2 py-2 bg-stone-50 focus:bg-white focus:border-stone-900 focus:outline-none transition-colors mt-4" 
                    value="${item.rate}" 
                    oninput="App.updateItemField(${idx}, 'rate', this.value)"/>
           </td>
-          <td id="line-item-amount-${idx}" class="py-2.5 px-3 w-32 text-right font-black text-slate-900 text-xs align-top pt-5 font-mono">
+          <td id="line-item-amount-${idx}" class="py-2.5 px-3 w-32 text-right font-semibold text-stone-900 text-xs align-top pt-5 font-code tabular-nums">
             ₹ ${amt}
           </td>
           <td class="py-2.5 px-2 text-center w-10 align-top pt-4">
-            <button type="button" onclick="App.removeLineItem(${idx})" class="text-rose-500 hover:text-rose-700 p-1" title="Delete Row">
-              <i class="fa-solid fa-trash-can text-xs"></i>
+            <button type="button" onclick="App.removeLineItem(${idx})" class="h-8 w-8 rounded-lg inline-flex items-center justify-center text-red-700 hover:bg-red-50 text-xs transition-colors cursor-pointer" title="Delete Row">
+              <i class="fa-solid fa-trash-can"></i>
             </button>
           </td>
         </tr>
@@ -2781,8 +2861,8 @@ const App = {
     const tbody = document.getElementById('clients-list-tbody');
     if (this.isLoadingData) {
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-slate-400 font-medium">
-          <i class="fa-solid fa-spinner fa-spin mr-2 text-blue-600 text-lg"></i> Loading clients from Cloudflare D1...
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-stone-400 font-medium">
+          <i class="fa-solid fa-spinner fa-spin mr-2 text-stone-500 text-base"></i> Loading clients from Cloudflare D1...
         </td></tr>`;
       }
       return;
@@ -2846,8 +2926,8 @@ const App = {
     if (this.clientsPage < 1) this.clientsPage = 1;
 
     if (totalRecords === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-400">No clients found. Click "Add Client" to create one.</td></tr>`;
-      if (paginationBar) paginationBar.innerHTML = `<span class="text-xs text-slate-400">0 clients found</span>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-stone-400">No clients found. Click "+ Add client" or "Import CSV" to create one.</td></tr>`;
+      if (paginationBar) paginationBar.innerHTML = `<span class="text-xs text-stone-400">0 clients found</span>`;
       return;
     }
 
@@ -2856,33 +2936,35 @@ const App = {
     const paginated = filtered.slice(startIdx, endIdx);
 
     tbody.innerHTML = paginated.map(c => `
-      <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors text-xs">
+      <tr class="border-b border-stone-100 hover:bg-stone-50/80 transition-colors text-xs">
         <td class="py-3 px-3">
-          <div class="font-bold text-slate-900 text-sm">${c.companyName || c.name}</div>
-          ${c.companyName ? `<div class="text-slate-500 font-medium">Contact: ${c.name}</div>` : ''}
+          <div class="font-semibold text-stone-900 text-sm">${this.escapeHtml(c.companyName || c.name)}</div>
+          ${c.companyName ? `<div class="text-stone-500 font-medium">Contact: ${this.escapeHtml(c.name)}</div>` : ''}
         </td>
-        <td class="py-3 px-3 font-semibold text-blue-900">${c.phone || 'N/A'}</td>
-        <td class="py-3 px-3 text-slate-600">${c.email || 'N/A'}</td>
-        <td class="py-3 px-3 font-mono text-slate-700">${c.gstNumber || 'Unregistered'}</td>
-        <td class="py-3 px-3 text-slate-500 max-w-xs truncate">${c.address || ''}</td>
+        <td class="py-3 px-3 font-semibold text-stone-900 font-code">${this.escapeHtml(c.phone || 'N/A')}</td>
+        <td class="py-3 px-3 text-stone-600 font-code">${this.escapeHtml(c.email || 'N/A')}</td>
+        <td class="py-3 px-3 font-code text-stone-700">${this.escapeHtml(c.gstNumber || 'Unregistered')}</td>
+        <td class="py-3 px-3 text-stone-500 max-w-xs truncate">${this.escapeHtml(c.address || '')}</td>
         <td class="py-3 px-3">
-          <span class="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-            <i class="fa-solid fa-user-pen text-slate-400 text-[10px]"></i>
+          <span class="inline-flex items-center gap-1 font-medium text-stone-700 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded text-[11px]">
+            <i class="fa-solid fa-user-pen text-stone-400 text-[10px]"></i>
             ${this.escapeHtml(c.createdByName || c.createdBy || 'System Administrator')}
           </span>
         </td>
-        <td class="py-3 px-3 text-right space-x-1">
-          ${canManageClients ? `
-            <button onclick="App.openClientModal('${c.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Client">
-              <i class="fa-solid fa-pen-to-square"></i>
-            </button>
-          ` : ''}
-          ${canDeleteRecords ? `
-            <button onclick="App.deleteClient('${c.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Client">
-              <i class="fa-solid fa-trash-can"></i>
-            </button>
-          ` : ''}
-          ${!canManageClients && !canDeleteRecords ? `<span class="text-[11px] text-slate-400 font-medium">Read-Only</span>` : ''}
+        <td class="py-3 px-3 text-right">
+          <div class="inline-flex items-center gap-1">
+            ${canManageClients ? `
+              <button onclick="App.openClientModal('${c.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer" title="Edit Client">
+                <i class="fa-solid fa-pen-to-square text-sm"></i>
+              </button>
+            ` : ''}
+            ${canDeleteRecords ? `
+              <button onclick="App.deleteClient('${c.id}')" class="h-9 w-9 rounded-xl inline-flex items-center justify-center text-red-700 hover:bg-red-50 transition-colors cursor-pointer" title="Delete Client">
+                <i class="fa-solid fa-trash-can text-sm"></i>
+              </button>
+            ` : ''}
+            ${!canManageClients && !canDeleteRecords ? `<span class="text-[11px] text-stone-400 font-medium">Read-Only</span>` : ''}
+          </div>
         </td>
       </tr>
     `).join('');
@@ -2963,19 +3045,19 @@ const App = {
     for (let p = startP; p <= endP; p++) {
       const active = p === currentPage;
       pageButtons += `
-        <button onclick="${pageFn}(${p})" class="px-2.5 py-1 rounded text-xs font-bold transition-all ${active ? 'bg-blue-900 text-white shadow-xs' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'}">
+        <button onclick="${pageFn}(${p})" class="h-9 min-w-9 px-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${active ? 'bg-stone-900 text-white' : 'bg-white border border-stone-300 text-stone-900 hover:bg-stone-50'}">
           ${p}
         </button>
       `;
     }
 
     container.innerHTML = `
-      <div class="flex items-center gap-2">
-        <span>Showing <strong class="font-bold text-slate-900">${fromNum}</strong> to <strong class="font-bold text-slate-900">${toNum}</strong> of <strong class="font-bold text-slate-900">${totalCount}</strong> ${entityName}</span>
-        <span class="text-slate-300">|</span>
-        <label class="flex items-center gap-1 text-[11px] text-slate-500">
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-stone-600">Showing <strong class="font-semibold font-code text-stone-900">${fromNum}</strong> to <strong class="font-semibold font-code text-stone-900">${toNum}</strong> of <strong class="font-semibold font-code text-stone-900">${totalCount}</strong> ${entityName}</span>
+        <span class="text-stone-300">|</span>
+        <label class="flex items-center gap-1.5 text-xs text-stone-500">
           <span>Per page:</span>
-          <select onchange="${sizeFn}(this.value)" class="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white text-slate-800 font-semibold focus:outline-none focus:border-blue-600">
+          <select onchange="${sizeFn}(this.value)" class="h-9 border border-stone-300 rounded-xl px-2.5 text-xs bg-stone-50 text-stone-900 font-semibold focus:bg-white focus:border-stone-900 focus:outline-none transition-colors cursor-pointer">
             <option value="15" ${pageSize === 15 ? 'selected' : ''}>15</option>
             <option value="30" ${pageSize === 30 ? 'selected' : ''}>30</option>
             <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
@@ -2985,11 +3067,11 @@ const App = {
       </div>
 
       <div class="flex items-center gap-1.5">
-        <button onclick="${pageFn}(${currentPage - 1})" ${currentPage <= 1 ? 'disabled class="px-2.5 py-1 rounded text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"'} title="Previous Page">
+        <button onclick="${pageFn}(${currentPage - 1})" ${currentPage <= 1 ? 'disabled class="h-9 px-3 rounded-xl text-xs font-semibold bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed inline-flex items-center gap-1"' : 'class="h-9 px-3 rounded-xl text-xs font-semibold bg-white text-stone-900 border border-stone-300 hover:bg-stone-50 transition-colors inline-flex items-center gap-1 cursor-pointer"'} title="Previous Page">
           <i class="fa-solid fa-chevron-left text-[10px]"></i> Prev
         </button>
         ${pageButtons}
-        <button onclick="${pageFn}(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled class="px-2.5 py-1 rounded text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"'} title="Next Page">
+        <button onclick="${pageFn}(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled class="h-9 px-3 rounded-xl text-xs font-semibold bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed inline-flex items-center gap-1"' : 'class="h-9 px-3 rounded-xl text-xs font-semibold bg-white text-stone-900 border border-stone-300 hover:bg-stone-50 transition-colors inline-flex items-center gap-1 cursor-pointer"'} title="Next Page">
           Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
         </button>
       </div>
@@ -3301,14 +3383,14 @@ const App = {
     bar.innerHTML = companies.map(c => {
       const isActive = c.id === this.activeCompanyId;
       const activeClasses = isActive
-        ? 'bg-amber-400 text-blue-950 font-black shadow-md border-amber-300'
-        : 'bg-blue-900/60 text-slate-300 hover:bg-blue-800/80 hover:text-white border-blue-800/50';
+        ? 'bg-stone-900 text-white font-semibold border-stone-900'
+        : 'bg-white text-stone-700 hover:bg-stone-100 border-stone-300';
       const label = this.escapeHtml(c.companyName || c.name || 'Company Profile');
-      const badge = c.isDefault ? '<span class="text-[9px] uppercase px-1.5 py-0.5 bg-blue-950/40 text-amber-900 rounded font-bold ml-1.5">Default</span>' : '';
+      const badge = c.isDefault ? '<span class="text-[10px] uppercase px-1.5 py-0.5 bg-orange-100 text-orange-900 rounded font-semibold ml-1.5">Default</span>' : '';
       return `
         <button type="button" onclick="App.switchCompanyProfileTab('${c.id}')"
-          class="px-3.5 py-1.5 rounded-xl text-xs border transition flex items-center gap-1.5 ${activeClasses}">
-          <i class="fa-solid fa-building text-[11px] ${isActive ? 'text-blue-950' : 'text-amber-400'}"></i>
+          class="h-10 px-3.5 rounded-xl text-xs border transition-colors flex items-center gap-2 cursor-pointer ${activeClasses}">
+          <i class="fa-solid fa-building text-xs ${isActive ? 'text-white' : 'text-stone-500'}"></i>
           <span>${label}</span>
           ${badge}
         </button>
@@ -3594,14 +3676,14 @@ const App = {
     if (!container) return;
 
     container.innerHTML = terms.map((t, idx) => `
-      <div class="flex items-center gap-2 mb-2">
-        <span class="text-xs font-bold text-slate-500 w-6 text-center">${idx + 1}.</span>
-        <input type="text" class="flex-1 text-xs border border-slate-300 rounded px-2.5 py-1.5 focus:border-blue-500"
+      <div class="flex items-center gap-3 mb-3">
+        <span class="text-xs font-semibold text-stone-500 w-6 text-right">${idx + 1}.</span>
+        <input type="text" class="h-11 flex-1 text-sm bg-stone-50 border border-stone-300 rounded-xl px-3.5 text-stone-900 placeholder:text-stone-400 focus:bg-white focus:border-stone-900 focus:outline-none transition-colors"
                value="${PdfGenerator.escapeHtml(t)}"
                data-term-idx="${idx}"
                onchange="App.updateTermInSettings(${idx}, this.value)"/>
-        <button type="button" onclick="App.removeTermFromSettings(${idx})" class="text-rose-500 hover:text-rose-700 p-1.5">
-          <i class="fa-solid fa-trash-can text-xs"></i>
+        <button type="button" onclick="App.removeTermFromSettings(${idx})" class="h-11 w-11 rounded-xl inline-flex items-center justify-center text-red-700 hover:bg-red-50 transition-colors cursor-pointer" title="Remove Term">
+          <i class="fa-solid fa-trash-can text-sm"></i>
         </button>
       </div>
     `).join('');
@@ -3714,8 +3796,8 @@ const App = {
     if (badge) {
       badge.textContent = `${banners.length} / 12 Images`;
       badge.className = banners.length >= 12
-        ? 'text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 w-fit'
-        : 'text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 w-fit';
+        ? 'text-xs font-semibold text-orange-800 bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200'
+        : 'text-xs font-semibold text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200';
     }
 
     if (toggle && current) {
@@ -3731,16 +3813,16 @@ const App = {
     if (emptyBox) emptyBox.classList.add('hidden');
 
     grid.innerHTML = banners.map((bUrl, idx) => `
-      <div class="relative group bg-slate-50 border border-slate-200 rounded-xl p-2 flex flex-col justify-between shadow-2xs hover:border-blue-400 transition">
-        <div class="h-28 w-full flex items-center justify-center bg-white rounded-lg overflow-hidden border border-slate-100">
+      <div class="relative group bg-white border border-stone-200 rounded-xl p-2.5 flex flex-col justify-between hover:border-stone-400 transition-colors">
+        <div class="aspect-video w-full flex items-center justify-center bg-stone-50 rounded-lg overflow-hidden border border-stone-100">
           <img src="${bUrl}" alt="Product ${idx + 1}" class="max-h-28 w-full object-contain p-1" />
         </div>
-        <div class="mt-2 pt-1 border-t border-slate-200 flex items-center justify-between text-[11px]">
-          <span class="font-bold text-slate-700">Product #${idx + 1}</span>
+        <div class="mt-2.5 pt-2 border-t border-stone-100 flex items-center justify-between text-xs">
+          <span class="font-semibold text-stone-700">Product #${idx + 1}</span>
           <button type="button" onclick="App.removeBannerImage(${idx})"
             title="Remove Product Image"
-            class="text-rose-600 hover:text-white hover:bg-rose-600 p-1 px-2 rounded font-bold text-[10px] border border-rose-200 hover:border-rose-600 transition flex items-center gap-1 cursor-pointer">
-            <i class="fa-solid fa-trash-can text-[9px]"></i>
+            class="h-7 px-2.5 rounded-lg text-red-700 bg-red-50 hover:bg-red-100 font-semibold text-xs transition-colors flex items-center gap-1 cursor-pointer">
+            <i class="fa-solid fa-trash-can text-[10px]"></i>
             <span>Remove</span>
           </button>
         </div>
@@ -4091,24 +4173,23 @@ const App = {
     if (!container) return;
 
     const toast = document.createElement('div');
-    let bg = 'bg-slate-900 text-white';
-    let icon = 'fa-circle-info';
-    if (type === 'success') {
-      bg = 'bg-emerald-600 text-white';
-      icon = 'fa-circle-check';
-    } else if (type === 'error') {
-      bg = 'bg-rose-600 text-white';
-      icon = 'fa-circle-exclamation';
-    }
+    toast.className = 'flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold animate-fade-in bg-stone-900 text-white';
+    let dotColor = 'bg-stone-400';
+    if (type === 'success') dotColor = 'bg-green-400';
+    if (type === 'error') dotColor = 'bg-red-400';
+    if (type === 'warning' || type === 'info') dotColor = 'bg-orange-400';
 
-    toast.className = `flex items-center gap-2.5 px-4 py-2.5 rounded-lg shadow-xl text-xs font-semibold animate-fade-in ${bg}`;
-    toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
+    toast.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${dotColor} shrink-0"></span><span>${this.escapeHtml(message)}</span>`;
     container.appendChild(toast);
 
     setTimeout(() => {
       toast.style.opacity = '0';
       toast.style.transition = 'opacity 0.3s ease';
-      setTimeout(() => container.removeChild(toast), 300);
+      setTimeout(() => {
+        if (toast.parentElement === container) {
+          container.removeChild(toast);
+        }
+      }, 300);
     }, 3200);
   },
 
