@@ -2429,35 +2429,35 @@ const App = {
         const rowCalc = CalculationsEngine.calculateSheetRow(row.feet, row.inch, row.nos, block.sheetWidth);
 
         return `
-          <tr class="border-b border-slate-300 text-xs">
-            <td class="py-1 px-1 text-center font-bold text-slate-400 w-10">${rIdx + 1}</td>
-            <td class="py-1 px-1.5" style="background-color: #fce4ec;">
-              <input type="number" step="any" min="0" class="w-full text-center font-bold text-slate-900 bg-transparent border border-pink-300 rounded px-1.5 py-1"
+          <tr class="border-b border-stone-200 text-xs hover:bg-stone-50/70 transition-colors">
+            <td class="py-2.5 px-2 text-center font-bold text-stone-400 w-12">${rIdx + 1}</td>
+            <td class="py-2 px-2" style="background-color: #fce4ec;">
+              <input type="number" step="any" min="0" class="h-11 w-full min-w-[90px] text-center font-bold text-stone-900 bg-white border border-pink-300 rounded-xl px-3 text-sm tabular-nums focus:outline-none focus:border-pink-600 focus:ring-2 focus:ring-pink-500/20 shadow-2xs"
                      value="${row.feet}" 
                      oninput="App.updateCalcRow(${bIdx}, ${rIdx}, 'feet', this.value)" placeholder="Feet"/>
             </td>
-            <td class="py-1 px-1.5" style="background-color: #e1f5fe;">
-              <input type="number" step="any" min="0" max="11.99" class="w-full text-center font-bold text-slate-900 bg-transparent border border-sky-300 rounded px-1.5 py-1"
+            <td class="py-2 px-2" style="background-color: #e1f5fe;">
+              <input type="number" step="any" min="0" max="11.99" class="h-11 w-full min-w-[90px] text-center font-bold text-stone-900 bg-white border border-sky-300 rounded-xl px-3 text-sm tabular-nums focus:outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-500/20 shadow-2xs"
                      value="${row.inch}" 
                      oninput="App.updateCalcRow(${bIdx}, ${rIdx}, 'inch', this.value)" placeholder="Inch"/>
             </td>
-            <td class="py-1 px-1.5" style="background-color: #fff9c4;">
-              <input type="number" step="1" min="1" class="w-full text-center font-black text-slate-900 bg-transparent border border-amber-300 rounded px-1.5 py-1"
+            <td class="py-2 px-2" style="background-color: #fff9c4;">
+              <input type="number" step="1" min="1" class="h-11 w-full min-w-[90px] text-center font-black text-stone-900 bg-white border border-amber-300 rounded-xl px-3 text-sm tabular-nums focus:outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 shadow-2xs"
                      value="${row.nos}" 
                      oninput="App.updateCalcRow(${bIdx}, ${rIdx}, 'nos', this.value)" placeholder="Nos"/>
             </td>
-            <td id="calc-row-sqmeter-${bIdx}-${rIdx}" class="py-1 px-2 text-center font-semibold text-slate-900 font-mono" style="background-color: #c8e6c9;">
+            <td id="calc-row-sqmeter-${bIdx}-${rIdx}" class="py-2 px-3 text-center font-semibold text-stone-900 font-code text-sm tabular-nums" style="background-color: #c8e6c9;">
               ${rowCalc.sqMetersDisplay}
             </td>
-            <td id="calc-row-sqfeet-${bIdx}-${rIdx}" class="py-1 px-2 text-center font-bold text-slate-900 font-mono" style="background-color: #e1bee7;">
+            <td id="calc-row-sqfeet-${bIdx}-${rIdx}" class="py-2 px-3 text-center font-bold text-stone-900 font-code text-sm tabular-nums" style="background-color: #e1bee7;">
               ${rowCalc.sqFeetDisplay}
             </td>
-            <td class="py-1 px-2 text-center space-x-1 w-20">
-              <button type="button" onclick="App.duplicateCalcRow(${bIdx}, ${rIdx})" class="text-purple-600 hover:text-purple-800 p-1" title="Duplicate row">
+            <td class="py-2 px-2 text-center space-x-1.5 w-24">
+              <button type="button" onclick="App.duplicateCalcRow(${bIdx}, ${rIdx})" class="h-9 w-9 rounded-lg inline-flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-stone-200 transition-colors" title="Duplicate row">
                 <i class="fa-solid fa-copy text-xs"></i>
               </button>
-              <button type="button" onclick="App.removeCalcRow(${bIdx}, ${rIdx})" class="text-rose-500 hover:text-rose-700 p-1" title="Remove row">
-                <i class="fa-solid fa-xmark text-xs"></i>
+              <button type="button" onclick="App.removeCalcRow(${bIdx}, ${rIdx})" class="h-9 w-9 rounded-lg inline-flex items-center justify-center text-red-600 hover:text-red-800 hover:bg-red-50 transition-colors" title="Remove row">
+                <i class="fa-solid fa-xmark text-sm"></i>
               </button>
             </td>
           </tr>
@@ -2465,88 +2465,90 @@ const App = {
       }).join('');
 
       return `
-        <div class="mb-5 border-2 border-cyan-400 rounded-xl overflow-hidden bg-white shadow-sm">
-          <div class="px-4 py-2.5 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-3" style="background-color: #0084c7;">
+        <div class="w-full border border-stone-200 rounded-2xl overflow-hidden bg-white shadow-xs">
+          <!-- Calculation Block Header -->
+          <div class="px-5 py-4 bg-stone-900 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div class="flex-1 w-full">
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] uppercase font-bold text-amber-300 tracking-wider">CALCULATION BLOCK #${bIdx + 1}</span>
-                <span class="bg-white/20 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase">Informational Reference Only</span>
+              <div class="flex items-center gap-2 mb-1.5">
+                <span class="text-xs uppercase font-bold text-orange-400 font-display tracking-wider">
+                  <i class="fa-solid fa-calculator mr-1"></i> Calculation Block #${bIdx + 1}
+                </span>
+                <span class="bg-stone-800 text-stone-300 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-stone-700">
+                  Cut-Length Dimensions
+                </span>
               </div>
-              <input type="text" class="w-full bg-white/10 border border-white/30 rounded px-2.5 py-1 text-xs font-bold text-white focus:bg-white/20 mt-1 placeholder-cyan-100"
+              <input type="text" class="h-11 w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 text-sm font-semibold text-white placeholder:text-stone-400 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                      value="${PdfGenerator.escapeHtml(block.title)}"
                      onchange="App.updateCalcBlockMeta(${bIdx}, 'title', this.value)"
                      placeholder="Calculation Details for : ..."/>
             </div>
 
-            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-              <div class="flex items-center gap-1.5 bg-black/20 px-2.5 py-1 rounded-md border border-white/20">
-                <label class="text-[11px] font-semibold text-white whitespace-nowrap">Width (Ft):</label>
-                <input type="number" step="0.01" class="w-16 bg-white text-slate-950 font-black text-xs text-center rounded px-1.5 py-0.5"
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0">
+              <div class="flex items-center gap-2 bg-stone-800/90 px-3 py-1.5 rounded-xl border border-stone-700">
+                <label class="text-xs font-semibold text-stone-300 whitespace-nowrap">Width (Ft):</label>
+                <input type="number" step="0.01" class="h-11 w-24 bg-white text-stone-900 font-bold text-sm text-center rounded-xl px-2 border border-stone-300 tabular-nums focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20"
                        value="${block.sheetWidth || 3.50}"
                        oninput="App.updateCalcBlockMeta(${bIdx}, 'sheetWidth', this.value)"/>
               </div>
 
-              <button type="button" onclick="App.removeCalculationBlock(${bIdx})" class="text-white hover:text-rose-200 p-1.5 rounded" title="Delete Block">
+              <button type="button" onclick="App.removeCalculationBlock(${bIdx})" class="h-11 w-11 rounded-xl bg-stone-800 hover:bg-red-900/40 text-stone-300 hover:text-red-400 border border-stone-700 inline-flex items-center justify-center transition-colors cursor-pointer" title="Delete Calculation Block">
                 <i class="fa-solid fa-trash-can text-sm"></i>
               </button>
             </div>
           </div>
 
+          <!-- Measurement Rows Table -->
           <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse border border-slate-300">
+            <table class="w-full text-left border-collapse">
               <thead>
-                <tr class="text-white text-xs font-bold uppercase" style="background-color: #00a2e8;">
-                  <th class="py-2 px-1 text-center w-10">#</th>
-                  <th class="py-2 px-2 text-center w-24">Feet</th>
-                  <th class="py-2 px-2 text-center w-24">Inch</th>
-                  <th class="py-2 px-2 text-center w-24">Nos</th>
-                  <th class="py-2 px-2 text-center w-32">Sq. Meter</th>
-                  <th class="py-2 px-2 text-center w-32">Sq.Feet</th>
-                  <th class="py-2 px-2 text-center w-20">Action</th>
+                <tr class="bg-stone-100 border-b border-stone-200 text-xs font-bold uppercase tracking-wider text-stone-700">
+                  <th class="py-3 px-2 text-center w-12">#</th>
+                  <th class="py-3 px-2 text-center min-w-[100px] w-1/5" style="background-color: #fce4ec;">Feet</th>
+                  <th class="py-3 px-2 text-center min-w-[100px] w-1/5" style="background-color: #e1f5fe;">Inch</th>
+                  <th class="py-3 px-2 text-center min-w-[100px] w-1/5" style="background-color: #fff9c4;">Nos</th>
+                  <th class="py-3 px-3 text-center min-w-[120px] w-1/5" style="background-color: #c8e6c9;">Sq. Meter</th>
+                  <th class="py-3 px-3 text-center min-w-[120px] w-1/5" style="background-color: #e1bee7;">Sq.Feet</th>
+                  <th class="py-3 px-2 text-center w-24">Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="divide-y divide-stone-200">
                 ${rowsHtml}
               </tbody>
               <tfoot>
-                <tr class="bg-slate-50 font-bold text-xs text-slate-800 border-t-2 border-slate-300">
-                  <td colspan="3" class="py-2 px-3 text-right font-bold text-[11px] text-slate-600">
-                    <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-ruler-combined text-slate-600"></i> Dimensions Total:</span>
+                <tr class="bg-stone-50 font-bold text-xs text-stone-900 border-t-2 border-stone-300">
+                  <td colspan="3" class="py-3 px-3 text-right font-bold text-xs text-stone-600">
+                    <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-ruler-combined text-stone-500"></i> Dimensions Total:</span>
                   </td>
-                  <td id="calc-block-total-nos-${bIdx}" class="py-2 px-2 text-center font-bold" style="background-color: #fff9c4;">
+                  <td id="calc-block-total-nos-${bIdx}" class="py-3 px-2 text-center font-bold text-sm text-stone-900 tabular-nums" style="background-color: #fff9c4;">
                     ${computed.totalNos} Pcs
                   </td>
-                  <td id="calc-block-total-sqmeters-${bIdx}" class="py-2 px-2 text-center font-bold" style="background-color: #c8e6c9;">
+                  <td id="calc-block-total-sqmeters-${bIdx}" class="py-3 px-3 text-center font-bold text-sm text-stone-900 font-mono tabular-nums" style="background-color: #c8e6c9;">
                     ${computed.totalSqMetersDisplay}
                   </td>
-                  <td id="calc-block-total-sqfeet-${bIdx}" class="py-2 px-2 text-center font-bold" style="background-color: #e1bee7;">
+                  <td id="calc-block-total-sqfeet-${bIdx}" class="py-3 px-3 text-center font-bold text-sm text-stone-900 font-mono tabular-nums" style="background-color: #e1bee7;">
                     ${computed.totalSqFeetDisplay}
                   </td>
-                  <td></td>
+                  <td class="py-3 px-2"></td>
                 </tr>
               </tfoot>
             </table>
           </div>
 
-          <div class="p-2.5 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center gap-2 text-xs">
-            <button type="button" onclick="App.addCalcRow(${bIdx})" class="px-3 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-bold rounded shadow-sm">
-              <i class="fa-solid fa-plus mr-1"></i> Add Measurement Row
+          <!-- Bottom Row: Add Row + Disclaimer -->
+          <div class="p-3.5 bg-stone-50 border-t border-stone-200 flex flex-wrap justify-between items-center gap-3 text-xs">
+            <button type="button" onclick="App.addCalcRow(${bIdx})" class="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white border border-stone-300 hover:bg-stone-100 text-stone-900 text-xs font-semibold shadow-2xs transition-colors cursor-pointer">
+              <i class="fa-solid fa-plus text-orange-700"></i>
+              <span>Add Measurement Row</span>
             </button>
 
-            <span class="text-[11px] text-slate-500 font-semibold italic flex items-center gap-1">
-              <i class="fa-solid fa-circle-info text-sky-600"></i> Informational reference only • Does not alter main quotation item quantity or price
+            <span class="text-xs text-stone-500 font-medium italic flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-info text-stone-400"></i> Informational reference only • Does not alter main quotation item quantity or price
             </span>
           </div>
 
         </div>
       `;
-    }).join('') + `
-      <div class="mt-2 text-right">
-        <button type="button" onclick="App.addCalculationBlock()" class="px-4 py-2 bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold rounded-lg shadow-sm">
-          <i class="fa-solid fa-calculator mr-1.5"></i> Add Sheet Size Calculator
-        </button>
-      </div>
-    `;
+    }).join('');
   },
 
   addCalculationBlock() {
