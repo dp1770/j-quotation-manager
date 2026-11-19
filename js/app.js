@@ -1789,17 +1789,36 @@ const App = {
     }
   },
 
-  handleItemImageUpload(event) {
+  async handleItemImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target.result;
-      document.getElementById('item-form-image-data').value = base64;
-      this.renderItemModalPreview(base64);
-    };
-    reader.readAsDataURL(file);
+    const preview = document.getElementById('item-form-image-preview');
+    const hiddenData = document.getElementById('item-form-image-data');
+    const origPreview = preview ? preview.innerHTML : '';
+
+    if (preview) {
+      preview.innerHTML = `
+        <div class="flex items-center gap-2 text-xs text-orange-700 font-semibold">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          <span>Compressing & uploading to cloud storage...</span>
+        </div>
+      `;
+    }
+
+    try {
+      const compressedBase64 = await this.compressImage(file, 800, 0.75);
+      const mediaUrl = await StorageManager.uploadMedia(compressedBase64, file.name);
+      if (hiddenData) hiddenData.value = mediaUrl;
+      this.renderItemModalPreview(mediaUrl);
+      this.showToast('Product diagram uploaded to cloud storage!', 'success');
+    } catch (err) {
+      console.error('Item image upload error:', err);
+      if (preview) preview.innerHTML = origPreview;
+      this.showToast('Upload failed: ' + (err.message || 'Error uploading image'), 'error');
+    } finally {
+      event.target.value = '';
+    }
   },
 
   async saveItemFromModal(e) {
@@ -2290,16 +2309,23 @@ const App = {
     this.showToast(`Selected "${masterItem.name}" • Unit Price auto-filled: ₹${item.rate}`, 'success');
   },
 
-  handleLineItemImageUpload(itemIdx, event) {
+  async handleLineItemImageUpload(itemIdx, event) {
     const file = event.target.files[0];
     if (!file || !this.currentQuotation || !this.currentQuotation.items[itemIdx]) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      this.currentQuotation.items[itemIdx].imageUrl = e.target.result;
+    this.showToast('Uploading product profile diagram to cloud storage...', 'info');
+    try {
+      const compressedBase64 = await this.compressImage(file, 800, 0.75);
+      const mediaUrl = await StorageManager.uploadMedia(compressedBase64, file.name);
+      this.currentQuotation.items[itemIdx].imageUrl = mediaUrl;
       this.renderEditorItemsTable();
-    };
-    reader.readAsDataURL(file);
+      this.showToast('Profile image uploaded to cloud storage!', 'success');
+    } catch (err) {
+      console.error('Line item image upload error:', err);
+      this.showToast('Failed to upload image: ' + err.message, 'error');
+    } finally {
+      event.target.value = '';
+    }
   },
 
   removeItemImage(itemIdx) {
@@ -3644,31 +3670,40 @@ const App = {
     }
   },
 
-  handleSignatureUpload(event) {
+  async handleSignatureUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target.result;
-      const sigPreview = document.getElementById('set-signature-preview');
-      if (sigPreview) sigPreview.src = base64;
+    const sigPreview = document.getElementById('set-signature-preview');
+    const origSrc = sigPreview ? sigPreview.src : '';
+
+    this.showToast('Uploading signature image to cloud storage...', 'info');
+
+    try {
+      const compressedBase64 = await this.compressImage(file, 800, 0.75);
+      const mediaUrl = await StorageManager.uploadMedia(compressedBase64, file.name || 'signature.png');
+      if (sigPreview) sigPreview.src = mediaUrl;
 
       const companies = StorageManager.getCompanies();
       const current = companies.find(c => c.id === this.activeCompanyId);
       if (current) {
-        current.authorizedSignature = base64;
+        current.authorizedSignature = mediaUrl;
         await StorageManager.saveCompany(current);
       }
 
       const settings = StorageManager.getSettings();
       if (!settings.media) settings.media = {};
-      settings.media.signatureImageUrl = base64;
+      settings.media.signatureImageUrl = mediaUrl;
       await StorageManager.saveSettings(settings);
 
-      this.showToast('Authorized signature image updated for active company!', 'success');
-    };
-    reader.readAsDataURL(file);
+      this.showToast('Authorized signature uploaded and saved for active company!', 'success');
+    } catch (err) {
+      console.error('Signature upload error:', err);
+      if (sigPreview && origSrc) sigPreview.src = origSrc;
+      this.showToast('Failed to upload signature: ' + err.message, 'error');
+    } finally {
+      event.target.value = '';
+    }
   },
 
   renderSettingsTerms(terms) {
@@ -3860,12 +3895,17 @@ const App = {
       return;
     }
 
-    this.showToast(`Compressing & uploading ${filesToProcess.length} product image(s)...`, 'info');
+    this.showToast(`Compressing & uploading ${filesToProcess.length} product image(s) to cloud storage...`, 'info');
 
     try {
-      for (const file of filesToProcess) {
+      for (let i = 0; i < filesToProcess.length; i++) {
+        const file = filesToProcess[i];
+        if (filesToProcess.length > 1) {
+          this.showToast(`Uploading image ${i + 1} of ${filesToProcess.length}...`, 'info');
+        }
         const compressedBase64 = await this.compressImage(file, 800, 0.75);
-        currentBanners.push(compressedBase64);
+        const mediaUrl = await StorageManager.uploadMedia(compressedBase64, file.name);
+        currentBanners.push(mediaUrl);
       }
 
       current.promotionalBanners = currentBanners;
@@ -3886,10 +3926,11 @@ const App = {
       }
 
       this.renderSettingsBannersGrid();
-      this.showToast(`Successfully added ${filesToProcess.length} product image(s)!`, 'success');
+      this.showToast(`Successfully uploaded ${filesToProcess.length} product image(s) to cloud storage!`, 'success');
     } catch (err) {
       console.error('Banner upload error:', err);
       this.showToast('Failed to process uploaded images: ' + err.message, 'error');
+      this.renderSettingsBannersGrid();
     } finally {
       event.target.value = '';
     }

@@ -1,51 +1,30 @@
 # Quotation Manager SaaS
 
-A modern, serverless, 100% Cloudflare-native Quotation Management & Measurement System engineered for manufacturing, industrial roofing, fabrication, and commercial enterprises.
+A high-performance, serverless Quotation Management & Measurement System engineered for manufacturing, roofing, fabrication, and industrial enterprises.
 
-Built with **Cloudflare Pages / Workers Static Assets**, **Cloudflare Workers REST API**, **Cloudflare D1 (Serverless SQLite)**, and **Web Crypto JWT Authentication**.
-
----
-
-## 🌟 Key Features
-
-- **100% White-Label Architecture**: Fully dynamic company identity, address, phone numbers, GSTIN, bank details, terms & conditions, and promotional banners configurable via the Super Admin Settings UI.
-- **Cloudflare D1 Serverless Database**: High-speed, edge-replicated SQLite relational database with indexed queries for quotations, clients, items master, and settings.
-- **Strict JWT & Cloudflare Turnstile Security**:
-  - Web Crypto HMAC-SHA256 JWT tokens.
-  - Optional Cloudflare Turnstile Captcha verification on login to protect against automated bots and brute-force attacks.
-  - Zero plaintext secrets in repository or client bundles.
-- **Industrial Multi-Part Quotations**:
-  - Main Line Items Pricing Table (Item Master integration with auto-fill).
-  - Multi-Block Sheet Dimensions & Area Calculations (Feet/Inches $\rightarrow$ Sq. Meters / Sq. Feet).
-  - Strict Financial Summary: Subtotal $\rightarrow$ Loading Charge $\rightarrow$ GST (18% / IGST / Custom) $\rightarrow$ Grand Total (with Words converter).
-- **High-Fidelity PDF Generation**:
-  - Clean table borders (1px solid black) and smart page-break controls (`break-inside: avoid`).
-  - Integrated bank details, multi-point terms, and digital authorized signature footer.
-  - Optional catalog / promotional banner attachment.
-- **Advanced Filtering & Pagination**: Native SQL-backed date range, monthly, yearly, status, and client search filters.
-- **Zero-Regression UI**: Direct DOM updates on measurement and financial inputs to eliminate cursor focus loss.
-- **Offline & PWA Ready**: Installable Progressive Web App with background sync and IndexedDB offline persistence.
+Built 100% on the **Cloudflare Ecosystem** (Pages, Workers, D1 Database, R2 Object Storage, and Turnstile Bot Protection).
 
 ---
 
-## 🛠️ Architecture & Tech Stack
+## 🛠️ Tech Stack
 
 | Layer | Technology |
 |---|---|
 | **Frontend** | Vanilla JS (ES6+), HTML5, Tailwind CSS, FontAwesome 6 |
-| **PDF Engine** | `html2pdf.js` / `jsPDF` |
+| **PDF & Print Engine** | `html2pdf.js` / `jsPDF` with smart print break rules |
 | **API Runtime** | Cloudflare Workers (`nodejs_compat`, Web Crypto API) |
-| **Database** | Cloudflare D1 (Edge SQLite) |
-| **Bot Protection** | Cloudflare Turnstile (Server-side siteverify) |
-| **Deployment** | GitHub Actions / Cloudflare Workers Builds CI |
+| **Relational Database** | Cloudflare D1 (Serverless Edge SQLite) |
+| **Media & Object Storage** | Cloudflare R2 (`MEDIA_BUCKET` for compressed images & signatures) |
+| **Auth & Security** | Web Crypto HMAC-SHA256 JWT, Salted SHA-256 Passwords, Turnstile Captcha |
+| **Deployment & CI/CD** | Cloudflare Workers Builds & GitHub Actions |
 
 ---
 
-## 🚀 Getting Started & Deployment
+## 🚀 Quick Setup & Configuration
 
 ### 1. Prerequisites
-- [Node.js](https://nodejs.org/) (v18 or higher)
-- Cloudflare Account with Workers & D1 enabled
+- [Node.js](https://nodejs.org/) (v18+)
+- Cloudflare Account with Workers, D1, and R2 enabled
 - [Cloudflare Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)
 
 ```bash
@@ -54,78 +33,97 @@ npm install -g wrangler
 
 ---
 
-### 2. Initialize Cloudflare D1 Database
+### 2. Initialize Cloudflare D1 & R2 Storage
 
-1. Create your remote D1 database:
+1. **Create the D1 Database:**
    ```bash
    npx wrangler d1 create quotation-manager-db
    ```
-2. Note the generated `database_id` and update it in your [wrangler.toml](wrangler.toml):
+   Add the generated `database_id` to your `wrangler.toml`:
    ```toml
    [[d1_databases]]
    binding = "Quotation_Manager"
    database_name = "quotation-manager-db"
-   database_id = "your-actual-database-id-here"
+   database_id = "<your-d1-database-id>"
    ```
-3. Initialize the database schema and tables:
+
+2. **Initialize Database Schema:**
    ```bash
    npx wrangler d1 execute quotation-manager-db --remote --file=./schema.sql
    ```
 
-> [!IMPORTANT]
-> **Default Administrator Credentials**:
-> For security, default credentials are not published in this public repository. Default administrative credentials must be securely configured by the administrator during D1 database initialization by executing `schema.sql` or updating the `users` table with your chosen username and SHA-256 password hash.
+3. **Create the Cloudflare R2 Media Bucket:**
+   ```bash
+   npx wrangler r2 bucket create quotation-media
+   ```
+   Ensure the R2 binding is declared in `wrangler.toml`:
+   ```toml
+   [[r2_buckets]]
+   binding = "MEDIA_BUCKET"
+   bucket_name = "quotation-media"
+   ```
 
 ---
 
 ### 3. Configure Production Secrets
 
-Never store sensitive credentials or keys in version control. Configure your secrets securely in Cloudflare:
+Set production secrets securely via Wrangler (never commit secrets to git):
 
 ```bash
-# 1. JWT Secret for cryptographic session signing (min 32 characters)
+# 1. Cryptographic session signing key (minimum 32 characters)
 npx wrangler secret put JWT_SECRET
 
-# 2. (Optional) Cloudflare Turnstile Secret Key for bot protection
+# 2. (Optional) Cloudflare Turnstile Secret Key for login bot protection
 npx wrangler secret put TURNSTILE_SECRET
+```
+
+For local testing, create a `.dev.vars` file in the root directory:
+```env
+JWT_SECRET="your-local-jwt-secret-key-32-chars-min"
+TURNSTILE_SECRET="1x0000000000000000000000000000000AA"
 ```
 
 ---
 
-### 4. Deploy via GitHub / Cloudflare Workers Builds
+### 4. Local Development & Testing
 
-1. Push your repository to GitHub:
-   ```bash
-   git push origin main
-   ```
-2. In the **Cloudflare Dashboard** $\rightarrow$ **Workers & Pages** $\rightarrow$ select your Worker:
-   - Connect to your GitHub repository `your-org/your-repo`.
-   - Build command: *(leave blank or `npm run test`)*
-   - Deploy command: `npx wrangler deploy`
-3. Cloudflare will automatically build and deploy your application.
+```bash
+# Install dependencies
+npm install
 
----
+# Run automated test suite
+npm test
 
-### 5. Local Development
-
-1. Create a local environment file:
-   ```bash
-   cp .dev.vars.example .dev.vars
-   ```
-2. Run the local development server:
-   ```bash
-   npm run dev
-   ```
-3. Open `http://localhost:8787` in your browser.
+# Start local Cloudflare Worker development server
+npm run dev
+```
 
 ---
 
-## 🔒 Security Best Practices
+## 🚢 CI/CD Deployment
 
-- **Zero Secrets in Git**: `.dev.vars` and local credentials are strictly excluded via `.gitignore`.
-- **RBAC**: Sub-Admin permissions are enforced server-side in the Worker API on all mutating queries.
-- **Creator Injection**: All database records automatically record the authenticated user ID and name in `created_by` columns.
-- **Input Sanitization**: Database operations use SQLite prepared statements with parameter binding to prevent SQL injection.
+### Automated Deployment via GitHub Actions
+Pushing to the `main` branch automatically triggers deployment via GitHub Actions or Cloudflare Workers Builds:
+
+```bash
+git add .
+git commit -m "feat: updates"
+git push origin main
+```
+
+### Manual Production Deploy
+```bash
+npx wrangler deploy
+```
+
+---
+
+## 🔒 Security & Architecture Notes
+
+- **Direct R2 Storage:** Images (Item diagrams, Company signatures, and Gallery photos) are stored in Cloudflare R2 and served via `/api/media/:filename`, keeping D1 databases and JSON exports lightweight.
+- **Role-Based Access Control (RBAC):** Super Admin and Sub-Admin granular permissions are verified server-side on every mutating API endpoint.
+- **Audit Trails:** All quotations, clients, and items automatically capture the author's full name in `created_by` audit columns.
+- **Zero Secrets in Git:** Sensitive tokens, keys, and credentials are strictly excluded and injected via Cloudflare runtime bindings.
 
 ---
 

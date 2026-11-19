@@ -340,6 +340,59 @@ export default {
       }, 200, env);
     }
 
+    // =================================================================
+    // Public Endpoint: Serve Images from Cloudflare R2 Bucket
+    // =================================================================
+    if (path.startsWith('/api/media/') && (method === 'GET' || method === 'HEAD')) {
+      const filename = path.replace('/api/media/', '').trim();
+      if (!filename || !/^[a-zA-Z0-9_\-\.]+$/.test(filename)) {
+        return errorResponse('Invalid media filename', 400, env);
+      }
+
+      if (!env.MEDIA_BUCKET) {
+        return errorResponse('Cloudflare R2 bucket "MEDIA_BUCKET" binding is not configured.', 500, env);
+      }
+
+      try {
+        const object = await env.MEDIA_BUCKET.get(filename);
+        if (!object) {
+          return errorResponse('Media file not found', 404, env);
+        }
+
+        const clientEtag = request.headers.get('if-none-match');
+        if (clientEtag && clientEtag === object.httpEtag) {
+          return new Response(null, {
+            status: 304,
+            headers: corsHeaders(env)
+          });
+        }
+
+        const headers = new Headers(corsHeaders(env));
+        if (typeof object.writeHttpMetadata === 'function') {
+          object.writeHttpMetadata(headers);
+        }
+        headers.set('etag', object.httpEtag || `"${filename}"`);
+        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+
+        if (!headers.get('Content-Type')) {
+          const ext = filename.split('.').pop().toLowerCase();
+          const mimeTypes = {
+            jpg: 'image/jpeg',
+            jpeg: 'image/jpeg',
+            png: 'image/png',
+            webp: 'image/webp',
+            gif: 'image/gif',
+            svg: 'image/svg+xml'
+          };
+          headers.set('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+        }
+
+        return new Response(method === 'HEAD' ? null : object.body, { headers });
+      } catch (err) {
+        return errorResponse(`Failed to retrieve media: ${err.message}`, 500, env);
+      }
+    }
+
     // 4. Database Check (supports DB, Quotation_Manager, or quotation_manager_db binding names)
     if (!env.DB && (env.Quotation_Manager || env.quotation_manager_db || env.QUOTATION_MANAGER)) {
       env.DB = env.Quotation_Manager || env.quotation_manager_db || env.QUOTATION_MANAGER;
@@ -513,6 +566,22 @@ export default {
                 canBackupDatabase: true
               }
             };
+
+            // Transparently seed admin user in D1 database so account permanently persists
+            try {
+              const defaultHash = await hashPassword('admin@2026');
+              await env.DB.prepare(`
+                INSERT OR IGNORE INTO users (id, username, password_hash, full_name, email, role, is_super_admin, permissions_json, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'Super Admin', 1, ?, datetime('now'), datetime('now'))
+              `).bind(
+                authenticatedUser.id,
+                username,
+                defaultHash,
+                authenticatedUser.fullName,
+                authenticatedUser.email,
+                JSON.stringify(authenticatedUser.permissions)
+              ).run();
+            } catch (e) {}
           }
         }
 
@@ -790,6 +859,103 @@ export default {
 
     if (!currentUser) {
       return errorResponse('Authentication required. Invalid or expired token.', 401, env);
+    }
+
+    // =================================================================
+    // Authenticated Endpoint: Direct Image Upload to Cloudflare R2
+    // =================================================================
+    if (path === '/api/upload' && method === 'POST') {
+      if (!env.MEDIA_BUCKET) {
+        return errorResponse('Cloudflare R2 bucket "MEDIA_BUCKET" binding is not configured. Please bind MEDIA_BUCKET in wrangler.toml.', 500, env);
+      }
+
+      try {
+        let fileBuffer;
+        let contentType = 'image/jpeg';
+        let originalName = '';
+
+        const reqContentType = request.headers.get('Content-Type') || '';
+
+        if (reqContentType.includes('multipart/form-data') || reqContentType.includes('application/x-www-form-urlencoded')) {
+          const formData = await request.formData();
+          const file = formData.get('file') || formData.get('image');
+          if (!file) {
+            return errorResponse('No image file provided. Form field must be "file" or "image".', 400, env);
+          }
+          if (typeof file === 'string') {
+            if (file.startsWith('data:')) {
+              const match = file.match(/^data:([^;]+);base64,(.+)$/);
+              if (match) {
+                contentType = match[1];
+                fileBuffer = Uint8Array.from(atob(match[2]), c => c.charCodeAt(0));
+              }
+            } else {
+              fileBuffer = Uint8Array.from(atob(file), c => c.charCodeAt(0));
+            }
+          } else {
+            contentType = file.type || 'image/jpeg';
+            originalName = file.name || '';
+            fileBuffer = await file.arrayBuffer();
+          }
+        } else if (reqContentType.includes('application/json')) {
+          const jsonBody = await request.json();
+          const base64Data = jsonBody.image || jsonBody.data || jsonBody.file;
+          originalName = jsonBody.filename || '';
+          if (base64Data && typeof base64Data === 'string') {
+            const match = base64Data.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              contentType = match[1];
+              fileBuffer = Uint8Array.from(atob(match[2]), c => c.charCodeAt(0));
+            } else {
+              fileBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+            }
+          }
+        } else {
+          contentType = reqContentType || 'image/jpeg';
+          fileBuffer = await request.arrayBuffer();
+        }
+
+        if (!fileBuffer || fileBuffer.byteLength === 0) {
+          return errorResponse('Invalid or empty image file.', 400, env);
+        }
+
+        if (fileBuffer.byteLength > 10 * 1024 * 1024) {
+          return errorResponse('Image file size exceeds 10MB limit.', 400, env);
+        }
+
+        let ext = 'jpg';
+        if (originalName && originalName.includes('.')) {
+          ext = originalName.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
+        } else if (contentType) {
+          const mimeMap = {
+            'image/jpeg': 'jpg',
+            'image/jpg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp',
+            'image/gif': 'gif',
+            'image/svg+xml': 'svg'
+          };
+          ext = mimeMap[contentType] || 'jpg';
+        }
+
+        const uniqueFilename = `img_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${ext}`;
+
+        await env.MEDIA_BUCKET.put(uniqueFilename, fileBuffer, {
+          httpMetadata: {
+            contentType: contentType || 'image/jpeg',
+            cacheControl: 'public, max-age=31536000, immutable'
+          }
+        });
+
+        return jsonResponse({
+          success: true,
+          ok: true,
+          filename: uniqueFilename,
+          url: `/api/media/${uniqueFilename}`
+        }, 201, env);
+      } catch (err) {
+        return errorResponse(`Upload failed: ${err.message}`, 500, env);
+      }
     }
 
     // Helper: Verify Super Admin permission
@@ -1130,13 +1296,14 @@ export default {
             const prefix = `QT-${year}-`;
             let maxSeq = 0;
             try {
-              const rows = await env.DB.prepare(
-                'SELECT quote_number FROM quotations WHERE quote_number LIKE ? ORDER BY quote_number DESC LIMIT 100'
-              ).bind(`${prefix}%`).all();
-              for (const r of (rows.results || [])) {
-                const parts = (r.quote_number || '').split('-');
+              const prep = env.DB.prepare(
+                'SELECT quote_number FROM quotations WHERE quote_number LIKE ? ORDER BY LENGTH(quote_number) DESC, quote_number DESC LIMIT 1'
+              ).bind(`${prefix}%`);
+              const row = (await prep.first()) || ((await prep.all())?.results?.[0]);
+              if (row && row.quote_number) {
+                const parts = String(row.quote_number).split('-');
                 const seq = parseInt(parts[2], 10);
-                if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+                if (!isNaN(seq)) maxSeq = seq;
               }
             } catch (e) {}
             finalQuoteNumber = `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
@@ -1895,6 +2062,7 @@ export default {
         const quotesRes = await env.DB.prepare('SELECT * FROM quotations ORDER BY date DESC, created_at DESC LIMIT 5000').all();
         const clientsRes = await env.DB.prepare('SELECT * FROM clients ORDER BY created_at DESC LIMIT 5000').all();
         const itemsRes = await env.DB.prepare('SELECT * FROM items_master ORDER BY name ASC LIMIT 5000').all();
+        const companiesRes = await env.DB.prepare('SELECT * FROM company_settings ORDER BY is_default DESC, created_at ASC').all().catch(() => ({ results: [] }));
         const csRow = await env.DB.prepare('SELECT * FROM company_settings WHERE id = "primary"').first().catch(() => null);
         const sRow = await env.DB.prepare('SELECT * FROM settings WHERE id = "global"').first().catch(() => null);
         const usersRes = await env.DB.prepare('SELECT id, username, full_name, role, is_super_admin, permissions_json, created_at, updated_at FROM users').all().catch(() => ({ results: [] }));
@@ -1908,9 +2076,11 @@ export default {
             quotations: quotesRes.results ? quotesRes.results.length : 0,
             clients: clientsRes.results ? clientsRes.results.length : 0,
             items: itemsRes.results ? itemsRes.results.length : 0,
+            companies: companiesRes.results ? companiesRes.results.length : 0,
             users: usersRes.results ? usersRes.results.length : 0
           },
           companySettings: csRow || null,
+          companies: companiesRes.results || [],
           settings: sRow || null,
           quotations: quotesRes.results || [],
           clients: clientsRes.results || [],
@@ -2094,20 +2264,24 @@ export default {
           importedQuotations++;
         }
 
-        // 4. Prepare Company Settings statement if present
-        if (data.companySettings || data.company_settings) {
-          const cs = data.companySettings || data.company_settings;
+        // 4. Prepare Company Settings statements if present
+        const companiesList = Array.isArray(data.companies) && data.companies.length > 0
+          ? data.companies
+          : (data.companySettings || data.company_settings ? [data.companySettings || data.company_settings] : []);
+
+        for (const cs of companiesList) {
+          const compId = cs.id || 'primary';
           statements.push(env.DB.prepare(`
             INSERT INTO company_settings (
               id, company_name, tagline, address, phone, phone_secondary, email, website, gstin, state, state_code,
               bank_name, account_name, account_number, ifsc_code, branch, terms_json,
-              banner_url, header_logo_url, signature_image_url, signature_title,
-              show_signature_in_pdf, show_banner_in_pdf, turnstile_site_key, updated_at
+              banner_url, promotional_banners, header_logo_url, signature_image_url, signature_title,
+              show_signature_in_pdf, show_banner_in_pdf, turnstile_site_key, is_default, updated_at
             ) VALUES (
-              'primary', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?,
-              ?, ?, ?, datetime("now")
+              ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, datetime("now")
             )
             ON CONFLICT(id) DO UPDATE SET
               company_name = excluded.company_name,
@@ -2127,14 +2301,17 @@ export default {
               branch = excluded.branch,
               terms_json = excluded.terms_json,
               banner_url = excluded.banner_url,
+              promotional_banners = excluded.promotional_banners,
               header_logo_url = excluded.header_logo_url,
               signature_image_url = excluded.signature_image_url,
               signature_title = excluded.signature_title,
               show_signature_in_pdf = excluded.show_signature_in_pdf,
               show_banner_in_pdf = excluded.show_banner_in_pdf,
               turnstile_site_key = excluded.turnstile_site_key,
+              is_default = excluded.is_default,
               updated_at = datetime("now")
           `).bind(
+            compId,
             cs.company_name || cs.companyName || 'Quotation Manager',
             cs.tagline || '',
             cs.address || '',
@@ -2143,8 +2320,8 @@ export default {
             cs.email || '',
             cs.website || '',
             cs.gstin || '',
-            cs.state || '',
-            cs.state_code || cs.stateCode || '',
+            cs.state || 'Gujarat',
+            cs.state_code || cs.stateCode || '24',
             cs.bank_name || cs.bankName || '',
             cs.account_name || cs.accountName || '',
             cs.account_number || cs.accountNumber || '',
@@ -2152,12 +2329,14 @@ export default {
             cs.branch || '',
             typeof cs.terms_json === 'string' ? cs.terms_json : JSON.stringify(cs.terms || []),
             cs.banner_url || cs.bannerUrl || '',
+            typeof cs.promotional_banners === 'string' ? cs.promotional_banners : JSON.stringify(cs.promotionalBanners || cs.bannerUrls || []),
             cs.header_logo_url || cs.headerLogoUrl || '',
             cs.signature_image_url || cs.signatureImageUrl || '',
             cs.signature_title || cs.signatureTitle || 'Authorized Signatory',
             cs.show_signature_in_pdf !== undefined ? (cs.show_signature_in_pdf ? 1 : 0) : 1,
             cs.show_banner_in_pdf !== undefined ? (cs.show_banner_in_pdf ? 1 : 0) : 1,
-            cs.turnstile_site_key || cs.turnstileSiteKey || ''
+            cs.turnstile_site_key || cs.turnstileSiteKey || '',
+            cs.is_default ? 1 : 0
           ));
         }
 

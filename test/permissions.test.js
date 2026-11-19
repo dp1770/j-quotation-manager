@@ -55,6 +55,26 @@ function createMockEnv(overrides = {}) {
         return stmts.map(() => ({ success: true }));
       }
     },
+    MEDIA_BUCKET: {
+      _files: new Map(),
+      async put(key, value, opts = {}) {
+        this._files.set(key, { value, opts });
+        return { key };
+      },
+      async get(key) {
+        if (!this._files.has(key)) return null;
+        const item = this._files.get(key);
+        return {
+          body: item.value,
+          httpEtag: '"mock-etag"',
+          writeHttpMetadata(headers) {
+            if (item.opts?.httpMetadata?.contentType) {
+              headers.set('Content-Type', item.opts.httpMetadata.contentType);
+            }
+          }
+        };
+      }
+    },
     ...overrides
   };
 }
@@ -904,4 +924,86 @@ test('POST /api/quotations: Saves include_banner preference (0 or 1)', async () 
   const res = await worker.fetch(req, customEnv);
   assert.equal(res.status, 200);
   assert.equal(savedIncludeBanner, 0);
+});
+
+test('POST /api/upload: Rejects unauthenticated image upload (401)', async () => {
+  const req = new Request('https://example.com/api/upload', {
+    method: 'POST'
+  });
+  const res = await worker.fetch(req, createMockEnv());
+  assert.equal(res.status, 401);
+});
+
+test('POST /api/upload: Uploads image to R2 MEDIA_BUCKET and returns media URL (201)', async () => {
+  const token = await createTestToken({
+    userId: 'user_admin',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  const mockEnv = createMockEnv();
+  const formData = new FormData();
+  const dummyBlob = new Blob(['fake image binary content'], { type: 'image/jpeg' });
+  formData.append('file', dummyBlob, 'product-sample.jpg');
+
+  const req = new Request('https://example.com/api/upload', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  const res = await worker.fetch(req, mockEnv);
+  assert.equal(res.status, 201);
+  const data = await res.json();
+  assert.equal(data.success, true);
+  assert.equal(data.ok, true);
+  assert.match(data.url, /^\/api\/media\/img_\d+_[a-z0-9]+\.jpg$/);
+
+  // Verify GET /api/media/:filename works without authentication
+  const getReq = new Request(`https://example.com${data.url}`, {
+    method: 'GET'
+  });
+  const getRes = await worker.fetch(getReq, mockEnv);
+  assert.equal(getRes.status, 200);
+  assert.equal(getRes.headers.get('Content-Type'), 'image/jpeg');
+  assert.equal(getRes.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
+  const bodyText = await getRes.text();
+  assert.equal(bodyText, 'fake image binary content');
+});
+
+test('POST /api/upload: Rejects upload when no file is attached (400)', async () => {
+  const token = await createTestToken({
+    userId: 'user_admin',
+    username: 'admin',
+    isSuperAdmin: true
+  });
+
+  const req = new Request('https://example.com/api/upload', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: new FormData()
+  });
+
+  const res = await worker.fetch(req, createMockEnv());
+  assert.equal(res.status, 400);
+  const data = await res.json();
+  assert.match(data.error, /No image file provided/i);
+});
+
+test('GET /api/media/:filename: Returns 404 for missing image and 400 for invalid filenames', async () => {
+  const mockEnv = createMockEnv();
+
+  // 1. Missing file -> 404
+  const notFoundReq = new Request('https://example.com/api/media/nonexistent_image.jpg', { method: 'GET' });
+  const notFoundRes = await worker.fetch(notFoundReq, mockEnv);
+  assert.equal(notFoundRes.status, 404);
+
+  // 2. Traversal / invalid characters -> 400
+  const invalidReq = new Request('https://example.com/api/media/sub/path.jpg', { method: 'GET' });
+  const invalidRes = await worker.fetch(invalidReq, mockEnv);
+  assert.equal(invalidRes.status, 400);
 });

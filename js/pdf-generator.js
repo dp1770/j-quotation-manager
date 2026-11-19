@@ -301,25 +301,43 @@ const PdfGenerator = {
     }
 
     // -------------------------------------------------------------
-    // PART 4: FINAL FOOTER BLOCK (ONLY AT VERY END OF DOCUMENT FLOW)
+    // PART 4: BANK PAYMENT DETAILS BLOCK (Directly ABOVE Calculation)
     // -------------------------------------------------------------
-    const finalFooterHtml = `
-      <div class="quotation-final-footer avoid-break mt-3 border border-slate-300 rounded-lg p-3.5 bg-white" style="page-break-inside: avoid; break-inside: avoid; position: static;">
+    const bankDetailsHtml = `
+      <div class="bank-details-box avoid-break mb-3 border border-slate-300 rounded-lg p-3 bg-slate-50/80 shadow-2xs" style="page-break-inside: avoid; break-inside: avoid;">
+        <h3 class="text-xs font-black text-sky-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+          <i class="fa-solid fa-building-columns"></i> BANK PAYMENT DETAILS:
+        </h3>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div>
+            <span class="text-[10px] text-slate-500 font-bold block uppercase">Bank Name</span>
+            <span class="text-xs font-black text-amber-700 uppercase">${this.escapeHtml(bank.bankName)}</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-slate-500 font-bold block uppercase">Account No</span>
+            <span class="text-[11px] font-bold font-mono text-slate-950">${this.escapeHtml(bank.accountNumber)}</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-slate-500 font-bold block uppercase">IFSC Code</span>
+            <span class="text-[11px] font-bold font-mono text-blue-900">${this.escapeHtml(bank.ifscCode)}</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-slate-500 font-bold block uppercase">Branch</span>
+            <span class="text-[11px] font-bold text-slate-800 uppercase">${this.escapeHtml(bank.branch)}</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // -------------------------------------------------------------
+    // PART 5: TERMS AND CONDITIONS & AUTHORIZED SIGNATURE
+    // -------------------------------------------------------------
+    const termsAndSignatureHtml = `
+      <div class="quotation-terms-signature-block avoid-break mt-3 border border-slate-300 rounded-lg p-3.5 bg-white" style="page-break-inside: avoid; break-inside: avoid; position: static;">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
           
-          <!-- Left Column: Bank Details & Terms -->
+          <!-- Left Column: Terms & Remarks -->
           <div class="space-y-3">
-            <!-- Bank Details -->
-            <div>
-              <h3 class="text-xs font-black text-sky-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <i class="fa-solid fa-building-columns"></i> BANK DETAILS:
-              </h3>
-              <div class="text-xs font-black text-amber-700 uppercase">${this.escapeHtml(bank.bankName)}</div>
-              <div class="text-[11px] font-bold text-slate-800">A/C NO: <span class="font-mono text-slate-950">${this.escapeHtml(bank.accountNumber)}</span></div>
-              <div class="text-[11px] font-bold text-slate-800">IFSC CODE: <span class="font-mono text-blue-900 font-bold">${this.escapeHtml(bank.ifscCode)}</span></div>
-              <div class="text-[11px] font-bold text-slate-800">BRANCH: <span class="uppercase">${this.escapeHtml(bank.branch)}</span></div>
-            </div>
-
             <!-- Terms and Conditions -->
             <div>
               <h3 class="text-xs font-black text-rose-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
@@ -329,17 +347,17 @@ const PdfGenerator = {
                 ${termsHtml}
               </div>
             </div>
-          </div>
 
-          <!-- Right Column: Remarks & Signature -->
-          <div class="flex flex-col justify-between h-full space-y-3 md:text-right">
             ${quote.notes ? `
               <div class="text-left bg-slate-50 p-2 rounded border border-slate-200">
                 <strong class="text-[11px] font-bold text-blue-950 block mb-0.5">Quotation Notes / Remarks:</strong>
                 <p class="text-[11px] text-slate-700 whitespace-pre-line leading-relaxed">${this.escapeHtml(quote.notes)}</p>
               </div>
-            ` : '<div></div>'}
+            ` : ''}
+          </div>
 
+          <!-- Right Column: Signature -->
+          <div class="flex flex-col justify-end h-full space-y-3 md:text-right">
             <!-- Uploaded Signature Placement -->
             <div class="pt-2 self-end text-center min-w-[200px]">
               ${showSignature && signatureImg ? `
@@ -405,8 +423,10 @@ const PdfGenerator = {
             break-inside: avoid !important;
           }
           #print-quotation-root .avoid-break,
+          #print-quotation-root .bank-details-box,
           #print-quotation-root .calc-block,
           #print-quotation-root .financial-summary-box,
+          #print-quotation-root .quotation-terms-signature-block,
           #print-quotation-root .quotation-image-card,
           #print-quotation-root .quotation-banner-card,
           #print-quotation-root .quotation-final-footer {
@@ -532,7 +552,12 @@ const PdfGenerator = {
         </div>
 
         <!-- ======================================================= -->
-        <!-- SUMMARY BREAKDOWN (Docked directly beneath pricing table)-->
+        <!-- 2. BANK PAYMENT DETAILS (Directly ABOVE Calculation)   -->
+        <!-- ======================================================= -->
+        ${bankDetailsHtml}
+
+        <!-- ======================================================= -->
+        <!-- 3. CALCULATION DETAILS (Subtotal, Loading, GST, Grand)  -->
         <!-- ======================================================= -->
         <div class="financial-summary-box avoid-break w-full max-w-sm ml-auto space-y-1 text-xs text-right font-bold text-slate-900 pt-1.5 mb-3 border border-slate-300 rounded-lg p-2.5 bg-slate-50/80 shadow-2xs" style="page-break-inside: avoid; break-inside: avoid;">
           <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
@@ -557,9 +582,6 @@ const PdfGenerator = {
           </div>
         </div>
 
-        <!-- ======================================================= -->
-        <!-- PART 2: DYNAMIC MULTI-BLOCK SHEET CALCULATION TABLES   -->
-        <!-- ======================================================= -->
         ${quote.calculations && quote.calculations.length > 0 ? `
           <div class="calculations-section pt-1">
             ${calculationsHtml}
@@ -567,12 +589,12 @@ const PdfGenerator = {
         ` : ''}
 
         <!-- ======================================================= -->
-        <!-- PART 3: BANK DETAILS, TERMS, REMARKS & SIGNATURE FOOTER -->
+        <!-- 4. TERMS & CONDITIONS + AUTHORIZED SIGNATURE            -->
         <!-- ======================================================= -->
-        ${finalFooterHtml}
+        ${termsAndSignatureHtml}
 
         <!-- ======================================================= -->
-        <!-- PART 4: OUR PRODUCTS - IMAGE GALLERY AT VERY BOTTOM     -->
+        <!-- 5. "OUR PRODUCTS" 3-COLUMN BORDERLESS IMAGE GALLERY     -->
         <!-- ======================================================= -->
         ${imagesGridHtml}
         ${promotionalBannersHtml}
@@ -601,7 +623,7 @@ const PdfGenerator = {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: {
         mode: ['css', 'legacy'],
-        avoid: ['tr', '.avoid-break', '.financial-summary-box', '.calc-block', '.quotation-image-card', '.quotation-banner-card', '.quotation-final-footer']
+        avoid: ['tr', '.avoid-break', '.bank-details-box', '.financial-summary-box', '.calc-block', '.quotation-terms-signature-block', '.quotation-image-card', '.quotation-banner-card', '.quotation-final-footer']
       }
     };
 
@@ -639,7 +661,7 @@ const PdfGenerator = {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: {
         mode: ['css', 'legacy'],
-        avoid: ['tr', '.avoid-break', '.financial-summary-box', '.calc-block', '.quotation-image-card', '.quotation-banner-card', '.quotation-final-footer']
+        avoid: ['tr', '.avoid-break', '.bank-details-box', '.financial-summary-box', '.calc-block', '.quotation-terms-signature-block', '.quotation-image-card', '.quotation-banner-card', '.quotation-final-footer']
       }
     };
 
@@ -786,7 +808,7 @@ const PdfGenerator = {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
-    .avoid-break, .calc-block, .financial-summary-box, .quotation-image-card, .quotation-banner-card, .quotation-final-footer {
+    .avoid-break, .bank-details-box, .calc-block, .financial-summary-box, .quotation-terms-signature-block, .quotation-image-card, .quotation-banner-card, .quotation-final-footer {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
@@ -835,6 +857,7 @@ const PdfGenerator = {
       object-fit: cover !important;
       display: block !important;
     }
+    .quotation-terms-signature-block,
     .quotation-final-footer {
       page-break-inside: avoid !important;
       break-inside: avoid !important;

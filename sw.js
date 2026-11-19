@@ -74,8 +74,9 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(event.request.url);
 
-  // If request is Cloudflare Worker API endpoint, network-first with offline JSON fallback
-  if (requestUrl.pathname.startsWith('/api') || requestUrl.hostname.includes('workers.dev')) {
+  // If request is Cloudflare Worker API endpoint (excluding media images), network-first with offline JSON fallback
+  const isMediaImage = requestUrl.pathname.startsWith('/api/media/');
+  if (!isMediaImage && (requestUrl.pathname.startsWith('/api') || requestUrl.hostname.includes('workers.dev'))) {
     event.respondWith(
       fetch(event.request).catch(() => {
         return new Response(
