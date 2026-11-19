@@ -118,19 +118,55 @@
     break-inside: avoid !important;
   }
 
-  .quotation-images-grid,
-  .quotation-banners-grid {
+  .quotation-images-grid {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 10px !important;
   }
 
-  .quotation-image-card img,
-  .quotation-banner-card img {
+  .quotation-image-card img {
     height: 130px !important;
     max-height: 130px !important;
     width: 100% !important;
     object-fit: contain !important;
+  }
+
+  .quotation-banners-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+  }
+
+  .quotation-banner-card {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .quotation-banner-card div {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+  }
+
+  .quotation-banner-card img {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 160px !important;
+    object-fit: cover !important;
+    display: block !important;
   }
 
   .quotation-final-footer {

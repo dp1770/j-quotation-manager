@@ -3712,8 +3712,8 @@ const App = {
     const banners = this.getActiveCompanyBanners();
 
     if (badge) {
-      badge.textContent = `${banners.length} / 6 Images`;
-      badge.className = banners.length >= 6
+      badge.textContent = `${banners.length} / 12 Images`;
+      badge.className = banners.length >= 12
         ? 'text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 w-fit'
         : 'text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 w-fit';
     }
@@ -3733,12 +3733,12 @@ const App = {
     grid.innerHTML = banners.map((bUrl, idx) => `
       <div class="relative group bg-slate-50 border border-slate-200 rounded-xl p-2 flex flex-col justify-between shadow-2xs hover:border-blue-400 transition">
         <div class="h-28 w-full flex items-center justify-center bg-white rounded-lg overflow-hidden border border-slate-100">
-          <img src="${bUrl}" alt="Banner ${idx + 1}" class="max-h-28 w-full object-contain p-1" />
+          <img src="${bUrl}" alt="Product ${idx + 1}" class="max-h-28 w-full object-contain p-1" />
         </div>
         <div class="mt-2 pt-1 border-t border-slate-200 flex items-center justify-between text-[11px]">
-          <span class="font-bold text-slate-700">Image #${idx + 1}</span>
+          <span class="font-bold text-slate-700">Product #${idx + 1}</span>
           <button type="button" onclick="App.removeBannerImage(${idx})"
-            title="Remove Image"
+            title="Remove Product Image"
             class="text-rose-600 hover:text-white hover:bg-rose-600 p-1 px-2 rounded font-bold text-[10px] border border-rose-200 hover:border-rose-600 transition flex items-center gap-1 cursor-pointer">
             <i class="fa-solid fa-trash-can text-[9px]"></i>
             <span>Remove</span>
@@ -3753,7 +3753,7 @@ const App = {
   },
 
   /**
-   * Handles multi-image upload with client-side canvas compression (max 800px, 0.75 JPEG)
+   * Handles multi-image upload with client-side canvas compression (max 800px, 0.75 JPEG, up to 12 images)
    */
   async handleBannerUpload(event) {
     const files = event.target.files;
@@ -3763,13 +3763,13 @@ const App = {
     const current = companies.find(c => c.id === this.activeCompanyId) || { id: this.activeCompanyId };
     let currentBanners = [...this.getActiveCompanyBanners()];
 
-    if (currentBanners.length >= 6) {
-      this.showToast('Maximum of 6 promotional images per company reached. Delete existing ones to add more.', 'warning');
+    if (currentBanners.length >= 12) {
+      this.showToast('Maximum of 12 product images per company reached. Delete existing ones to add more.', 'warning');
       event.target.value = '';
       return;
     }
 
-    const availableSlots = 6 - currentBanners.length;
+    const availableSlots = 12 - currentBanners.length;
     const filesToProcess = Array.from(files).filter(f => f.type.startsWith('image/')).slice(0, availableSlots);
 
     if (filesToProcess.length === 0) {
@@ -3778,7 +3778,7 @@ const App = {
       return;
     }
 
-    this.showToast(`Compressing & uploading ${filesToProcess.length} image(s)...`, 'info');
+    this.showToast(`Compressing & uploading ${filesToProcess.length} product image(s)...`, 'info');
 
     try {
       for (const file of filesToProcess) {
@@ -3804,7 +3804,7 @@ const App = {
       }
 
       this.renderSettingsBannersGrid();
-      this.showToast(`Successfully added ${filesToProcess.length} promotional image(s)!`, 'success');
+      this.showToast(`Successfully added ${filesToProcess.length} product image(s)!`, 'success');
     } catch (err) {
       console.error('Banner upload error:', err);
       this.showToast('Failed to process uploaded images: ' + err.message, 'error');
@@ -3842,7 +3842,7 @@ const App = {
         }
 
         this.renderSettingsBannersGrid();
-        this.showToast('Promotional image removed.', 'info');
+        this.showToast('Product image removed.', 'info');
       } catch (err) {
         this.showToast('Failed to update company banners: ' + err.message, 'error');
       }

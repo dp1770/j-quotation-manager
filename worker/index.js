@@ -1646,7 +1646,7 @@ export default {
               banners = [body.bannerUrl.trim()];
             }
           }
-          if (banners.length > 6) banners = banners.slice(0, 6);
+          if (banners.length > 12) banners = banners.slice(0, 12);
 
           // Store as JSON array string for multi-image, or fallback if empty
           const bannerUrl = banners.length > 0 ? JSON.stringify(banners) : '';

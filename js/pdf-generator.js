@@ -269,28 +269,28 @@ const PdfGenerator = {
     }
 
     // -------------------------------------------------------------
-    // PART 3B: PROMOTIONAL & GALLERY BANNERS 3-COLUMN HORIZONTAL GRID
+    // PART 3B: OUR PRODUCTS - BORDERLESS 3-COLUMN IMAGE GALLERY
     // -------------------------------------------------------------
     let promotionalBannersHtml = '';
     if (shouldIncludeBanner && bannersList.length > 0) {
       if (bannersList.length === 1 && bannersList[0].includes('product-gallery-page7.svg')) {
         promotionalBannersHtml = `
-          <div class="quotation-promotional-section avoid-break mt-3 mb-3 text-center" style="page-break-inside: avoid; break-inside: avoid;">
-            <img src="${bannersList[0]}" alt="${this.escapeHtml(comp.name)} Promotional Banner" class="w-full max-h-[480px] object-contain mx-auto rounded border border-slate-200 shadow-xs" />
+          <div class="quotation-promotional-section avoid-break mt-3 text-center" style="page-break-inside: avoid; break-inside: avoid; border: none !important; padding: 0 !important; margin: 0 !important;">
+            <img src="${bannersList[0]}" alt="${this.escapeHtml(comp.name)} Our Products" style="width: 100%; max-height: 480px; object-fit: contain; margin: 0 auto; border: none !important; padding: 0 !important; display: block;" />
           </div>
         `;
       } else {
         promotionalBannersHtml = `
-          <div class="quotation-promotional-section avoid-break mt-3 mb-3" style="page-break-inside: avoid; break-inside: avoid;">
-            <div class="text-[11px] font-black uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-1.5 border-b border-slate-300 pb-1">
-              <i class="fa-solid fa-images text-blue-900"></i>
-              <span>Promotional &amp; Product Gallery</span>
+          <div class="quotation-promotional-section avoid-break mt-3" style="page-break-inside: avoid; break-inside: avoid; border: none !important; padding: 0 !important;">
+            <div class="text-[11px] font-black uppercase tracking-wider text-slate-800 mb-1 flex items-center gap-1.5 border-b border-slate-300 pb-1">
+              <i class="fa-solid fa-boxes-stacked text-blue-900"></i>
+              <span>Our Products</span>
             </div>
-            <div class="quotation-banners-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <div class="quotation-banners-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 !important; padding: 0 !important; margin: 0 !important; border: none !important;">
               ${bannersList.map((bImg, bIdx) => `
-                <div class="quotation-banner-card avoid-break bg-white rounded border border-slate-300 p-2 text-center flex flex-col justify-between" style="border: 1px solid #ddd; padding: 6px; page-break-inside: avoid; break-inside: avoid; background-color: #ffffff;">
-                  <div class="w-full flex items-center justify-center bg-slate-50 rounded" style="height: 130px; max-height: 130px; overflow: hidden; background-color: #f8fafc; border: 1px solid #eee;">
-                    <img src="${bImg}" alt="Promotional ${bIdx + 1}" style="height: 130px; max-height: 130px; width: 100%; object-fit: contain; padding: 4px;" />
+                <div class="quotation-banner-card avoid-break" style="border: none !important; padding: 0 !important; margin: 0 !important; background: transparent !important; box-shadow: none !important; outline: none !important; page-break-inside: avoid; break-inside: avoid;">
+                  <div style="width: 100%; height: 160px; max-height: 160px; overflow: hidden; border: none !important; padding: 0 !important; margin: 0 !important; background: transparent !important; display: flex; align-items: center; justify-content: center;">
+                    <img src="${bImg}" alt="Product ${bIdx + 1}" style="width: 100%; height: 100%; object-fit: cover !important; border: none !important; padding: 0 !important; margin: 0 !important; display: block;" />
                   </div>
                 </div>
               `).join('')}
@@ -413,18 +413,48 @@ const PdfGenerator = {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
-          #print-quotation-root .quotation-images-grid,
-          #print-quotation-root .quotation-banners-grid {
+          #print-quotation-root .quotation-images-grid {
             display: grid !important;
             grid-template-columns: repeat(3, 1fr) !important;
             gap: 10px !important;
           }
-          #print-quotation-root .quotation-image-card img,
-          #print-quotation-root .quotation-banner-card img {
+          #print-quotation-root .quotation-image-card img {
             height: 130px !important;
             max-height: 130px !important;
             width: 100% !important;
             object-fit: contain !important;
+          }
+          #print-quotation-root .quotation-banners-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+          }
+          #print-quotation-root .quotation-banner-card {
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            outline: none !important;
+          }
+          #print-quotation-root .quotation-banner-card div {
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: transparent !important;
+          }
+          #print-quotation-root .quotation-banner-card img {
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 160px !important;
+            object-fit: cover !important;
+            display: block !important;
           }
           #print-quotation-root .quotation-final-footer {
             page-break-inside: avoid !important;
@@ -537,19 +567,15 @@ const PdfGenerator = {
         ` : ''}
 
         <!-- ======================================================= -->
-        <!-- PART 3: ITEM IMAGES 3-COLUMN HORIZONTAL GRID           -->
-        <!-- ======================================================= -->
-        ${imagesGridHtml}
-
-        <!-- ======================================================= -->
-        <!-- PART 3B: PROMOTIONAL BANNERS 3-COLUMN HORIZONTAL GRID  -->
-        <!-- ======================================================= -->
-        ${promotionalBannersHtml}
-
-        <!-- ======================================================= -->
-        <!-- PART 4: FINAL FOOTER BLOCK (ONLY AT VERY END)          -->
+        <!-- PART 3: BANK DETAILS, TERMS, REMARKS & SIGNATURE FOOTER -->
         <!-- ======================================================= -->
         ${finalFooterHtml}
+
+        <!-- ======================================================= -->
+        <!-- PART 4: OUR PRODUCTS - IMAGE GALLERY AT VERY BOTTOM     -->
+        <!-- ======================================================= -->
+        ${imagesGridHtml}
+        ${promotionalBannersHtml}
 
       </div>
     `;
@@ -764,16 +790,50 @@ const PdfGenerator = {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
-    .quotation-images-grid, .quotation-banners-grid {
+    .quotation-images-grid {
       display: grid !important;
       grid-template-columns: repeat(3, 1fr) !important;
       gap: 10px !important;
     }
-    .quotation-image-card img, .quotation-banner-card img {
+    .quotation-image-card img {
       height: 130px !important;
       max-height: 130px !important;
       width: 100% !important;
       object-fit: contain !important;
+    }
+    .quotation-banners-grid {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: none !important;
+    }
+    .quotation-banner-card {
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      outline: none !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .quotation-banner-card div {
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: transparent !important;
+    }
+    .quotation-banner-card img {
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-height: 160px !important;
+      object-fit: cover !important;
+      display: block !important;
     }
     .quotation-final-footer {
       page-break-inside: avoid !important;
