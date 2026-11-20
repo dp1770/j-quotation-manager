@@ -90,13 +90,9 @@
 
     <!-- Desktop Sidebar (Hidden on mobile) -->
     <aside class="hidden lg:flex lg:w-64 lg:shrink-0 lg:flex-col bg-stone-900 text-stone-300 p-4 sticky top-0 h-screen">
-      <!-- Logo: Quotation Manager Logo + Name + Caption -->
-      <div class="flex items-center gap-3 px-1">
-        <img src="assets/quotation_manager_logo.svg" alt="Quotation Manager Logo" class="h-10 w-auto object-contain shrink-0" />
-        <div class="min-w-0">
-          <h1 class="font-display font-semibold text-white text-base leading-tight truncate">Quotation Manager</h1>
-          <p id="app-company-subtitle" class="text-xs text-stone-400 truncate">Industrial SaaS</p>
-        </div>
+      <!-- Desktop Sidebar Brand Logo -->
+      <div class="w-full bg-white rounded-xl px-3 py-2.5 flex items-center justify-center shadow-xs">
+        <img src="assets/quotation_manager_logo.svg" alt="Quotation Manager Logo" class="h-10 w-auto max-w-full object-contain" />
       </div>
 
       <!-- Navigation -->
@@ -158,10 +154,10 @@
 
     <!-- Mobile Top Bar (Hidden on desktop) -->
     <header class="lg:hidden flex items-center gap-3 bg-stone-900 text-white px-4 py-3 sticky top-0 z-30">
-      <img src="assets/mobile_logo.svg" alt="Quotation Manager Logo" class="h-9 w-9 object-contain shrink-0" />
-      <div class="flex-1 min-w-0">
-        <h1 class="font-display font-semibold text-white text-base leading-tight truncate">Quotation Manager</h1>
+      <div class="bg-white rounded-xl px-2.5 py-1.5 flex items-center justify-center shrink-0 shadow-xs">
+        <img src="assets/mobile_logo.svg" alt="Quotation Manager Logo" class="h-8 w-8 object-contain" />
       </div>
+      <div class="flex-1"></div>
       <div class="flex items-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-green-400 shrink-0" title="Database synced"></span>
         <button type="button" onclick="AuthManager.logout()" class="h-11 w-11 inline-flex items-center justify-center rounded-xl text-stone-300 hover:bg-stone-800 hover:text-red-400 cursor-pointer transition-colors" title="Sign Out" aria-label="Sign Out">
@@ -1015,8 +1011,7 @@
       
       <!-- Logo & Header -->
       <div class="text-center flex flex-col items-center gap-2">
-        <img src="assets/quotation_manager_logo.svg" alt="Quotation Manager Logo" class="h-10 w-auto object-contain mx-auto mb-1" />
-        <h2 class="font-display text-2xl font-bold tracking-tight text-stone-900">Quotation Manager</h2>
+        <img src="assets/quotation_manager_logo.svg" alt="Quotation Manager Logo" class="h-14 w-auto max-w-[240px] object-contain mx-auto" />
         <p class="text-xs text-stone-600">Sign in to manage quotes and catalog</p>
       </div>
 
