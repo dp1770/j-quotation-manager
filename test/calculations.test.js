@@ -345,3 +345,27 @@ test('PdfGenerator.generateQuotationHtml: Side-by-side Bank Details (Left) & Fin
   assert.ok(idxTerms < idxCalc, 'Terms & Signatory (4) must precede Measurement Table (5)');
   assert.ok(idxCalc < idxPromo, 'Measurement Table (5) must precede Products Gallery (6)');
 });
+
+test('PdfGenerator.formatDateTime: Formats timestamps into human-readable Date & Time with graceful fallback', () => {
+  const pdfGenCode = fs.readFileSync(path.join(__dirname, '../js/pdf-generator.js'), 'utf8');
+  const pdfContext = { window: {}, globalThis: {}, console };
+  vm.createContext(pdfContext);
+  vm.runInContext(pdfGenCode, pdfContext);
+  const PdfGenerator = pdfContext.PdfGenerator || pdfContext.window.PdfGenerator;
+
+  // 1. Valid ISO string (2026-11-20T11:11:43.000Z)
+  const isoFormatted = PdfGenerator.formatDateTime('2026-11-20T11:11:43.000Z');
+  assert.match(isoFormatted, /20 Nov 2026,/);
+  assert.match(isoFormatted, /(AM|PM)$/);
+
+  // 2. SQLite datetime format (2026-11-20 11:11:43)
+  const sqliteFormatted = PdfGenerator.formatDateTime('2026-11-20 11:11:43');
+  assert.match(sqliteFormatted, /20 Nov 2026,/);
+  assert.match(sqliteFormatted, /(AM|PM)$/);
+
+  // 3. Graceful fallback on missing/null/empty/invalid values
+  assert.strictEqual(PdfGenerator.formatDateTime(null), '—');
+  assert.strictEqual(PdfGenerator.formatDateTime(undefined), '—');
+  assert.strictEqual(PdfGenerator.formatDateTime(''), '—');
+  assert.strictEqual(PdfGenerator.formatDateTime('invalid-date-string'), '—');
+});

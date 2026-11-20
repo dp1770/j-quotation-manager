@@ -674,8 +674,11 @@ const App = {
           <td class="py-3 px-3">
             ${permBadges}
           </td>
-          <td class="py-3 px-3 text-stone-500 font-code">
-            ${PdfGenerator.formatDate(u.createdAt || new Date().toISOString())}
+          <td class="py-3 px-3">
+            <div class="text-[11px] font-code font-medium text-stone-700 flex items-center gap-1.5 whitespace-nowrap">
+              <i class="fa-regular fa-clock text-stone-400 text-[10px]"></i>
+              <span>${this.formatDateTime(u.createdAt || u.created_at)}</span>
+            </div>
           </td>
           <td class="py-3 px-3 text-right">
             ${isSuper ? `
@@ -1410,7 +1413,13 @@ const App = {
               <div class="font-semibold text-stone-900">${this.escapeHtml(q.clientCompany || q.clientName)}</div>
               <div class="text-xs text-stone-500">${this.escapeHtml(q.clientName || '')}</div>
             </td>
-            <td class="py-3 px-3 text-xs text-stone-500 font-code">${PdfGenerator.formatDate(q.date)}</td>
+            <td class="py-3 px-3">
+              <div class="text-xs font-semibold text-stone-900 font-code">${PdfGenerator.formatDate(q.date)}</div>
+              <div class="text-[11px] text-stone-500 font-code flex items-center gap-1 mt-0.5" title="Created Date & Time">
+                <i class="fa-regular fa-clock text-[10px] text-stone-400"></i>
+                <span>${this.formatDateTime(q.createdAt || q.created_at)}</span>
+              </div>
+            </td>
             <td class="py-3 px-3 font-semibold text-stone-900 font-code tabular-nums">${CalculationsEngine.formatCurrency(q.grandTotal)}</td>
             <td class="py-3 px-3 text-right">
               <div class="inline-flex items-center gap-1">
@@ -1551,7 +1560,13 @@ const App = {
             <div class="font-semibold text-stone-900 text-sm">${this.escapeHtml(q.clientCompany || q.clientName)}</div>
             <div class="text-[11px] text-stone-500">${q.clientName ? 'Attn: ' + this.escapeHtml(q.clientName) : ''} ${q.clientPhone ? '• ' + this.escapeHtml(q.clientPhone) : ''}</div>
           </td>
-          <td class="py-3 px-3 text-stone-600 font-code">${PdfGenerator.formatDate(q.date)}</td>
+          <td class="py-3 px-3">
+            <div class="font-semibold text-stone-900 font-code">${PdfGenerator.formatDate(q.date)}</div>
+            <div class="text-[11px] text-stone-500 font-code flex items-center gap-1 mt-0.5" title="Created Date & Time">
+              <i class="fa-regular fa-clock text-[10px] text-stone-400"></i>
+              <span>${this.formatDateTime(q.createdAt || q.created_at)}</span>
+            </div>
+          </td>
           <td class="py-3 px-3 text-stone-500 font-code">${PdfGenerator.formatDate(q.validUntil)}</td>
           <td class="py-3 px-3 font-semibold text-stone-900 font-code tabular-nums text-sm">${CalculationsEngine.formatCurrency(q.grandTotal)}</td>
           <td class="py-3 px-3">
@@ -1638,7 +1653,7 @@ const App = {
     const tbody = document.getElementById('items-list-tbody');
     if (this.isLoadingData) {
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-stone-400 font-medium">
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-stone-400 font-medium">
           <i class="fa-solid fa-spinner fa-spin mr-2 text-stone-500 text-base"></i> Loading items from Cloudflare D1...
         </td></tr>`;
       }
@@ -1666,7 +1681,7 @@ const App = {
     if (!tbody) return;
 
     if (StorageManager.isOffline()) {
-      tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center">
+      tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center">
         <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
           <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
           <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
@@ -1689,7 +1704,7 @@ const App = {
     if (this.itemsPage < 1) this.itemsPage = 1;
 
     if (totalRecords === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-stone-400">No items found in Item Master. Click "+ Add product" or "Import CSV" to create one.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-stone-400">No items found in Item Master. Click "+ Add product" or "Import CSV" to create one.</td></tr>`;
       if (paginationBar) paginationBar.innerHTML = `<span class="text-xs text-stone-400">0 products found</span>`;
       return;
     }
@@ -1719,6 +1734,12 @@ const App = {
         </td>
         <td class="py-3 px-3 font-medium text-stone-700 font-code tabular-nums text-xs">
           ${(parseFloat(it.defaultWidth) || 3.50).toFixed(2)} Ft
+        </td>
+        <td class="py-3 px-3">
+          <div class="text-[11px] font-code font-medium text-stone-700 flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-regular fa-clock text-stone-400 text-[10px]"></i>
+            <span>${this.formatDateTime(it.createdAt || it.created_at)}</span>
+          </div>
         </td>
         <td class="py-3 px-3">
           <span class="inline-flex items-center gap-1 font-medium text-stone-700 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded text-[11px]">
@@ -3026,7 +3047,7 @@ const App = {
     const tbody = document.getElementById('clients-list-tbody');
     if (this.isLoadingData) {
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-stone-400 font-medium">
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-stone-400 font-medium">
           <i class="fa-solid fa-spinner fa-spin mr-2 text-stone-500 text-base"></i> Loading clients from Cloudflare D1...
         </td></tr>`;
       }
@@ -3068,7 +3089,7 @@ const App = {
     if (!tbody) return;
 
     if (StorageManager.isOffline()) {
-      tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center">
+      tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center">
         <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
           <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
           <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
@@ -3091,7 +3112,7 @@ const App = {
     if (this.clientsPage < 1) this.clientsPage = 1;
 
     if (totalRecords === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-stone-400">No clients found. Click "+ Add client" or "Import CSV" to create one.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-stone-400">No clients found. Click "+ Add client" or "Import CSV" to create one.</td></tr>`;
       if (paginationBar) paginationBar.innerHTML = `<span class="text-xs text-stone-400">0 clients found</span>`;
       return;
     }
@@ -3110,6 +3131,12 @@ const App = {
         <td class="py-3 px-3 text-stone-600 font-code">${this.escapeHtml(c.email || 'N/A')}</td>
         <td class="py-3 px-3 font-code text-stone-700">${this.escapeHtml(c.gstNumber || 'Unregistered')}</td>
         <td class="py-3 px-3 text-stone-500 max-w-xs truncate">${this.escapeHtml(c.address || '')}</td>
+        <td class="py-3 px-3">
+          <div class="text-[11px] font-code font-medium text-stone-700 flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-regular fa-clock text-stone-400 text-[10px]"></i>
+            <span>${this.formatDateTime(c.createdAt || c.created_at)}</span>
+          </div>
+        </td>
         <td class="py-3 px-3">
           <span class="inline-flex items-center gap-1 font-medium text-stone-700 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded text-[11px]">
             <i class="fa-solid fa-user-pen text-stone-400 text-[10px]"></i>
@@ -4555,6 +4582,35 @@ const App = {
         }
       }, 300);
     }, 3200);
+  },
+
+  formatDateTime(val) {
+    if (!val) return '—';
+    try {
+      let d;
+      if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(val)) {
+        d = new Date(val.replace(' ', 'T') + 'Z');
+      } else {
+        d = new Date(val);
+      }
+      if (!d || isNaN(d.getTime())) return '—';
+
+      const day = String(d.getDate()).padStart(2, '0');
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = months[d.getMonth()];
+      const year = d.getFullYear();
+
+      let hours = d.getHours();
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const strHours = String(hours).padStart(2, '0');
+
+      return `${day} ${month} ${year}, ${strHours}:${minutes} ${ampm}`;
+    } catch (e) {
+      return '—';
+    }
   },
 
   escapeHtml(str) {

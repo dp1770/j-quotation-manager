@@ -487,6 +487,7 @@ const StorageManager = {
     q.sgst_percent = q.sgstPercent;
     q.cgst_amount = q.cgstAmount;
     q.sgst_amount = q.sgstAmount;
+    q.createdAt = q.createdAt || q.created_at || '';
     q.createdBy = q.createdByName || q.createdBy || 'System Administrator';
     q.createdByName = q.createdByName || q.createdBy || 'System Administrator';
     return q;
@@ -660,7 +661,10 @@ const StorageManager = {
       throw new Error('No Internet Connection - Unable to save client to server.');
     }
 
-    if (!client.id) client.id = 'cli_' + Date.now();
+    if (!client.id) {
+      client.id = 'cli_' + Date.now();
+      client.createdAt = client.createdAt || new Date().toISOString();
+    }
     client.updatedAt = new Date().toISOString();
 
     const res = await this.fetchWithAuth('/api/clients', {
@@ -743,7 +747,10 @@ const StorageManager = {
       throw new Error('No Internet Connection - Unable to save item to server.');
     }
 
-    if (!item.id) item.id = 'itm_' + Date.now();
+    if (!item.id) {
+      item.id = 'itm_' + Date.now();
+      item.createdAt = item.createdAt || new Date().toISOString();
+    }
     item.updatedAt = new Date().toISOString();
 
     const res = await this.fetchWithAuth('/api/items', {
