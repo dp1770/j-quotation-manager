@@ -119,10 +119,10 @@ const PdfGenerator = {
         `).join('');
 
         subTableHtml = `
-          <div class="mt-1 border border-slate-400 rounded overflow-hidden max-w-sm">
+          <div class="mt-1 border border-stone-300 rounded overflow-hidden max-w-sm">
             <table class="w-full text-left border-collapse text-[10px]">
               <thead>
-                <tr class="bg-slate-200 font-bold text-slate-800 border-b border-slate-400">
+                <tr class="bg-stone-100 font-bold text-stone-800 border-b border-stone-300">
                   <th class="py-0.5 px-1.5">Description</th>
                   <th class="py-0.5 px-1.5 text-center">Inch/Kg</th>
                   <th class="py-0.5 px-1.5 text-center">NOS</th>
@@ -139,26 +139,26 @@ const PdfGenerator = {
       }
 
       return `
-        <tr class="border-b border-slate-300 text-xs" style="page-break-inside: avoid; break-inside: avoid;">
-          <td class="py-1.5 px-2 text-center text-slate-700 font-bold align-top">${idx + 1}</td>
-          <td class="py-1.5 px-2.5 text-slate-900 font-bold align-top">
+        <tr class="border-b border-stone-300 text-xs" style="page-break-inside: avoid; break-inside: avoid;">
+          <td class="py-1.5 px-2 text-center text-stone-700 font-bold align-top">${idx + 1}</td>
+          <td class="py-1.5 px-2.5 text-stone-900 font-bold align-top">
             <div class="text-[12px] leading-snug">${this.escapeHtml(it.description)}</div>
-            ${it.subRemarks ? `<div class="text-[10px] text-slate-600 font-semibold italic mt-0.5">${this.escapeHtml(it.subRemarks)}</div>` : ''}
+            ${it.subRemarks ? `<div class="text-[10px] text-stone-600 font-semibold italic mt-0.5">${this.escapeHtml(it.subRemarks)}</div>` : ''}
             ${itImg ? `
               <div class="mt-1.5 mb-1">
-                <img src="${itImg}" alt="${this.escapeHtml(it.description || 'Product Profile')}" style="max-height: 52px; max-width: 150px; object-fit: contain; display: block; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px; background-color: #ffffff;" />
+                <img src="${itImg}" alt="${this.escapeHtml(it.description || 'Product Profile')}" style="max-height: 52px; max-width: 150px; object-fit: contain; display: block; border: 1px solid #d6d3d1; border-radius: 4px; padding: 2px; background-color: #ffffff;" />
               </div>
             ` : ''}
             ${subTableHtml}
           </td>
           <td class="py-1.5 px-2 text-center align-top">
-            <div class="font-bold text-slate-900 text-[12px]">${qNum}</div>
-            <div class="text-[10px] text-slate-600 font-semibold lowercase">${this.escapeHtml(unitStr)}</div>
+            <div class="font-bold text-stone-900 text-[12px]">${qNum}</div>
+            <div class="text-[10px] text-stone-600 font-semibold lowercase">${this.escapeHtml(unitStr)}</div>
           </td>
-          <td class="py-1.5 px-2 text-center font-bold text-slate-900 align-top text-[12px]">
+          <td class="py-1.5 px-2 text-center font-bold text-stone-900 align-top text-[12px] tabular-nums">
             ${rateStr}
           </td>
-          <td class="py-1.5 px-2.5 text-right font-bold text-slate-900 align-top text-[12px]">
+          <td class="py-1.5 px-2.5 text-right font-bold text-stone-900 align-top text-[12px] tabular-nums">
             ${amtStr}
           </td>
         </tr>
@@ -182,25 +182,25 @@ const PdfGenerator = {
         if (computed.rows.length === 0) return '';
 
         const calcRows = computed.rows.map((r) => `
-          <tr class="border-b border-slate-300 text-[11px] font-medium leading-tight">
-            <!-- 1. Feet Column (Pastel Soft Pink Tint) -->
-            <td class="py-1 px-2 text-center font-semibold text-slate-900" style="background-color: #fce4ec;">
+          <tr class="border-b border-stone-200 text-[11px] font-medium leading-tight">
+            <!-- 1. Feet Column -->
+            <td class="py-1 px-2 text-center font-semibold text-stone-900 font-mono tabular-nums bg-white" style="border: 1px solid #e7e5e4;">
               ${r.feet.toFixed(2)}
             </td>
-            <!-- 2. Inch Column (Pastel Soft Light Blue Tint) -->
-            <td class="py-1 px-2 text-center font-semibold text-slate-900" style="background-color: #e1f5fe;">
+            <!-- 2. Inch Column -->
+            <td class="py-1 px-2 text-center font-semibold text-stone-900 font-mono tabular-nums bg-white" style="border: 1px solid #e7e5e4;">
               ${r.inch.toFixed(2)}
             </td>
-            <!-- 3. Nos Column (Pastel Soft Cream/Yellow Tint) -->
-            <td class="py-1 px-2 text-center font-black text-slate-900" style="background-color: #fff9c4;">
+            <!-- 3. Nos Column -->
+            <td class="py-1 px-2 text-center font-black text-stone-950 font-mono tabular-nums bg-white" style="border: 1px solid #e7e5e4;">
               ${r.nos}
             </td>
-            <!-- 4. Sq. Meter Column (Pastel Soft Mint Green Tint) -->
-            <td class="py-1 px-2 text-center font-semibold text-slate-900" style="background-color: #c8e6c9;">
+            <!-- 4. Sq. Meter Column -->
+            <td class="py-1 px-2 text-center font-semibold text-stone-900 font-mono tabular-nums bg-white" style="border: 1px solid #e7e5e4;">
               ${r.sqMetersDisplay}
             </td>
-            <!-- 5. Sq. Feet Column (Pastel Soft Lilac/Purple Tint) -->
-            <td class="py-1 px-2 text-center font-bold text-slate-900" style="background-color: #e1bee7;">
+            <!-- 5. Sq. Feet Column -->
+            <td class="py-1 px-2 text-center font-bold text-stone-950 font-mono tabular-nums bg-white" style="border: 1px solid #e7e5e4;">
               ${r.sqFeetDisplay}
             </td>
           </tr>
@@ -208,30 +208,30 @@ const PdfGenerator = {
 
         return `
           <div class="mt-4 mb-4 avoid-break calc-block">
-            <div class="text-[12px] font-bold text-slate-900 mb-1.5 flex justify-between items-center">
+            <div class="text-[12px] font-bold text-stone-900 mb-1.5 flex justify-between items-center">
               <span>${this.escapeHtml(computed.title)}</span>
-              <span class="text-[11px] text-slate-500 font-semibold">Width: ${computed.sheetWidth.toFixed(2)} Ft</span>
+              <span class="text-[11px] text-stone-500 font-semibold">Width: ${computed.sheetWidth.toFixed(2)} Ft</span>
             </div>
 
-            <table class="w-full text-left border-collapse" style="border: 1px solid #000000; border-collapse: collapse;">
+            <table class="w-full text-left border-collapse" style="border: 1px solid #1c1917; border-collapse: collapse;">
               <thead>
-                <tr class="text-white text-[12px] font-bold" style="background-color: #00a2e8;">
-                  <th class="py-2 px-2 text-center w-1/5" style="border: 1px solid #000000;">Feet</th>
-                  <th class="py-2 px-2 text-center w-1/5" style="border: 1px solid #000000;">Inch</th>
-                  <th class="py-2 px-2 text-center w-1/5" style="border: 1px solid #000000;">Nos</th>
-                  <th class="py-2 px-2 text-center w-1/5" style="border: 1px solid #000000;">Sq. Meter</th>
-                  <th class="py-2 px-2 text-center w-1/5" style="border: 1px solid #000000;">Sq.Feet</th>
+                <tr class="text-white text-[12px] font-bold uppercase tracking-wider" style="background-color: #1c1917; color: #ffffff;">
+                  <th class="py-2 px-2 text-center w-1/5" style="border: 1px solid #44403c;">Feet</th>
+                  <th class="py-2 px-2 text-center w-1/5" style="border: 1px solid #44403c;">Inch</th>
+                  <th class="py-2 px-2 text-center w-1/5" style="border: 1px solid #44403c;">Nos</th>
+                  <th class="py-2 px-2 text-center w-1/5" style="border: 1px solid #44403c;">Sq. Meter</th>
+                  <th class="py-2 px-2 text-center w-1/5" style="border: 1px solid #44403c;">Sq.Feet</th>
                 </tr>
               </thead>
               <tbody>
                 ${calcRows}
               </tbody>
               <tfoot>
-                <tr class="bg-slate-100 font-black text-[11px] text-slate-900" style="border-top: 2px solid #000000;">
-                  <td colspan="2" class="py-1.5 px-3 text-right" style="border: 1px solid #000000;">TOTAL:</td>
-                  <td class="py-1.5 px-2 text-center font-black" style="border: 1px solid #000000; background-color: #fff59d;">${computed.totalNos}</td>
-                  <td class="py-1.5 px-2 text-center font-black" style="border: 1px solid #000000; background-color: #a5d6a7;">${computed.totalSqMetersDisplay}</td>
-                  <td class="py-1.5 px-2 text-center font-black" style="border: 1px solid #000000; background-color: #ce93d8;">${computed.totalSqFeetDisplay}</td>
+                <tr class="bg-stone-100 font-black text-[11px] text-stone-900" style="border-top: 2px solid #1c1917;">
+                  <td colspan="2" class="py-1.5 px-3 text-right uppercase tracking-wider font-bold" style="border: 1px solid #d6d3d1;">TOTAL:</td>
+                  <td class="py-1.5 px-2 text-center font-black font-mono tabular-nums bg-orange-50/80 text-stone-950" style="border: 1px solid #d6d3d1;">${computed.totalNos}</td>
+                  <td class="py-1.5 px-2 text-center font-black font-mono tabular-nums bg-orange-50/80 text-stone-950" style="border: 1px solid #d6d3d1;">${computed.totalSqMetersDisplay}</td>
+                  <td class="py-1.5 px-2 text-center font-black font-mono tabular-nums bg-orange-50/80 text-orange-800" style="border: 1px solid #d6d3d1;">${computed.totalSqFeetDisplay}</td>
                 </tr>
               </tfoot>
             </table>
@@ -244,14 +244,14 @@ const PdfGenerator = {
     // PART 3: TERMS AND CONDITIONS
     // -------------------------------------------------------------
     const termsHtml = terms.map((t, idx) => `
-      <p class="mb-1 text-slate-900 text-[11px] font-semibold leading-relaxed">
+      <p class="mb-1 text-stone-900 text-[11px] font-semibold leading-relaxed">
         ${idx + 1}. ${this.escapeHtml(t)}
       </p>
     `).join('');
 
     // Running Footer line matching PDF (Rendered strictly once at the end)
     const footerLine = `
-      <div class="mt-2.5 pt-2 border-t-2 border-slate-900 text-center text-[10px] sm:text-[11px] font-bold tracking-wider text-slate-800 uppercase">
+      <div class="mt-2.5 pt-2 border-t-2 border-stone-900 text-center text-[10px] sm:text-[11px] font-bold tracking-wider text-stone-800 uppercase">
         ${this.escapeHtml(comp.name)} [ CONTACT NO. ${this.escapeHtml(comp.phone)} ${comp.phoneSecondary ? '/ ' + this.escapeHtml(comp.phoneSecondary) : ''} ]
       </div>
     `;
@@ -275,8 +275,8 @@ const PdfGenerator = {
       } else {
         promotionalBannersHtml = `
           <div class="quotation-promotional-section avoid-break mt-3" style="page-break-inside: avoid; break-inside: avoid; border: none !important; padding: 0 !important;">
-            <div class="text-[11px] font-black uppercase tracking-wider text-slate-800 mb-1 flex items-center gap-1.5 border-b border-slate-300 pb-1">
-              <i class="fa-solid fa-boxes-stacked text-blue-900"></i>
+            <div class="text-[11px] font-black uppercase tracking-wider text-stone-900 mb-1 flex items-center gap-1.5 border-b border-stone-300 pb-1">
+              <i class="fa-solid fa-boxes-stacked text-stone-700"></i>
               <span>Our Products</span>
             </div>
             <div class="quotation-banners-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 !important; padding: 0 !important; margin: 0 !important; border: none !important;">
@@ -297,31 +297,31 @@ const PdfGenerator = {
     // PART 4: BANK PAYMENT DETAILS BLOCK (Compact 2x2 Layout for Side-by-Side Row)
     // -------------------------------------------------------------
     const bankDetailsHtml = `
-      <div class="bank-details-box avoid-break border border-slate-300 rounded-lg p-3 bg-slate-50/80 shadow-2xs flex flex-col justify-between" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 0;">
+      <div class="bank-details-box avoid-break border border-stone-300 rounded-lg p-3 bg-stone-50/80 shadow-2xs flex flex-col justify-between" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 0;">
         <div>
-          <h3 class="text-xs font-black text-sky-700 uppercase tracking-wider mb-2 flex items-center gap-1.5 border-b border-slate-200 pb-1">
-            <i class="fa-solid fa-building-columns"></i> BANK PAYMENT DETAILS:
+          <h3 class="text-xs font-black text-stone-900 uppercase tracking-wider mb-2 flex items-center gap-1.5 border-b border-stone-200 pb-1">
+            <i class="fa-solid fa-building-columns text-orange-700"></i> BANK PAYMENT DETAILS:
           </h3>
           <div class="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
             <div>
-              <span class="text-[10px] text-slate-500 font-bold block uppercase">Bank Name</span>
-              <span class="text-xs font-black text-amber-700 uppercase leading-snug">${this.escapeHtml(bank.bankName || 'N/A')}</span>
+              <span class="text-[10px] text-stone-500 font-bold block uppercase">Bank Name</span>
+              <span class="text-xs font-black text-orange-700 uppercase leading-snug">${this.escapeHtml(bank.bankName || 'N/A')}</span>
             </div>
             <div>
-              <span class="text-[10px] text-slate-500 font-bold block uppercase">Account No</span>
-              <span class="text-[11px] font-bold font-mono text-slate-950 leading-snug">${this.escapeHtml(bank.accountNumber || 'N/A')}</span>
+              <span class="text-[10px] text-stone-500 font-bold block uppercase">Account No</span>
+              <span class="text-[11px] font-bold font-mono text-stone-950 leading-snug">${this.escapeHtml(bank.accountNumber || 'N/A')}</span>
             </div>
             <div>
-              <span class="text-[10px] text-slate-500 font-bold block uppercase">IFSC Code</span>
-              <span class="text-[11px] font-bold font-mono text-blue-900 leading-snug">${this.escapeHtml(bank.ifscCode || 'N/A')}</span>
+              <span class="text-[10px] text-stone-500 font-bold block uppercase">IFSC Code</span>
+              <span class="text-[11px] font-bold font-mono text-stone-950 leading-snug">${this.escapeHtml(bank.ifscCode || 'N/A')}</span>
             </div>
             <div>
-              <span class="text-[10px] text-slate-500 font-bold block uppercase">Branch</span>
-              <span class="text-[11px] font-bold text-slate-800 uppercase leading-snug">${this.escapeHtml(bank.branch || 'N/A')}</span>
+              <span class="text-[10px] text-stone-500 font-bold block uppercase">Branch</span>
+              <span class="text-[11px] font-bold text-stone-800 uppercase leading-snug">${this.escapeHtml(bank.branch || 'N/A')}</span>
             </div>
           </div>
         </div>
-        <div class="pt-1.5 text-[10px] text-slate-500 italic border-t border-slate-200 mt-2">
+        <div class="pt-1.5 text-[10px] text-stone-500 italic border-t border-stone-200 mt-2">
           Please transfer payment directly to the account above.
         </div>
       </div>
@@ -331,25 +331,25 @@ const PdfGenerator = {
     // PART 5: TERMS AND CONDITIONS & AUTHORIZED SIGNATURE
     // -------------------------------------------------------------
     const termsAndSignatureHtml = `
-      <div class="quotation-terms-signature-block avoid-break mt-3 border border-slate-300 rounded-lg p-3.5 bg-white" style="page-break-inside: avoid; break-inside: avoid; position: static;">
+      <div class="quotation-terms-signature-block avoid-break mt-3 border border-stone-300 rounded-lg p-3.5 bg-white" style="page-break-inside: avoid; break-inside: avoid; position: static;">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
           
           <!-- Left Column: Terms & Remarks -->
           <div class="space-y-3">
             <!-- Terms and Conditions -->
             <div>
-              <h3 class="text-xs font-black text-rose-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <i class="fa-solid fa-list-check"></i> TERMS AND CONDITIONS:
+              <h3 class="text-xs font-black text-orange-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-list-check text-stone-700"></i> TERMS AND CONDITIONS:
               </h3>
-              <div class="space-y-0.5 text-slate-800">
+              <div class="space-y-0.5 text-stone-800">
                 ${termsHtml}
               </div>
             </div>
 
             ${quote.notes ? `
-              <div class="text-left bg-slate-50 p-2 rounded border border-slate-200">
-                <strong class="text-[11px] font-bold text-blue-950 block mb-0.5">Quotation Notes / Remarks:</strong>
-                <p class="text-[11px] text-slate-700 whitespace-pre-line leading-relaxed">${this.escapeHtml(quote.notes)}</p>
+              <div class="text-left bg-stone-50 p-2 rounded border border-stone-200">
+                <strong class="text-[11px] font-bold text-stone-900 block mb-0.5">Quotation Notes / Remarks:</strong>
+                <p class="text-[11px] text-stone-700 whitespace-pre-line leading-relaxed">${this.escapeHtml(quote.notes)}</p>
               </div>
             ` : ''}
           </div>
@@ -365,9 +365,9 @@ const PdfGenerator = {
               ` : `
                 <div class="h-14"></div>
               `}
-              <div class="border-t border-slate-400 pt-1">
-                <div class="text-xs font-black text-slate-950 uppercase">For, ${this.escapeHtml(comp.name)}</div>
-                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">${this.escapeHtml(media.signatureTitle || 'Authorized Signatory')}</div>
+              <div class="border-t border-stone-400 pt-1">
+                <div class="text-xs font-black text-stone-950 uppercase">For, ${this.escapeHtml(comp.name)}</div>
+                <div class="text-[10px] font-bold text-stone-500 uppercase tracking-wider">${this.escapeHtml(media.signatureTitle || 'Authorized Signatory')}</div>
               </div>
             </div>
 
@@ -376,7 +376,7 @@ const PdfGenerator = {
         </div>
 
         <!-- Centered System Note -->
-        <div class="text-center text-[10px] text-slate-400 italic mt-3 mb-1">
+        <div class="text-center text-[10px] text-stone-400 italic mt-3 mb-1">
           This is a system-generated quotation.
         </div>
 
@@ -387,11 +387,11 @@ const PdfGenerator = {
     `;
 
     return `
-      <div id="print-quotation-root" class="bg-white text-slate-900 font-sans max-w-4xl mx-auto p-3 sm:p-6 print:p-0 print:max-w-none text-xs">
+      <div id="print-quotation-root" class="bg-white text-stone-900 font-sans max-w-4xl mx-auto p-3 sm:p-6 print:p-0 print:max-w-none text-xs">
         <style>
           #print-quotation-root {
             font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-            color: #0f172a !important;
+            color: #1c1917 !important;
             background-color: #ffffff !important;
           }
           #print-quotation-root table {
@@ -406,10 +406,19 @@ const PdfGenerator = {
           #print-quotation-root tfoot {
             display: table-row-group !important;
           }
-          #print-quotation-root table,
-          #print-quotation-root th,
-          #print-quotation-root td {
-            border: 1px solid #000000 !important;
+          #print-quotation-root .quotation-items-table,
+          #print-quotation-root .quotation-items-table th,
+          #print-quotation-root .quotation-items-table td {
+            border: 1px solid #1c1917 !important;
+          }
+          #print-quotation-root .calc-block table {
+            border: 1px solid #1c1917 !important;
+          }
+          #print-quotation-root .calc-block th {
+            border: 1px solid #1c1917 !important;
+          }
+          #print-quotation-root .calc-block td {
+            border: 1px solid #d6d3d1 !important;
           }
           #print-quotation-root th,
           #print-quotation-root td {
@@ -492,15 +501,15 @@ const PdfGenerator = {
         <!-- HEADER BLOCK                                            -->
         <!-- ======================================================= -->
         <div class="quotation-header-block mb-1.5">
-          <!-- Top Header (Company Left, 3D Roofing Sheets Right) -->
+          <!-- Top Header (Company Left, Logo Right) -->
           <div class="flex justify-between items-start gap-3 pb-1">
             <div class="flex-1">
-              <h1 class="text-xl sm:text-2xl font-black tracking-tight text-slate-950 uppercase">${this.escapeHtml(comp.name)}</h1>
-              <div class="mt-0.5 text-xs text-slate-800 space-y-0.5 font-medium leading-snug">
+              <h1 class="text-xl sm:text-2xl font-black tracking-tight text-stone-950 uppercase font-display">${this.escapeHtml(comp.name)}</h1>
+              <div class="mt-0.5 text-xs text-stone-800 space-y-0.5 font-medium leading-snug">
                 <p><strong>Address :-</strong> ${this.escapeHtml(comp.address)}</p>
-                <p><strong>E-mail:</strong> <span class="text-blue-900 font-semibold">${this.escapeHtml(comp.email)}</span></p>
+                <p><strong>E-mail:</strong> <span class="text-stone-800 font-semibold">${this.escapeHtml(comp.email)}</span></p>
                 <p><strong>Mo.No.</strong> ${this.escapeHtml(comp.phone)} ${comp.phoneSecondary ? '/ ' + this.escapeHtml(comp.phoneSecondary) : ''}</p>
-                <p class="text-sky-600 font-bold text-xs sm:text-sm tracking-wide">GST NO. ${this.escapeHtml(comp.gstin)}</p>
+                <p class="text-orange-700 font-bold text-xs sm:text-sm tracking-wide">GST NO. ${this.escapeHtml(comp.gstin)}</p>
               </div>
             </div>
 
@@ -512,28 +521,28 @@ const PdfGenerator = {
             ` : ''}
           </div>
 
-          <!-- Divider Line -->
-          <div class="w-full h-1 bg-gradient-to-r from-sky-400 via-blue-600 to-sky-400 my-1.5"></div>
+          <!-- Divider Line (Burnt Orange) -->
+          <div class="w-full h-1 bg-gradient-to-r from-orange-600 via-orange-700 to-orange-600 my-1.5"></div>
 
-          <!-- Title: Quotation (Centered Cyan) -->
+          <!-- Title: Quotation (Centered Stone-900) -->
           <div class="text-center my-1.5">
-            <h2 class="text-xl sm:text-2xl font-bold tracking-wide" style="color: #00a2e8;">Quotation</h2>
+            <h2 class="text-xl sm:text-2xl font-black uppercase tracking-wider text-stone-900 font-display">Quotation</h2>
           </div>
 
           <!-- Client & Quote Meta Details -->
-          <div class="mb-2 text-xs font-semibold leading-relaxed grid grid-cols-1 sm:grid-cols-2 gap-1.5 bg-slate-50/70 p-2 rounded border border-slate-200">
+          <div class="mb-2 text-xs font-semibold leading-relaxed grid grid-cols-1 sm:grid-cols-2 gap-1.5 bg-stone-50/70 p-2 rounded border border-stone-200">
             <div>
-              <div class="text-slate-500 uppercase text-[10px] font-bold">Quotation To:</div>
-              <div class="text-sm font-black text-slate-950 tracking-wide">${this.escapeHtml(quote.clientCompany || quote.clientName || 'Valued Customer')}</div>
-              ${quote.clientCompany && quote.clientName ? `<div class="font-bold text-slate-800">Attn: ${this.escapeHtml(quote.clientName)}</div>` : ''}
-              <div class="text-slate-600 mt-0.5">${this.escapeHtml(quote.clientAddress || '')}</div>
+              <div class="text-stone-500 uppercase text-[10px] font-bold">Quotation To:</div>
+              <div class="text-sm font-black text-stone-950 tracking-wide">${this.escapeHtml(quote.clientCompany || quote.clientName || 'Valued Customer')}</div>
+              ${quote.clientCompany && quote.clientName ? `<div class="font-bold text-stone-800">Attn: ${this.escapeHtml(quote.clientName)}</div>` : ''}
+              <div class="text-stone-600 mt-0.5">${this.escapeHtml(quote.clientAddress || '')}</div>
             </div>
             <div class="sm:text-right space-y-0.5">
-              <div class="text-slate-700">Quote Number: <span class="font-bold text-slate-950 font-mono">${this.escapeHtml(quote.quoteNumber)}</span></div>
-              <div class="text-slate-700">Quote Date: <span class="font-bold text-slate-950">${quote.date}</span></div>
-              <div class="text-slate-700">Valid Until: <span class="font-bold text-slate-950">${quote.validUntil}</span></div>
-              <div class="text-slate-700">Mobile No. : <span class="font-bold text-slate-950">${this.escapeHtml(quote.clientPhone || 'N/A')}</span></div>
-              ${quote.clientGst ? `<div class="text-slate-700">Client GSTIN: <span class="font-bold font-mono text-slate-950">${this.escapeHtml(quote.clientGst)}</span></div>` : ''}
+              <div class="text-stone-700">Quote Number: <span class="font-bold text-stone-950 font-mono">${this.escapeHtml(quote.quoteNumber)}</span></div>
+              <div class="text-stone-700">Quote Date: <span class="font-bold text-stone-950">${quote.date}</span></div>
+              <div class="text-stone-700">Valid Until: <span class="font-bold text-stone-950">${quote.validUntil}</span></div>
+              <div class="text-stone-700">Mobile No. : <span class="font-bold text-stone-950">${this.escapeHtml(quote.clientPhone || 'N/A')}</span></div>
+              ${quote.clientGst ? `<div class="text-stone-700">Client GSTIN: <span class="font-bold font-mono text-stone-950">${this.escapeHtml(quote.clientGst)}</span></div>` : ''}
             </div>
           </div>
         </div>
@@ -541,15 +550,15 @@ const PdfGenerator = {
         <!-- ======================================================= -->
         <!-- MAIN ITEMS PRICING TABLE (Flows naturally across pages) -->
         <!-- ======================================================= -->
-        <div class="overflow-x-auto mb-2" style="border: 1px solid #000000; border-collapse: collapse;">
-          <table class="quotation-items-table w-full text-left" style="border-collapse: collapse; border: 1px solid #000000; width: 100%;">
+        <div class="overflow-x-auto mb-2" style="border: 1px solid #1c1917; border-collapse: collapse;">
+          <table class="quotation-items-table w-full text-left" style="border-collapse: collapse; border: 1px solid #1c1917; width: 100%;">
             <thead>
-              <tr class="text-white text-xs font-bold" style="background-color: #00a2e8;">
-                <th class="py-1.5 px-2 text-center w-12" style="border: 1px solid #000000;">No.</th>
-                <th class="py-1.5 px-2.5" style="border: 1px solid #000000;">ITEM NAME</th>
-                <th class="py-1.5 px-2 text-center w-24" style="border: 1px solid #000000;">QUANTITY</th>
-                <th class="py-1.5 px-2 text-center w-20" style="border: 1px solid #000000;">PRICE</th>
-                <th class="py-1.5 px-2.5 text-right w-32" style="border: 1px solid #000000;">TOTAL AMOUNT</th>
+              <tr class="text-white text-xs font-bold uppercase tracking-wider" style="background-color: #1c1917; color: #ffffff;">
+                <th class="py-1.5 px-2 text-center w-12" style="border: 1px solid #1c1917;">No.</th>
+                <th class="py-1.5 px-2.5" style="border: 1px solid #1c1917;">ITEM NAME</th>
+                <th class="py-1.5 px-2 text-center w-24" style="border: 1px solid #1c1917;">QUANTITY</th>
+                <th class="py-1.5 px-2 text-center w-20" style="border: 1px solid #1c1917;">PRICE</th>
+                <th class="py-1.5 px-2.5 text-right w-32 tabular-nums" style="border: 1px solid #1c1917;">TOTAL AMOUNT</th>
               </tr>
             </thead>
             <tbody>
@@ -567,39 +576,39 @@ const PdfGenerator = {
           ${bankDetailsHtml}
 
           <!-- Right Column: Financial Summary Box -->
-          <div class="financial-summary-box avoid-break w-full space-y-1 text-xs text-right font-bold text-slate-900 border border-slate-300 rounded-lg p-2.5 bg-slate-50/80 shadow-2xs flex flex-col justify-between" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 0;">
+          <div class="financial-summary-box avoid-break w-full space-y-1 text-xs text-right font-bold text-stone-900 border border-stone-300 rounded-lg p-2.5 bg-stone-50/80 shadow-2xs flex flex-col justify-between" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 0;">
             <div>
-              <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
+              <div class="flex justify-between items-center py-0.5 border-b border-stone-200 text-stone-700">
                 <span class="uppercase tracking-wider font-bold">Quotation Subtotal (TOTAL):</span>
-                <span class="font-mono text-xs sm:text-sm text-slate-950 font-black">${totals.materialTotal.toFixed(2)}/-</span>
+                <span class="font-mono text-xs sm:text-sm text-stone-950 font-black">${totals.materialTotal.toFixed(2)}/-</span>
               </div>
-              <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
+              <div class="flex justify-between items-center py-0.5 border-b border-stone-200 text-stone-700">
                 <span class="font-bold">Loading Charge:</span>
-                <span class="font-mono text-slate-950 font-black">${totals.loadingCharges.toFixed(2)}/-</span>
+                <span class="font-mono text-stone-950 font-black">${totals.loadingCharges.toFixed(2)}/-</span>
               </div>
               ${totals.gstType === 'CGST_SGST' ? `
-              <div class="flex justify-between items-center py-0.5 border-b border-slate-300 text-slate-700">
+              <div class="flex justify-between items-center py-0.5 border-b border-stone-200 text-stone-700">
                 <span class="font-bold">CGST (${totals.cgstRate}%):</span>
-                <span class="font-mono text-slate-950 font-black">${totals.cgstAmount.toFixed(2)}/-</span>
+                <span class="font-mono text-stone-950 font-black">${totals.cgstAmount.toFixed(2)}/-</span>
               </div>
-              <div class="flex justify-between items-center py-0.5 border-b-2 border-slate-400 text-slate-700">
+              <div class="flex justify-between items-center py-0.5 border-b-2 border-stone-300 text-stone-700">
                 <span class="font-bold">SGST (${totals.sgstRate}%):</span>
-                <span class="font-mono text-slate-950 font-black">${totals.sgstAmount.toFixed(2)}/-</span>
+                <span class="font-mono text-stone-950 font-black">${totals.sgstAmount.toFixed(2)}/-</span>
               </div>
               ` : `
-              <div class="flex justify-between items-center py-0.5 border-b-2 border-slate-400 text-slate-700">
+              <div class="flex justify-between items-center py-0.5 border-b-2 border-stone-300 text-stone-700">
                 <span class="font-bold">${taxLabel}:</span>
-                <span class="font-mono text-slate-950 font-black">${totals.gstAmount.toFixed(2)}/-</span>
+                <span class="font-mono text-stone-950 font-black">${totals.gstAmount.toFixed(2)}/-</span>
               </div>
               `}
               <!-- FINAL CALCULATION ROW: GRAND TOTAL (Directly below GST row) -->
-              <div class="flex justify-between items-center py-1.5 bg-blue-50/90 border border-blue-200 px-2 rounded mt-1 text-blue-950">
-                <span class="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950">GRAND TOTAL:</span>
-                <span class="text-base sm:text-lg font-black text-blue-950 font-mono">₹ ${Math.round(totals.grandTotal).toLocaleString('en-IN')}/-</span>
+              <div class="flex justify-between items-center py-1.5 bg-orange-50 border border-orange-200 px-2.5 rounded-lg mt-1 text-stone-950">
+                <span class="text-xs sm:text-sm font-black uppercase tracking-wider text-stone-950">GRAND TOTAL:</span>
+                <span class="text-base sm:text-lg font-black text-orange-700 font-mono">₹ ${Math.round(totals.grandTotal).toLocaleString('en-IN')}/-</span>
               </div>
             </div>
-            <div class="pt-1 text-[10px] text-slate-600 italic text-left border-t border-slate-200 mt-1">
-              <span class="font-bold not-italic text-slate-800">Words:</span> ${totals.grandTotalWords}
+            <div class="pt-1 text-[10px] text-stone-600 italic text-left border-t border-stone-200 mt-1">
+              <span class="font-bold not-italic text-stone-800">Words:</span> ${totals.grandTotalWords}
             </div>
           </div>
 

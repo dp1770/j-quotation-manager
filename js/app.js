@@ -2536,25 +2536,25 @@ const App = {
         return `
           <tr class="border-b border-stone-200 text-xs hover:bg-stone-50/70 transition-colors">
             <td class="py-2.5 px-2 text-center font-bold text-stone-400 w-12">${rIdx + 1}</td>
-            <td class="py-2 px-2" style="background-color: #fce4ec;">
-              <input type="number" step="any" min="0" class="h-11 w-full min-w-[90px] text-center font-bold text-stone-900 bg-white border border-pink-300 rounded-xl px-3 text-sm tabular-nums focus:outline-none focus:border-pink-600 focus:ring-2 focus:ring-pink-500/20 shadow-2xs"
+            <td class="py-2 px-2">
+              <input type="number" step="any" min="0" class="h-11 w-full min-w-[90px] text-center font-bold text-stone-900 bg-white border border-stone-300 rounded-xl px-3 text-sm tabular-nums focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20 shadow-2xs"
                      value="${row.feet}" 
                      oninput="App.updateCalcRow(${bIdx}, ${rIdx}, 'feet', this.value)" placeholder="Feet"/>
             </td>
-            <td class="py-2 px-2" style="background-color: #e1f5fe;">
-              <input type="number" step="any" min="0" max="11.99" class="h-11 w-full min-w-[90px] text-center font-bold text-stone-900 bg-white border border-sky-300 rounded-xl px-3 text-sm tabular-nums focus:outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-500/20 shadow-2xs"
+            <td class="py-2 px-2">
+              <input type="number" step="any" min="0" max="11.99" class="h-11 w-full min-w-[90px] text-center font-bold text-stone-900 bg-white border border-stone-300 rounded-xl px-3 text-sm tabular-nums focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20 shadow-2xs"
                      value="${row.inch}" 
                      oninput="App.updateCalcRow(${bIdx}, ${rIdx}, 'inch', this.value)" placeholder="Inch"/>
             </td>
-            <td class="py-2 px-2" style="background-color: #fff9c4;">
-              <input type="number" step="1" min="1" class="h-11 w-full min-w-[90px] text-center font-black text-stone-900 bg-white border border-amber-300 rounded-xl px-3 text-sm tabular-nums focus:outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 shadow-2xs"
+            <td class="py-2 px-2">
+              <input type="number" step="1" min="1" class="h-11 w-full min-w-[90px] text-center font-black text-stone-900 bg-white border border-stone-300 rounded-xl px-3 text-sm tabular-nums focus:outline-none focus:border-orange-700 focus:ring-2 focus:ring-orange-700/20 shadow-2xs"
                      value="${row.nos}" 
                      oninput="App.updateCalcRow(${bIdx}, ${rIdx}, 'nos', this.value)" placeholder="Nos"/>
             </td>
-            <td id="calc-row-sqmeter-${bIdx}-${rIdx}" class="py-2 px-3 text-center font-semibold text-stone-900 font-code text-sm tabular-nums" style="background-color: #c8e6c9;">
+            <td id="calc-row-sqmeter-${bIdx}-${rIdx}" class="py-2 px-3 text-center font-semibold text-stone-900 font-code text-sm tabular-nums bg-stone-50/60">
               ${rowCalc.sqMetersDisplay}
             </td>
-            <td id="calc-row-sqfeet-${bIdx}-${rIdx}" class="py-2 px-3 text-center font-bold text-stone-900 font-code text-sm tabular-nums" style="background-color: #e1bee7;">
+            <td id="calc-row-sqfeet-${bIdx}-${rIdx}" class="py-2 px-3 text-center font-bold text-stone-900 font-code text-sm tabular-nums bg-stone-50/60">
               ${rowCalc.sqFeetDisplay}
             </td>
             <td class="py-2 px-2 text-center space-x-1.5 w-24">
@@ -2608,11 +2608,11 @@ const App = {
               <thead>
                 <tr class="bg-stone-100 border-b border-stone-200 text-xs font-bold uppercase tracking-wider text-stone-700">
                   <th class="py-3 px-2 text-center w-12">#</th>
-                  <th class="py-3 px-2 text-center min-w-[100px] w-1/5" style="background-color: #fce4ec;">Feet</th>
-                  <th class="py-3 px-2 text-center min-w-[100px] w-1/5" style="background-color: #e1f5fe;">Inch</th>
-                  <th class="py-3 px-2 text-center min-w-[100px] w-1/5" style="background-color: #fff9c4;">Nos</th>
-                  <th class="py-3 px-3 text-center min-w-[120px] w-1/5" style="background-color: #c8e6c9;">Sq. Meter</th>
-                  <th class="py-3 px-3 text-center min-w-[120px] w-1/5" style="background-color: #e1bee7;">Sq.Feet</th>
+                  <th class="py-3 px-2 text-center min-w-[100px] w-1/5">Feet</th>
+                  <th class="py-3 px-2 text-center min-w-[100px] w-1/5">Inch</th>
+                  <th class="py-3 px-2 text-center min-w-[100px] w-1/5">Nos</th>
+                  <th class="py-3 px-3 text-center min-w-[120px] w-1/5">Sq. Meter</th>
+                  <th class="py-3 px-3 text-center min-w-[120px] w-1/5">Sq.Feet</th>
                   <th class="py-3 px-2 text-center w-24">Action</th>
                 </tr>
               </thead>
@@ -2624,13 +2624,13 @@ const App = {
                   <td colspan="3" class="py-3 px-3 text-right font-bold text-xs text-stone-600">
                     <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-ruler-combined text-stone-500"></i> Dimensions Total:</span>
                   </td>
-                  <td id="calc-block-total-nos-${bIdx}" class="py-3 px-2 text-center font-bold text-sm text-stone-900 tabular-nums" style="background-color: #fff9c4;">
+                  <td id="calc-block-total-nos-${bIdx}" class="py-3 px-2 text-center font-bold text-sm text-stone-900 tabular-nums bg-orange-50/70">
                     ${computed.totalNos} Pcs
                   </td>
-                  <td id="calc-block-total-sqmeters-${bIdx}" class="py-3 px-3 text-center font-bold text-sm text-stone-900 font-mono tabular-nums" style="background-color: #c8e6c9;">
+                  <td id="calc-block-total-sqmeters-${bIdx}" class="py-3 px-3 text-center font-bold text-sm text-stone-900 font-mono tabular-nums bg-orange-50/70">
                     ${computed.totalSqMetersDisplay}
                   </td>
-                  <td id="calc-block-total-sqfeet-${bIdx}" class="py-3 px-3 text-center font-bold text-sm text-stone-900 font-mono tabular-nums" style="background-color: #e1bee7;">
+                  <td id="calc-block-total-sqfeet-${bIdx}" class="py-3 px-3 text-center font-bold text-sm text-orange-800 font-mono tabular-nums bg-orange-50/70">
                     ${computed.totalSqFeetDisplay}
                   </td>
                   <td class="py-3 px-2"></td>
