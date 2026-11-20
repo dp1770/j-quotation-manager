@@ -627,7 +627,7 @@ const App = {
     if (!tbody) return;
 
     if (this.isLoadingData) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-16 text-stone-400 font-medium">
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-stone-400 font-medium">
         <i class="fa-solid fa-spinner fa-spin mr-2 text-stone-500 text-base"></i> Loading users from Cloudflare D1...
       </td></tr>`;
       return;
@@ -636,11 +636,12 @@ const App = {
     const users = AuthManager.getUsers();
 
     if (users.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-stone-400">No users found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-stone-400">No users found.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = users.map(u => {
+    tbody.innerHTML = users.map((u, idx) => {
+      const serialNum = idx + 1;
       const isSuper = !!(u.isSuperAdmin || u.role === 'Super Admin');
       const perms = u.permissions || {};
       const permBadges = isSuper ? 
@@ -657,8 +658,9 @@ const App = {
 
       return `
         <tr class="border-b border-stone-100 hover:bg-stone-50/80 transition-colors text-xs">
+          <td class="py-3 px-3 text-center font-code text-sm tabular-nums text-stone-600 font-semibold">${serialNum}</td>
           <td class="py-3 px-3 font-semibold text-stone-900">
-            ${this.escapeHtml(u.fullName || u.username)}
+            <span class="md:hidden inline-flex items-center font-code text-xs font-semibold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-md mr-1.5">#${serialNum}</span>${this.escapeHtml(u.fullName || u.username)}
           </td>
           <td class="py-3 px-3 font-code font-semibold text-stone-900">
             ${this.escapeHtml(u.username)}
@@ -1288,7 +1290,7 @@ const App = {
 
       const recentTable = document.getElementById('dash-recent-quotes-table');
       if (recentTable) {
-        recentTable.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-stone-400 font-medium">
+        recentTable.innerHTML = `<tr><td colspan="6" class="py-12 text-center text-stone-400 font-medium">
           <i class="fa-solid fa-spinner fa-spin text-stone-500 mr-2 text-base"></i> Loading live metrics from Cloudflare D1...
         </td></tr>`;
       }
@@ -1307,7 +1309,7 @@ const App = {
 
       const recentTable = document.getElementById('dash-recent-quotes-table');
       if (recentTable) {
-        recentTable.innerHTML = `<tr><td colspan="5" class="py-10 text-center">
+        recentTable.innerHTML = `<tr><td colspan="6" class="py-10 text-center">
           <div class="inline-flex flex-col items-center justify-center p-6 bg-red-50 border border-red-200 rounded-2xl text-red-800 max-w-md mx-auto">
             <i class="fa-solid fa-wifi-slash text-2xl text-red-500 mb-2"></i>
             <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
@@ -1404,11 +1406,14 @@ const App = {
     if (recentTable) {
       const topQuotes = quotes.slice(0, 5);
       if (topQuotes.length === 0) {
-        recentTable.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-stone-400">No quotations found. Click "+ New quotation" to create one.</td></tr>`;
+        recentTable.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-stone-400">No quotations found. Click "+ New quotation" to create one.</td></tr>`;
       } else {
-        recentTable.innerHTML = topQuotes.map(q => `
+        recentTable.innerHTML = topQuotes.map((q, idx) => `
           <tr class="border-b border-stone-100 hover:bg-stone-50/80 transition-colors">
-            <td class="py-3 px-3 font-code font-bold text-stone-900">${q.quoteNumber}</td>
+            <td class="py-3 px-3 text-center font-code text-sm tabular-nums text-stone-600 font-semibold">${idx + 1}</td>
+            <td class="py-3 px-3 font-code font-bold text-stone-900">
+              <span class="md:hidden inline-flex items-center font-code text-xs font-semibold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-md mr-1.5">#${idx + 1}</span>${q.quoteNumber}
+            </td>
             <td class="py-3 px-3">
               <div class="font-semibold text-stone-900">${this.escapeHtml(q.clientCompany || q.clientName)}</div>
               <div class="text-xs text-stone-500">${this.escapeHtml(q.clientName || '')}</div>
@@ -1462,7 +1467,7 @@ const App = {
     const tbody = document.getElementById('quotes-list-tbody');
     if (this.isLoadingData) {
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-stone-400 font-medium">
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-16 text-stone-400 font-medium">
           <i class="fa-solid fa-spinner fa-spin mr-2 text-stone-500 text-base"></i> Loading quotations from Cloudflare D1...
         </td></tr>`;
       }
@@ -1514,7 +1519,7 @@ const App = {
     if (!tbody) return;
 
     if (StorageManager.isOffline()) {
-      tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center">
+      tbody.innerHTML = `<tr><td colspan="9" class="py-12 text-center">
         <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
           <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
           <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
@@ -1534,7 +1539,7 @@ const App = {
     if (this.quotesPage < 1) this.quotesPage = 1;
 
     if (totalRecords === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-stone-400">No matching quotations found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-stone-400">No matching quotations found.</td></tr>`;
       if (paginationBar) paginationBar.innerHTML = `<span class="text-xs text-stone-400">0 quotations found</span>`;
       return;
     }
@@ -1547,7 +1552,8 @@ const App = {
     const canEdit = AuthManager.canEditQuotes();
     const canCreate = AuthManager.canCreateQuotations();
 
-    tbody.innerHTML = paginated.map(q => {
+    tbody.innerHTML = paginated.map((q, idx) => {
+      const serialNum = startIdx + idx + 1;
       let statusColor = 'bg-stone-100 text-stone-700 border border-stone-200';
       if (q.status === 'Sent') statusColor = 'bg-blue-50 text-blue-800 border border-blue-200';
       if (q.status === 'Accepted') statusColor = 'bg-green-50 text-green-800 border border-green-200';
@@ -1555,7 +1561,10 @@ const App = {
 
       return `
         <tr class="border-b border-stone-100 hover:bg-stone-50/80 transition-colors text-xs">
-          <td class="py-3 px-3 font-code font-bold text-stone-900">${q.quoteNumber}</td>
+          <td class="py-3 px-3 text-center font-code text-sm tabular-nums text-stone-600 font-semibold">${serialNum}</td>
+          <td class="py-3 px-3 font-code font-bold text-stone-900">
+            <span class="md:hidden inline-flex items-center font-code text-xs font-semibold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-md mr-1.5">#${serialNum}</span>${q.quoteNumber}
+          </td>
           <td class="py-3 px-3">
             <div class="font-semibold text-stone-900 text-sm">${this.escapeHtml(q.clientCompany || q.clientName)}</div>
             <div class="text-[11px] text-stone-500">${q.clientName ? 'Attn: ' + this.escapeHtml(q.clientName) : ''} ${q.clientPhone ? '• ' + this.escapeHtml(q.clientPhone) : ''}</div>
@@ -1653,7 +1662,7 @@ const App = {
     const tbody = document.getElementById('items-list-tbody');
     if (this.isLoadingData) {
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-stone-400 font-medium">
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-16 text-stone-400 font-medium">
           <i class="fa-solid fa-spinner fa-spin mr-2 text-stone-500 text-base"></i> Loading items from Cloudflare D1...
         </td></tr>`;
       }
@@ -1681,7 +1690,7 @@ const App = {
     if (!tbody) return;
 
     if (StorageManager.isOffline()) {
-      tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center">
+      tbody.innerHTML = `<tr><td colspan="9" class="py-12 text-center">
         <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
           <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
           <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
@@ -1704,7 +1713,7 @@ const App = {
     if (this.itemsPage < 1) this.itemsPage = 1;
 
     if (totalRecords === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-stone-400">No items found in Item Master. Click "+ Add product" or "Import CSV" to create one.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-stone-400">No items found in Item Master. Click "+ Add product" or "Import CSV" to create one.</td></tr>`;
       if (paginationBar) paginationBar.innerHTML = `<span class="text-xs text-stone-400">0 products found</span>`;
       return;
     }
@@ -1713,8 +1722,11 @@ const App = {
     const endIdx = Math.min(startIdx + this.itemsPageSize, totalRecords);
     const paginated = filtered.slice(startIdx, endIdx);
 
-    tbody.innerHTML = paginated.map(it => `
+    tbody.innerHTML = paginated.map((it, idx) => {
+      const serialNum = startIdx + idx + 1;
+      return `
       <tr class="border-b border-stone-100 hover:bg-stone-50/80 transition-colors text-xs">
+        <td class="py-3 px-3 text-center font-code text-sm tabular-nums text-stone-600 font-semibold">${serialNum}</td>
         <td class="py-3 px-3 w-20 text-center">
           ${it.imageUrl ? `
             <img src="${it.imageUrl}" alt="Profile" class="h-8 max-w-16 object-contain mx-auto border border-stone-200 rounded p-0.5 bg-white shadow-xs" />
@@ -1723,7 +1735,9 @@ const App = {
           `}
         </td>
         <td class="py-3 px-3">
-          <div class="font-semibold text-stone-900">${this.escapeHtml(it.name)}</div>
+          <div class="font-semibold text-stone-900">
+            <span class="md:hidden inline-flex items-center font-code text-xs font-semibold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-md mr-1.5">#${serialNum}</span>${this.escapeHtml(it.name)}
+          </div>
           ${it.description ? `<div class="text-[11px] text-stone-500 italic">${this.escapeHtml(it.description)}</div>` : ''}
         </td>
         <td class="py-3 px-3 font-semibold text-stone-700">
@@ -1763,7 +1777,8 @@ const App = {
           </div>
         </td>
       </tr>
-    `).join('');
+      `;
+    }).join('');
 
     if (paginationBar) {
       this.renderPaginationControls(
@@ -3047,7 +3062,7 @@ const App = {
     const tbody = document.getElementById('clients-list-tbody');
     if (this.isLoadingData) {
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-stone-400 font-medium">
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-16 text-stone-400 font-medium">
           <i class="fa-solid fa-spinner fa-spin mr-2 text-stone-500 text-base"></i> Loading clients from Cloudflare D1...
         </td></tr>`;
       }
@@ -3089,7 +3104,7 @@ const App = {
     if (!tbody) return;
 
     if (StorageManager.isOffline()) {
-      tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center">
+      tbody.innerHTML = `<tr><td colspan="9" class="py-12 text-center">
         <div class="inline-flex flex-col items-center justify-center p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 max-w-md mx-auto">
           <i class="fa-solid fa-wifi-slash text-2xl text-rose-500 mb-2"></i>
           <div class="font-bold text-sm">No Internet Connection - Please check your network</div>
@@ -3112,7 +3127,7 @@ const App = {
     if (this.clientsPage < 1) this.clientsPage = 1;
 
     if (totalRecords === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-stone-400">No clients found. Click "+ Add client" or "Import CSV" to create one.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-stone-400">No clients found. Click "+ Add client" or "Import CSV" to create one.</td></tr>`;
       if (paginationBar) paginationBar.innerHTML = `<span class="text-xs text-stone-400">0 clients found</span>`;
       return;
     }
@@ -3121,10 +3136,15 @@ const App = {
     const endIdx = Math.min(startIdx + this.clientsPageSize, totalRecords);
     const paginated = filtered.slice(startIdx, endIdx);
 
-    tbody.innerHTML = paginated.map(c => `
+    tbody.innerHTML = paginated.map((c, idx) => {
+      const serialNum = startIdx + idx + 1;
+      return `
       <tr class="border-b border-stone-100 hover:bg-stone-50/80 transition-colors text-xs">
+        <td class="py-3 px-3 text-center font-code text-sm tabular-nums text-stone-600 font-semibold">${serialNum}</td>
         <td class="py-3 px-3">
-          <div class="font-semibold text-stone-900 text-sm">${this.escapeHtml(c.companyName || c.name)}</div>
+          <div class="font-semibold text-stone-900 text-sm">
+            <span class="md:hidden inline-flex items-center font-code text-xs font-semibold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-md mr-1.5">#${serialNum}</span>${this.escapeHtml(c.companyName || c.name)}
+          </div>
           ${c.companyName ? `<div class="text-stone-500 font-medium">Contact: ${this.escapeHtml(c.name)}</div>` : ''}
         </td>
         <td class="py-3 px-3 font-semibold text-stone-900 font-code">${this.escapeHtml(c.phone || 'N/A')}</td>
@@ -3159,7 +3179,8 @@ const App = {
           </div>
         </td>
       </tr>
-    `).join('');
+      `;
+    }).join('');
 
     if (paginationBar) {
       this.renderPaginationControls(
