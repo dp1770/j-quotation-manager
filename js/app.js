@@ -6,6 +6,7 @@
 
 // Feature Toggle Flags (Clean configuration for production)
 const ENABLE_FORGOT_PASSWORD = false;
+const ENABLE_NO_GST_OPTION = false;
 
 const App = {
   currentTab: 'dashboard',
@@ -2146,8 +2147,27 @@ const App = {
     const elGstType = document.getElementById('edit-quote-gst-type');
     const elNotes = document.getElementById('edit-quote-notes');
 
+    // Manage "No GST" option visibility and accessibility
+    const optNone = document.getElementById('edit-quote-gst-opt-none');
+    if (optNone) {
+      if (!ENABLE_NO_GST_OPTION) {
+        optNone.classList.add('hidden');
+        optNone.style.display = 'none';
+        optNone.disabled = true;
+      } else {
+        optNone.classList.remove('hidden');
+        optNone.style.display = '';
+        optNone.disabled = false;
+      }
+    }
+
     if (elLoading) elLoading.value = q.loadingCharges !== undefined ? q.loadingCharges : 0;
-    if (elGstType) elGstType.value = q.gstType || 'CGST_SGST';
+    let quoteGstType = q.gstType || 'CGST_SGST';
+    if (!ENABLE_NO_GST_OPTION && quoteGstType === 'NONE') {
+      quoteGstType = 'CGST_SGST';
+      q.gstType = 'CGST_SGST';
+    }
+    if (elGstType) elGstType.value = quoteGstType;
     if (elNotes) elNotes.value = q.notes || '';
 
     // Multi-Company Selector
@@ -2767,7 +2787,12 @@ const App = {
     const loadingVal = parseFloat(document.getElementById('edit-quote-loading')?.value) || 0;
     this.currentQuotation.loadingCharges = loadingVal;
 
-    const gstType = document.getElementById('edit-quote-gst-type')?.value || this.currentQuotation.gstType || 'CGST_SGST';
+    let gstType = document.getElementById('edit-quote-gst-type')?.value || this.currentQuotation.gstType || 'CGST_SGST';
+    if (!ENABLE_NO_GST_OPTION && gstType === 'NONE') {
+      gstType = 'CGST_SGST';
+      const elGst = document.getElementById('edit-quote-gst-type');
+      if (elGst) elGst.value = 'CGST_SGST';
+    }
     this.currentQuotation.gstType = gstType;
 
     const cgstInpVal = document.getElementById('edit-quote-cgst-percent')?.value;
@@ -2881,7 +2906,11 @@ const App = {
       this.currentQuotation.clientAddress = addrEl?.value?.trim() || '';
       this.currentQuotation.notes = notesEl?.value?.trim() || '';
       this.currentQuotation.loadingCharges = parseFloat(loadEl?.value) || 0;
-      this.currentQuotation.gstType = gstTypeEl?.value || this.currentQuotation.gstType || 'CGST_SGST';
+      let savedGstType = gstTypeEl?.value || this.currentQuotation.gstType || 'CGST_SGST';
+      if (!ENABLE_NO_GST_OPTION && savedGstType === 'NONE') {
+        savedGstType = 'CGST_SGST';
+      }
+      this.currentQuotation.gstType = savedGstType;
 
       // Require Client or Company Name
       if (!this.currentQuotation.clientCompany && !this.currentQuotation.clientName) {
@@ -3865,7 +3894,12 @@ const App = {
   },
 
   handleQuotationGstTypeChange() {
-    const gstType = document.getElementById('edit-quote-gst-type')?.value || 'CGST_SGST';
+    let gstType = document.getElementById('edit-quote-gst-type')?.value || 'CGST_SGST';
+    if (!ENABLE_NO_GST_OPTION && gstType === 'NONE') {
+      gstType = 'CGST_SGST';
+      const elGst = document.getElementById('edit-quote-gst-type');
+      if (elGst) elGst.value = 'CGST_SGST';
+    }
     const cgstSgstInputs = document.getElementById('edit-quote-cgst-sgst-inputs');
     const igstInputs = document.getElementById('edit-quote-igst-inputs');
     const cgstRow = document.getElementById('calc-summary-cgst-row');
